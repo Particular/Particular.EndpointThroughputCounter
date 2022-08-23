@@ -1,0 +1,4 @@
+exclusions:
+  - LICENSE.md
+  - CONTRIBUTING.md
+  - src/NServiceBusTests.snk
