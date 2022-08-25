@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "LicenseTool-RabbitMQ": {
+      "commandName": "Project",
+      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --username rabbitmq --password rabbitmq --queueNameMasks Samples"
+    }
+  }
+}
