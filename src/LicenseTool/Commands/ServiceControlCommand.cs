@@ -35,7 +35,7 @@ class ServiceControlCommand : BaseCommand
         return command;
     }
 
-    readonly HttpClient http;
+    readonly AuthenticatingHttpClient http;
     readonly JsonSerializer serializer;
     readonly string primaryUrl;
     readonly string monitoringUrl;
@@ -46,7 +46,7 @@ class ServiceControlCommand : BaseCommand
         this.primaryUrl = primaryUrl.TrimEnd('/');
         this.monitoringUrl = monitoringUrl.TrimEnd('/');
 
-        http = new HttpClient();
+        http = new AuthenticatingHttpClient();
         serializer = new JsonSerializer();
     }
 
