@@ -11,17 +11,7 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
             name: "--apiUrl",
             description: "The RabbitMQ Management API URL");
 
-        var userArg = new Option<string>(
-            name: "--username",
-            description: "The username for the RabbitMQ Management API");
-
-        var passArg = new Option<string>(
-            name: "--password",
-            description: "The username for the RabbitMQ Management API");
-
         command.AddOption(urlArg);
-        command.AddOption(userArg);
-        command.AddOption(passArg);
 
         var maskNames = SharedOptions.CreateMaskNamesOption();
         var outputPath = SharedOptions.CreateOutputPathOption();
@@ -29,13 +19,13 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
         command.AddOption(outputPath);
 
 
-        command.SetHandler(async (url, user, pass, outputPath, maskNames) =>
+        command.SetHandler(async (url, outputPath, maskNames) =>
         {
-            var rabbitManagement = new RabbitManagement(url, user, pass);
+            var rabbitManagement = new RabbitManagement(url);
             var runner = new RabbitMqCommand(rabbitManagement, outputPath, maskNames);
             await runner.Run(CancellationToken.None);
         },
-        urlArg, userArg, passArg, outputPath, maskNames);
+        urlArg, outputPath, maskNames);
 
         return command;
     }

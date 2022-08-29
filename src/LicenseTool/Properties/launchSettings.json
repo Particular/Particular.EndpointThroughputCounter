@@ -2,7 +2,7 @@
   "profiles": {
     "LicenseTool-RabbitMQ": {
       "commandName": "Project",
-      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --username rabbitmq --password rabbitmq --queueNameMasks Samples --outputPath H:\\licensetool\\report-rabbit.json"
+      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --queueNameMasks Samples --outputPath H:\\licensetool\\report-rabbit.json"
     },
     "LicenseTool-ServiceControl": {
       "commandName": "Project",

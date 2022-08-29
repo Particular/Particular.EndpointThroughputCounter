@@ -14,8 +14,8 @@ abstract class BaseSamplingCommand<TQueueState> : BaseCommand
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
         Console.WriteLine("Taking initial queue statistics.");
-        var startTime = DateTimeOffset.Now;
         var startData = await SampleData(cancellationToken);
+        var startTime = DateTimeOffset.Now;
 
         Console.WriteLine("Waiting 15 minutes for next reading...");
         var waitUntil = DateTime.UtcNow.AddMinutes(0.1);
@@ -30,8 +30,8 @@ abstract class BaseSamplingCommand<TQueueState> : BaseCommand
         Console.WriteLine();
 
         Console.WriteLine("Taking final queue statistics.");
-        var endTime = DateTimeOffset.Now;
         var endData = await SampleData(cancellationToken);
+        var endTime = DateTimeOffset.Now;
 
         var queues = CalculateThroughput(startData, endData)
             .OrderBy(q => q.QueueName)

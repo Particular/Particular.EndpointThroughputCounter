@@ -1,21 +1,17 @@
-﻿using System.Text;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 class RabbitManagement
 {
     readonly string managementUri;
-    readonly HttpClient http;
+    readonly AuthenticatingHttpClient http;
     readonly JsonSerializer serializer;
 
-    public RabbitManagement(string managementUri, string user, string pass)
+    public RabbitManagement(string managementUri)
     {
         this.managementUri = managementUri;
 
-        var basicAuthBytes = Encoding.ASCII.GetBytes($"{user}:{pass}");
-
-        http = new HttpClient();
-        http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(basicAuthBytes));
+        http = new AuthenticatingHttpClient();
 
         serializer = new JsonSerializer();
     }
