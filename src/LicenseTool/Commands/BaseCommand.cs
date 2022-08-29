@@ -1,16 +1,14 @@
-﻿
-
-using LicenseTool.Data;
+﻿using LicenseTool.Data;
 using Newtonsoft.Json;
 
-abstract class BaseCommand<TQueueState>
+abstract class BaseSamplingCommand<TQueueState> : BaseCommand
 {
-    public async Task Run(IEnumerable<string> maskNames, CancellationToken cancellationToken = default)
-    {
-        Console.Write("Enter customer name: ");
-        string customerName = Console.ReadLine();
-        Console.WriteLine();
+    protected abstract Task<TQueueState> SampleData(CancellationToken cancellationToken = default);
 
+    protected abstract IEnumerable<QueueThroughput> CalculateThroughput(TQueueState start, TQueueState end);
+
+    protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
+    {
         Console.WriteLine("Taking initial queue statistics.");
         var startTime = DateTimeOffset.Now;
         var startData = await SampleData(cancellationToken);
@@ -35,7 +33,28 @@ abstract class BaseCommand<TQueueState>
             .OrderBy(q => q.QueueName)
             .ToArray();
 
-        foreach (var q in queues)
+        return new QueueDetails
+        {
+            Queues = queues,
+            StartTime = startTime,
+            EndTime = endTime
+        };
+    }
+}
+
+abstract class BaseCommand
+{
+    protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);
+
+    public async Task Run(IEnumerable<string> maskNames, CancellationToken cancellationToken = default)
+    {
+        Console.Write("Enter customer name: ");
+        string customerName = Console.ReadLine();
+        Console.WriteLine();
+
+        var data = await GetData(cancellationToken);
+
+        foreach (var q in data.Queues)
         {
             foreach (string mask in maskNames)
             {
@@ -48,12 +67,12 @@ abstract class BaseCommand<TQueueState>
             CustomerName = customerName,
             MessageTransport = "RabbitMQ",
             ReportMethod = "LicenseTool: RabbitMQ Admin",
-            StartTime = startTime,
-            EndTime = endTime,
-            TestDuration = endTime - startTime,
-            Queues = queues,
-            TotalThroughput = queues.Sum(q => q.Throughput),
-            TotalQueues = queues.Length
+            StartTime = data.StartTime,
+            EndTime = data.EndTime,
+            TestDuration = data.EndTime - data.StartTime,
+            Queues = data.Queues,
+            TotalThroughput = data.Queues.Sum(q => q.Throughput),
+            TotalQueues = data.Queues.Length
         };
 
         var report = new SignedReport
@@ -74,7 +93,5 @@ abstract class BaseCommand<TQueueState>
 
     protected virtual Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-    protected abstract Task<TQueueState> SampleData(CancellationToken cancellationToken = default);
 
-    protected abstract IEnumerable<QueueThroughput> CalculateThroughput(TQueueState start, TQueueState end);
 }

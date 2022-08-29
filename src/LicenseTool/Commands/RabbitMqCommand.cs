@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using LicenseTool.Data;
 
-class RabbitMqCommand : BaseCommand<List<RabbitQueueDetails>>
+class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
 {
     public static Command CreateCommand()
     {
