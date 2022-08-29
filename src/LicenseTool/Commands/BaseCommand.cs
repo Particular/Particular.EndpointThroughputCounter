@@ -3,12 +3,22 @@ using Newtonsoft.Json;
 
 abstract class BaseCommand
 {
-    public async Task Run(IEnumerable<string> maskNames, CancellationToken cancellationToken = default)
+    readonly string outputPath;
+    readonly string[] maskNames;
+
+    public BaseCommand(string outputPath, string[] maskNames)
+    {
+        this.outputPath = outputPath;
+        this.maskNames = maskNames;
+    }
+
+    public async Task Run(CancellationToken cancellationToken = default)
     {
         Console.Write("Enter customer name: ");
         string customerName = Console.ReadLine();
         Console.WriteLine();
 
+        var metadata = await GetEnvironment(cancellationToken);
         var data = await GetData(cancellationToken);
 
         foreach (var q in data.Queues)
@@ -22,8 +32,8 @@ abstract class BaseCommand
         var reportData = new Report
         {
             CustomerName = customerName,
-            MessageTransport = "RabbitMQ",
-            ReportMethod = "LicenseTool: RabbitMQ Admin",
+            MessageTransport = metadata.MessageTransport,
+            ReportMethod = metadata.ReportMethod,
             StartTime = data.StartTime,
             EndTime = data.EndTime,
             TestDuration = data.EndTime - data.StartTime,
@@ -40,7 +50,8 @@ abstract class BaseCommand
 
         var ser = new JsonSerializer();
 
-        using (var writer = new StreamWriter(@"H:\licensetool\report.json", false))
+        Console.WriteLine($"Writing report to {outputPath}");
+        using (var writer = new StreamWriter(outputPath, false))
         using (var jsonWriter = new JsonTextWriter(writer))
         {
             jsonWriter.Formatting = Formatting.Indented;
@@ -48,7 +59,7 @@ abstract class BaseCommand
         }
     }
 
-    protected virtual Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);
+
+    protected abstract Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default);
 }

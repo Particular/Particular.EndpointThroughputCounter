@@ -24,25 +24,26 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
         command.AddOption(passArg);
 
         var maskNames = SharedOptions.CreateMaskNamesOption();
+        var outputPath = SharedOptions.CreateOutputPathOption();
         command.AddOption(maskNames);
+        command.AddOption(outputPath);
 
-        command.SetHandler(async (url, user, pass, maskNames) =>
+
+        command.SetHandler(async (url, user, pass, outputPath, maskNames) =>
         {
             var rabbitManagement = new RabbitManagement(url, user, pass);
-            var runner = new RabbitMqCommand(rabbitManagement);
-            await runner.Run(maskNames, CancellationToken.None);
+            var runner = new RabbitMqCommand(rabbitManagement, outputPath, maskNames);
+            await runner.Run(CancellationToken.None);
         },
-        urlArg, userArg, passArg, maskNames);
+        urlArg, userArg, passArg, outputPath, maskNames);
 
         return command;
     }
 
-    RabbitManagement rabbit;
+    readonly RabbitManagement rabbit;
 
-    public RabbitMqCommand(RabbitManagement rabbit)
-    {
-        this.rabbit = rabbit;
-    }
+    public RabbitMqCommand(RabbitManagement rabbit, string outputPath, string[] maskNames)
+        : base(outputPath, maskNames) => this.rabbit = rabbit;
 
     protected override Task<List<RabbitQueueDetails>> SampleData(CancellationToken cancellationToken = default)
         => rabbit.GetThroughput(cancellationToken);
@@ -54,12 +55,17 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
 
         foreach (var queue in start)
         {
-            if (queue.Name.StartsWith("nsb.delay-level-") || queue.Name.StartsWith("nsb.v2.delay-level-"))
+            if (queue.Name.StartsWith("nsb.delay-level-") || queue.Name.StartsWith("nsb.v2.delay-level-") || queue.Name.StartsWith("nsb.v2.verify-"))
             {
                 continue;
             }
 
             if (queue.Name is "error" or "audit")
+            {
+                continue;
+            }
+
+            if (queue.Name.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -72,5 +78,12 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
 
         return queueThroughputs;
     }
+
+    protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
+        => Task.FromResult(new EnvironmentDetails
+        {
+            MessageTransport = "RabbitMQ",
+            ReportMethod = "LicenseTool: RabbitMQ Admin"
+        });
 }
 

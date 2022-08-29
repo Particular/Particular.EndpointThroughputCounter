@@ -2,6 +2,11 @@
 
 abstract class BaseSamplingCommand<TQueueState> : BaseCommand
 {
+    public BaseSamplingCommand(string outputPath, string[] maskNames)
+        : base(outputPath, maskNames)
+    {
+    }
+
     protected abstract Task<TQueueState> SampleData(CancellationToken cancellationToken = default);
 
     protected abstract IEnumerable<QueueThroughput> CalculateThroughput(TQueueState start, TQueueState end);

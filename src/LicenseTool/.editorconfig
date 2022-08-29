@@ -4,4 +4,11 @@
 dotnet_diagnostic.CA2007.severity = silent
 
 # PS0023: DateTime.UtcNow or DateTimeOffset.UtcNow should be used instead of DateTime.Now and DateTimeOffset.Now, unless the value is being used for displaying the current date-time in a user's local time zone
-dotnet_diagnostic.PS0023.severity = suggestion
+# This is a client-side tool and we want to know the local time zone in which the tool was run
+dotnet_diagnostic.PS0023.severity = none
+
+# CA1050: Declare types in namespaces
+dotnet_diagnostic.CA1050.severity = none
+
+# IDE0063: Use simple 'using' statement
+csharp_prefer_simple_using_statement = false

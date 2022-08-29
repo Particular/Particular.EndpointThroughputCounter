@@ -4,9 +4,9 @@ using Newtonsoft.Json.Linq;
 
 class RabbitManagement
 {
-    string managementUri;
-    HttpClient http;
-    JsonSerializer serializer;
+    readonly string managementUri;
+    readonly HttpClient http;
+    readonly JsonSerializer serializer;
 
     public RabbitManagement(string managementUri, string user, string pass)
     {
