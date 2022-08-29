@@ -23,7 +23,7 @@ abstract class BaseSamplingCommand<TQueueState> : BaseCommand
         {
             var timeLeft = waitUntil - DateTime.UtcNow;
             Console.Write($"\r{timeLeft:mm':'ss}");
-            await Task.Delay(1000, cancellationToken);
+            await Task.Delay(100, cancellationToken);
         }
 
         Console.WriteLine();

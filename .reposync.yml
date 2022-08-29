@@ -1,3 +1,4 @@
 exclusions:
   - CONTRIBUTING.md
+  - src/NServiceBus.snk
   - src/NServiceBusTests.snk

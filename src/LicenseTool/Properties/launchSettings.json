@@ -7,6 +7,10 @@
     "LicenseTool-ServiceControl": {
       "commandName": "Project",
       "commandLineArgs": "servicecontrol --serviceControlApiUrl http://localhost:33333/api --monitoringApiUrl http://localhost:33633/ --queueNameMasks Samples --outputPath H:\\licensetool\\report-sc.json"
+    },
+    "LicenseTool-SqlServer": {
+      "commandName": "Project",
+      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples --outputPath H:\\licensetool\\report-sql.json"
     }
   }
 }
