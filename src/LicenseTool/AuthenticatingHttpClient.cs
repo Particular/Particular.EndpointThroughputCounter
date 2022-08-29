@@ -42,7 +42,7 @@ class AuthenticatingHttpClient : IDisposable
                 Console.Write("Username: ");
                 var user = Console.ReadLine();
                 Console.Write("Password: ");
-                var pass = Console.ReadLine();
+                var pass = ReadPassword();
 
                 var newHandler = new HttpClientHandler
                 {
@@ -57,6 +57,31 @@ class AuthenticatingHttpClient : IDisposable
                 oldHttp.Dispose();
             }
         }
+    }
+
+    string ReadPassword()
+    {
+        var pass = string.Empty;
+        ConsoleKey key;
+        do
+        {
+            var keyInfo = Console.ReadKey(intercept: true);
+            key = keyInfo.Key;
+
+            if (key == ConsoleKey.Backspace && pass.Length > 0)
+            {
+                Console.Write("\b \b");
+                pass = pass[0..^1];
+            }
+            else if (!char.IsControl(keyInfo.KeyChar))
+            {
+                Console.Write("*");
+                pass += keyInfo.KeyChar;
+            }
+        } while (key != ConsoleKey.Enter);
+
+        Console.WriteLine();
+        return pass;
     }
 
     public void Dispose()
