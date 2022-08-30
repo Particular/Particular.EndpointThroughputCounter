@@ -11,6 +11,7 @@
         public string CustomerName { get; init; }
         public string MessageTransport { get; init; }
         public string ReportMethod { get; init; }
+        public string ToolVersion { get; init; }
         public DateTimeOffset StartTime { get; init; }
         public DateTimeOffset EndTime { get; init; }
         public TimeSpan TestDuration { get; init; }
