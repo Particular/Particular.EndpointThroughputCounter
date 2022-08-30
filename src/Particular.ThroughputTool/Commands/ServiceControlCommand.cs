@@ -1,5 +1,5 @@
 ﻿using System.CommandLine;
-using LicenseTool.Data;
+using Particular.ThroughputTool.Data;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 

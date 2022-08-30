@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using System.Diagnostics;
 using Dapper;
-using LicenseTool.Data;
+using Particular.ThroughputTool.Data;
 using Microsoft.Data.SqlClient;
 
 class SqlServerCommand : BaseCommand

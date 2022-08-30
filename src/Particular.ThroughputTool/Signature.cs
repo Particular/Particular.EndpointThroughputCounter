@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-using LicenseTool.Data;
+using Particular.ThroughputTool.Data;
 using Newtonsoft.Json;
 
 static class Signature

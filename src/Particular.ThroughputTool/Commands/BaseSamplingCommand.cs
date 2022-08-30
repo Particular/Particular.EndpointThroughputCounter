@@ -1,4 +1,4 @@
-﻿using LicenseTool.Data;
+﻿using Particular.ThroughputTool.Data;
 
 abstract class BaseSamplingCommand<TQueueState> : BaseCommand
 {

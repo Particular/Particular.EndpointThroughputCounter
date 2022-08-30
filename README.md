@@ -1,4 +1,4 @@
-# Particular LicenseTool
+# Particular.ThroughputTool
 
 Measures per-endpoint throughput in customer systems.
 

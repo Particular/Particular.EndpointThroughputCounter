@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
-    <ToolCommandName>particular-license-tool</ToolCommandName>
+    <ToolCommandName>particular-throughput-tool</ToolCommandName>
     <PackAsTool>True</PackAsTool>
     <Description>A tool to measure per-endpoint throughput of an NServiceBus system</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LicenseTool.Data\LicenseTool.Data.csproj" />
+    <ProjectReference Include="..\Particular.ThroughputTool.Data\Particular.ThroughputTool.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>

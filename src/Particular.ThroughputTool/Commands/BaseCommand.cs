@@ -1,4 +1,4 @@
-﻿using LicenseTool.Data;
+﻿using Particular.ThroughputTool.Data;
 using Newtonsoft.Json;
 
 abstract class BaseCommand

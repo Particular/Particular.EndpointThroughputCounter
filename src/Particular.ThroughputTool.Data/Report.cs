@@ -1,4 +1,4 @@
-﻿namespace LicenseTool.Data
+﻿namespace Particular.ThroughputTool.Data
 {
     public class SignedReport
     {

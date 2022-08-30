@@ -1,5 +1,5 @@
 ﻿using System.CommandLine;
-using LicenseTool.Data;
+using Particular.ThroughputTool.Data;
 
 class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
 {
@@ -73,7 +73,7 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
         => Task.FromResult(new EnvironmentDetails
         {
             MessageTransport = "RabbitMQ",
-            ReportMethod = "LicenseTool: RabbitMQ Admin"
+            ReportMethod = "ThroughputTool: RabbitMQ Admin"
         });
 }
 
