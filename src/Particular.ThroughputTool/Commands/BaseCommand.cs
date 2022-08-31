@@ -30,16 +30,14 @@ abstract class BaseCommand
             }
         }
 
-        var assembly = typeof(BaseCommand).Assembly;
-        var toolVersion = assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>()
-            .FirstOrDefault()?.InformationalVersion?.Split('+').FirstOrDefault() ?? "invalid";
+
 
         var reportData = new Report
         {
             CustomerName = customerName,
             MessageTransport = metadata.MessageTransport,
             ReportMethod = metadata.ReportMethod,
-            ToolVersion = toolVersion,
+            ToolVersion = Versioning.NuGetVersion,
             StartTime = data.StartTime,
             EndTime = data.EndTime,
             TestDuration = data.EndTime - data.StartTime,
