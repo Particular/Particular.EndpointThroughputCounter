@@ -1,0 +1,24 @@
+{
+  "ReportData": {
+    "CustomerName": "Test",
+    "MessageTransport": "Fake Transport",
+    "ReportMethod": "Testing",
+    "ToolVersion": "1.0.0",
+    "StartTime": "2022-09-01T00:00:00+00:00",
+    "EndTime": "2022-09-02T00:00:00+00:00",
+    "TestDuration": "1.00:00:00",
+    "Queues": [
+      {
+        "QueueName": "Queue1",
+        "Throughput": 42
+      },
+      {
+        "QueueName": "Queue1",
+        "Throughput": 10000
+      }
+    ],
+    "TotalThroughput": 10042,
+    "TotalQueues": 2
+  },
+  "Signature": "SIGNATURE"
+}

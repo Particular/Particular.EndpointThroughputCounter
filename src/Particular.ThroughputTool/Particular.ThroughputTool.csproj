@@ -32,4 +32,8 @@
     <EmbeddedResource Include="public-key.pem" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tests" />
+  </ItemGroup>
+
 </Project>
