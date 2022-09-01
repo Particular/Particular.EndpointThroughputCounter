@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Particular.ThroughputTool.Data;
 
 abstract class BaseCommand
@@ -29,8 +28,6 @@ abstract class BaseCommand
                 q.QueueName = q.QueueName.Replace(mask, "***", StringComparison.OrdinalIgnoreCase);
             }
         }
-
-
 
         var reportData = new Report
         {
@@ -66,4 +63,11 @@ abstract class BaseCommand
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);
 
     protected abstract Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default);
+
+#if DEBUG
+    protected TimeSpan PollingRunTime = TimeSpan.FromMinutes(1);
+#else
+    protected TimeSpan PollingRunTime = TimeSpan.FromDays(1);
+#endif
+
 }

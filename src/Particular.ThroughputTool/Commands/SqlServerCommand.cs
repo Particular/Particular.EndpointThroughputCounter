@@ -1,8 +1,9 @@
 ﻿using System.CommandLine;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Dapper;
-using Particular.ThroughputTool.Data;
 using Microsoft.Data.SqlClient;
+using Particular.ThroughputTool.Data;
 
 class SqlServerCommand : BaseCommand
 {
@@ -32,6 +33,8 @@ class SqlServerCommand : BaseCommand
     }
 
     readonly string connectionString;
+    int totalQueues;
+    int sampledQueues;
 
     public SqlServerCommand(string outputPath, string[] maskNames, string connectionString)
         : base(outputPath, maskNames)
@@ -44,17 +47,30 @@ class SqlServerCommand : BaseCommand
         var tables = await GetTables(cancellationToken);
 
         tables.RemoveAll(t => t.IgnoreTable());
+        totalQueues = tables.Count;
+        sampledQueues = 0;
 
         var start = DateTimeOffset.Now;
+        var targetEnd = start + PollingRunTime;
 
-        var targetEnd = start.AddMinutes(1);
+        var tokenSource = new CancellationTokenSource();
+        var getMinimumsTask = GetMinimums(tables, tokenSource.Token);
 
-        await SampleAll(tables, cancellationToken);
+        Console.WriteLine("Waiting to collect maximum row versions...");
         while (DateTimeOffset.Now < targetEnd)
         {
-            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
-            await SampleAll(tables, cancellationToken);
+            var timeLeft = targetEnd - DateTimeOffset.Now;
+            Console.Write($"\rWait Time Left: {timeLeft:hh':'mm':'ss} - {sampledQueues}/{totalQueues} sampled");
+            await Task.Delay(250, cancellationToken);
         }
+
+        Console.WriteLine();
+        Console.WriteLine();
+
+        tokenSource.Cancel();
+        await getMinimumsTask;
+
+        await GetMaximums(tables, cancellationToken);
 
         var end = DateTimeOffset.Now;
 
@@ -66,14 +82,111 @@ class SqlServerCommand : BaseCommand
         };
     }
 
-    async Task SampleAll(List<TableDetails> tables, CancellationToken cancellationToken)
+    async Task GetMaximums(List<TableDetails> tables, CancellationToken cancellationToken)
     {
-        using (var conn = await OpenConnectionAsync(cancellationToken))
+        Console.WriteLine("Sampling started for maximum row versions...");
+        Console.WriteLine("(This may still take up to 15 minutes depending on queue traffic.)");
+        int counter = 0;
+        int totalMsWaited = 0;
+        sampledQueues = 0;
+
+        DateTimeOffset maxWaitUntil = DateTimeOffset.Now.AddMinutes(15);
+
+        while (sampledQueues < totalQueues && DateTimeOffset.Now < maxWaitUntil)
         {
-            foreach (var table in tables)
+            using (var conn = await OpenConnectionAsync(cancellationToken))
             {
-                await table.Sample(conn, cancellationToken);
+                foreach (var table in tables.Where(t => t.MaxRowVersion is null))
+                {
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = $"select max(RowVersion) from {table.FullName} with (nolock);";
+                        var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                        if (value is long rowversion)
+                        {
+                            table.MaxRowVersion = rowversion;
+                            // If Min version isn't filled in and we somehow got lucky now, mark it down
+                            table.MinRowVersion ??= rowversion;
+                        }
+                    }
+                }
             }
+
+            sampledQueues = tables.Count(t => t.MaxRowVersion is not null);
+            Console.Write($"\r{sampledQueues}/{totalQueues} sampled");
+            if (sampledQueues < totalQueues)
+            {
+                await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
+
+                // After every 5 minutes of delay (if necessary) reset to the fast query pattern
+                // This could be 3 rounds during the 15 minutes
+                if (totalMsWaited > 5 * 60 * 1000)
+                {
+                    counter = 0;
+                    totalMsWaited = 0;
+                }
+            }
+        }
+
+        // Clear out from the Write('\r') pattern
+        Console.WriteLine();
+        Console.WriteLine();
+    }
+
+    async Task GetMinimums(List<TableDetails> tables, CancellationToken cancellationToken)
+    {
+        Console.WriteLine("Sampling started for minimum row versions...");
+        int counter = 0;
+        int totalMsWaited = 0;
+
+        try
+        {
+            while (sampledQueues < totalQueues)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                using (var conn = await OpenConnectionAsync(cancellationToken))
+                {
+                    foreach (var table in tables.Where(t => t.MinRowVersion is null))
+                    {
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = $"select min(RowVersion) from {table.FullName} with (nolock);";
+                            var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                            if (value is long rowversion)
+                            {
+                                table.MinRowVersion = rowversion;
+                            }
+                        }
+                    }
+                }
+
+                sampledQueues = tables.Count(t => t.MinRowVersion is not null);
+                if (sampledQueues < totalQueues)
+                {
+                    await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
+
+                    // After every 15 minutes of delay (if necessary) reset to the fast query pattern
+                    if (totalMsWaited > 15 * 60 * 1000)
+                    {
+                        counter = 0;
+                        totalMsWaited = 0;
+                    }
+                }
+            }
+            Console.WriteLine();
+            Console.WriteLine("Sampling of minimum row versions completed for all tables successfully.");
+            Console.WriteLine();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            int successCount = tables.Count(t => t.MinRowVersion is not null);
+            Console.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{tables.Count} values.");
         }
     }
 
@@ -100,6 +213,21 @@ class SqlServerCommand : BaseCommand
         return conn;
     }
 
+    static int GetDelayMilliseconds(ref int counter, ref int totalMsWaited)
+    {
+        var waitMs = counter switch
+        {
+            < 20 => 50,     // 20 times in the first second
+            < 100 => 100,   // 10 times/sec in the next 8 seconds
+            < 160 => 1000,  // Once per second for a minute
+            _ => 10_000,     // Once every 10s after that
+        };
+
+        counter++;
+        totalMsWaited += waitMs;
+
+        return waitMs;
+    }
 
     const string GetQueueListCommandText = @"SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
 
@@ -120,8 +248,8 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
     {
         public string TableSchema { get; init; }
         public string TableName { get; init; }
-        public long? MinRowVersion { get; private set; }
-        public long? MaxRowVersion { get; private set; }
+        public long? MinRowVersion { get; set; }
+        public long? MaxRowVersion { get; set; }
         public string FullName => $"[{TableSchema}].[{TableName}]";
 
         public bool IgnoreTable()
@@ -137,28 +265,6 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
             }
 
             return false;
-        }
-
-        public async Task Sample(SqlConnection conn, CancellationToken cancellationToken = default)
-        {
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = $"select max(RowVersion) from [{TableSchema}].[{TableName}] with (nolock);";
-                var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                if (value is not DBNull)
-                {
-                    var rowversion = (long)value;
-                    if (MaxRowVersion is null || rowversion > MaxRowVersion)
-                    {
-                        MaxRowVersion = rowversion;
-                    }
-                    if (MinRowVersion is null || rowversion < MinRowVersion)
-                    {
-                        MinRowVersion = rowversion;
-                    }
-                }
-            }
         }
 
         public QueueThroughput ToQueueThroughput()

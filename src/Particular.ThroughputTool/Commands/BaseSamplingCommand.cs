@@ -17,13 +17,13 @@ abstract class BaseSamplingCommand<TQueueState> : BaseCommand
         var startData = await SampleData(cancellationToken);
         var startTime = DateTimeOffset.Now;
 
-        Console.WriteLine("Waiting 15 minutes for next reading...");
-        var waitUntil = DateTime.UtcNow.AddMinutes(0.1);
+        Console.WriteLine("Waiting until next reading...");
+        var waitUntil = DateTime.UtcNow + PollingRunTime;
         while (DateTime.UtcNow < waitUntil)
         {
             var timeLeft = waitUntil - DateTime.UtcNow;
-            Console.Write($"\r{timeLeft:mm':'ss}");
-            await Task.Delay(100, cancellationToken);
+            Console.Write($"\rWait Time Left: {timeLeft:hh':'mm':'ss}");
+            await Task.Delay(250, cancellationToken);
         }
 
         Console.WriteLine();
