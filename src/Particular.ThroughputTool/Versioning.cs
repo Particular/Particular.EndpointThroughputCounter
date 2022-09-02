@@ -56,7 +56,21 @@ static class Versioning
         {
             Console.WriteLine("Checking for latest version...");
             var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
-            var versions = await resource.GetAllVersionsAsync("Particular.ThroughputTool", cache, logger, cancellationToken);
+
+            NuGetVersion[] versions = null;
+
+            using (var tokenSource = new CancellationTokenSource(10_000))
+            {
+                try
+                {
+                    versions = (await resource.GetAllVersionsAsync("Particular.ThroughputTool", cache, logger, tokenSource.Token)).ToArray();
+                }
+                catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
+                {
+                    Console.Error.WriteLine("WARNING: Unable to connect to MyGet within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
+                    return true;
+                }
+            }
 
             var latest = versions.OrderByDescending(pkg => pkg.Version).FirstOrDefault();
             var current = new NuGetVersion(NuGetVersion);
