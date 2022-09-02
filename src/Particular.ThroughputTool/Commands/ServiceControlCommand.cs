@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
-using Particular.ThroughputTool.Data;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Particular.ThroughputTool.Data;
 
 class ServiceControlCommand : BaseCommand
 {
@@ -40,6 +40,15 @@ class ServiceControlCommand : BaseCommand
     readonly string primaryUrl;
     readonly string monitoringUrl;
 
+#if DEBUG
+    // So that a run can be done in 3 minutes in debug mode
+    const int samples = 3;
+    const int minutesPerSample = 1;
+#else
+    const int samples = 24;
+    const int minutesPerSample = 60;
+#endif
+
     public ServiceControlCommand(string outputPath, string[] maskNames, string primaryUrl, string monitoringUrl)
         : base(outputPath, maskNames)
     {
@@ -52,31 +61,33 @@ class ServiceControlCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        int minutes = 15;
-        var monitoringDataUrl = $"{monitoringUrl}/monitored-endpoints?history={minutes}";
+        var allData = new List<QueueThroughput>();
 
-        List<QueueThroughput> queues;
+        var start = DateTimeOffset.Now.AddMinutes(-minutesPerSample);
 
-        using (var stream = await http.GetStreamAsync(monitoringDataUrl, cancellationToken))
-        using (var reader = new StreamReader(stream))
-        using (var jsonReader = new JsonTextReader(reader))
+        Console.WriteLine($"The tool will sample ServiceControl data {samples} times at {minutesPerSample}-minute intervals.");
+
+        Console.WriteLine("Performing initial data sampling...");
+        allData.AddRange(await SampleData(minutesPerSample, cancellationToken));
+
+        for (var i = 1; i < samples; i++)
         {
-            var arr = serializer.Deserialize<JArray>(jsonReader);
-
-            queues = arr.Select(token =>
+            Console.WriteLine($"{i}/{samples} samplings complete");
+            DateTime waitUntil = DateTime.Now.AddMinutes(minutesPerSample);
+            while (DateTime.Now < waitUntil)
             {
-                var name = token["name"].Value<string>();
-                var throughputAvgPerSec = token["metrics"]["throughput"]["average"].Value<double>();
-                var throughputTotal = throughputAvgPerSec * 60 * minutes;
-
-                return new QueueThroughput
-                {
-                    QueueName = name,
-                    Throughput = (int)throughputTotal
-                };
-            })
-            .ToList();
+                var timeLeft = waitUntil - DateTime.Now;
+                Console.Write($"\rTime until next sampling: {timeLeft:mm':'ss}");
+                await Task.Delay(250, cancellationToken);
+            }
+            Console.WriteLine();
+            allData.AddRange(await SampleData(minutesPerSample, cancellationToken));
         }
+        Console.WriteLine("Sampling complete");
+
+        var queues = allData.GroupBy(q => q.QueueName)
+            .Select(g => new QueueThroughput { QueueName = g.Key, Throughput = g.Sum(q => q.Throughput) })
+            .ToList();
 
         var recordedEndpoints = queues.Select(q => q.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -108,10 +119,36 @@ class ServiceControlCommand : BaseCommand
 
         return new QueueDetails
         {
-            StartTime = now - TimeSpan.FromMinutes(minutes),
+            StartTime = start,
             EndTime = now,
             Queues = queues.OrderBy(q => q.QueueName).ToArray()
         };
+    }
+
+    async Task<QueueThroughput[]> SampleData(int minutes, CancellationToken cancellationToken)
+    {
+        var monitoringDataUrl = $"{monitoringUrl}/monitored-endpoints?history={minutes}";
+
+        using (var stream = await http.GetStreamAsync(monitoringDataUrl, cancellationToken))
+        using (var reader = new StreamReader(stream))
+        using (var jsonReader = new JsonTextReader(reader))
+        {
+            var arr = serializer.Deserialize<JArray>(jsonReader);
+
+            return arr.Select(token =>
+            {
+                var name = token["name"].Value<string>();
+                var throughputAvgPerSec = token["metrics"]["throughput"]["average"].Value<double>();
+                var throughputTotal = throughputAvgPerSec * minutes * 60;
+
+                return new QueueThroughput
+                {
+                    QueueName = name,
+                    Throughput = (int)throughputTotal
+                };
+            })
+            .ToArray();
+        }
     }
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
