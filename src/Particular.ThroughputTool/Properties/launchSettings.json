@@ -11,6 +11,10 @@
     "ThroughputTool-SqlServer": {
       "commandName": "Project",
       "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples --outputPath H:\\licensetool\\report-sql.json"
+    },
+    "ThroughputTool-ASB": {
+      "commandName": "Project",
+      "commandLineArgs": "azureservicebus --resourceId {resourceId} --queueNameMasks Samples --outputPath H:\\licensetool\\report-asb.json"
     }
   }
 }
