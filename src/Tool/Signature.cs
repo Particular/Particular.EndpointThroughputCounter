@@ -3,7 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
-using Particular.ThroughputTool.Data;
+using Particular.EndpointThroughputCounter.Data;
 
 static class Signature
 {

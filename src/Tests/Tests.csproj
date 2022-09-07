@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Particular.ThroughputTool\Particular.ThroughputTool.csproj" />
+    <ProjectReference Include="..\Tool\Particular.EndpointThroughputCounter.csproj" />
   </ItemGroup>
 
   <ItemGroup>

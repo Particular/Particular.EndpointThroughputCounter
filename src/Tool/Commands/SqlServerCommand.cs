@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.SqlClient;
-using Particular.ThroughputTool.Data;
+using Particular.EndpointThroughputCounter.Data;
 
 class SqlServerCommand : BaseCommand
 {

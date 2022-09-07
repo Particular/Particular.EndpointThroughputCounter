@@ -8,7 +8,7 @@
     using Newtonsoft.Json;
     using NUnit.Framework;
     using Particular.Approvals;
-    using Particular.ThroughputTool.Data;
+    using Particular.EndpointThroughputCounter.Data;
 
     [TestFixture]
     public class SignatureTests

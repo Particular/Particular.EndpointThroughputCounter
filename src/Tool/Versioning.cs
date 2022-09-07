@@ -49,7 +49,7 @@ static class Versioning
 
     public static async Task<bool> CheckForCurrentVersion(CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"Particular.ThroughputTool {NuGetVersion} (Sha:{ShortSha})");
+        Console.WriteLine($"Particular.EndpointThroughputCounter {NuGetVersion} (Sha:{ShortSha})");
 
         var logger = NullLogger.Instance;
         var cache = new SourceCacheContext();
@@ -67,7 +67,7 @@ static class Versioning
             {
                 try
                 {
-                    versions = (await resource.GetAllVersionsAsync("Particular.ThroughputTool", cache, logger, tokenSource.Token)).ToArray();
+                    versions = (await resource.GetAllVersionsAsync("Particular.EndpointThroughputCounter", cache, logger, tokenSource.Token)).ToArray();
                 }
                 catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
                 {
@@ -84,7 +84,7 @@ static class Versioning
                 Console.WriteLine();
                 Console.WriteLine($"** New version detected: {latest.ToNormalizedString()}");
                 Console.WriteLine("** To install, execute the following command:");
-                Console.WriteLine(" > dotnet tool update -g Particular.ThroughputTool --add-source=https://www.myget.org/F/particular/api/v3/index.json");
+                Console.WriteLine(" > dotnet tool update -g Particular.EndpointThroughputCounter --add-source=https://www.myget.org/F/particular/api/v3/index.json");
                 Console.WriteLine();
                 return false;
             }

@@ -1,6 +1,6 @@
-# Particular.ThroughputTool
+# Particular.EndpointThroughputCounter
 
-Measures per-endpoint throughput in customer systems.
+A tool to measure per-endpoint throughput of an NServiceBus system.
 
 ## RSA key pair
 

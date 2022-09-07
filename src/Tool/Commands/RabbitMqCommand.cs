@@ -4,7 +4,7 @@ using System.CommandLine;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Particular.ThroughputTool.Data;
+using Particular.EndpointThroughputCounter.Data;
 
 class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
 {

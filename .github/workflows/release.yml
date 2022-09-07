@@ -34,4 +34,4 @@ jobs:
           path: nugets/*
           retention-days: 1
       - name: Deploy DocsTool
-        run: dotnet nuget push nugets/Particular.ThroughputTool.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}
+        run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}

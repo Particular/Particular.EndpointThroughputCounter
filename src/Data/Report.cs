@@ -1,4 +1,4 @@
-﻿namespace Particular.ThroughputTool.Data
+﻿namespace Particular.EndpointThroughputCounter.Data
 {
     using System;
 

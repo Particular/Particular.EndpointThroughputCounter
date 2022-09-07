@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Particular.ThroughputTool.Data;
+using Particular.EndpointThroughputCounter.Data;
 
 abstract class BaseSamplingCommand<TQueueState> : BaseCommand
 {

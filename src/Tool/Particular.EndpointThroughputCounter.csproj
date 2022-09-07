@@ -3,15 +3,15 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
-    <ToolCommandName>particular-throughput-tool</ToolCommandName>
+    <ToolCommandName>throughput-counter</ToolCommandName>
     <PackAsTool>True</PackAsTool>
-    <Description>A tool to measure per-endpoint throughput of an NServiceBus system</Description>
+    <Description>A tool to measure per-endpoint throughput of an NServiceBus system.</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <LangVersion>10</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Particular.ThroughputTool.Data\Particular.ThroughputTool.Data.csproj" />
+    <ProjectReference Include="..\Data\Particular.EndpointThroughputCounter.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
