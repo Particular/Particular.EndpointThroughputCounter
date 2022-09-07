@@ -1,4 +1,5 @@
-﻿using Particular.ThroughputTool.Data;
+﻿using System;
+using Particular.ThroughputTool.Data;
 
 public class QueueDetails
 {

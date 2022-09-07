@@ -1,5 +1,8 @@
 ﻿namespace Tests
 {
+    using System;
+    using System.IO;
+    using System.Linq;
     using System.Security.Cryptography;
     using System.Text;
     using Newtonsoft.Json;
@@ -121,7 +124,7 @@
             using (var rsa = RSA.Create())
             using (var sha = SHA512.Create())
             {
-                rsa.ImportFromPem(Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
+                ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
                 var correctSignature = Convert.ToBase64String(sha.ComputeHash(reserializedReportBytes));
 
@@ -130,6 +133,40 @@
 
                 return correctSignature == decryptedSignature;
             }
+        }
+
+        static void ImportPrivateKey(RSA rsa, string privateKeyText)
+        {
+#if NET5_0_OR_GREATER
+            rsa.ImportFromPem(privateKeyText);
+#else
+            var base64Builder = new StringBuilder();
+            using (var reader = new StringReader(privateKeyText))
+            {
+                while (true)
+                {
+                    var line = reader.ReadLine();
+                    if (line == null)
+                    {
+                        break;
+                    }
+                    if (line.StartsWith("---"))
+                    {
+                        continue;
+                    }
+                    base64Builder.Append(line.Trim());
+                }
+            }
+
+            var bytes = Convert.FromBase64String(base64Builder.ToString());
+
+            rsa.ImportRSAPrivateKey(bytes, out int bytesRead);
+
+            if (bytesRead != bytes.Length)
+            {
+                throw new Exception("Failed to read public key.");
+            }
+#endif
         }
     }
 }

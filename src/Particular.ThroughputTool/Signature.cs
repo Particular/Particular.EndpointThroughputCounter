@@ -1,7 +1,9 @@
-﻿using System.Security.Cryptography;
+﻿using System;
+using System.IO;
+using System.Security.Cryptography;
 using System.Text;
-using Particular.ThroughputTool.Data;
 using Newtonsoft.Json;
+using Particular.ThroughputTool.Data;
 
 static class Signature
 {
@@ -27,7 +29,7 @@ static class Signature
         using (var rsa = RSA.Create())
         using (var sha = SHA512.Create())
         {
-            rsa.ImportFromPem(publicKeyText);
+            ImportPublicKey(rsa, publicKeyText);
 
             var hash = sha.ComputeHash(bytesToSign);
 
@@ -35,5 +37,39 @@ static class Signature
 
             return Convert.ToBase64String(signature);
         }
+    }
+
+    static void ImportPublicKey(RSA rsa, string publicKeyText)
+    {
+#if NET5_0_OR_GREATER
+        rsa.ImportFromPem(publicKeyText);
+#else
+        var base64Builder = new StringBuilder();
+        using (var reader = new StringReader(publicKeyText))
+        {
+            while (true)
+            {
+                var line = reader.ReadLine();
+                if (line == null)
+                {
+                    break;
+                }
+                if (line.StartsWith("---"))
+                {
+                    continue;
+                }
+                base64Builder.Append(line.Trim());
+            }
+        }
+
+        var bytes = Convert.FromBase64String(base64Builder.ToString());
+
+        rsa.ImportRSAPublicKey(bytes, out int bytesRead);
+
+        if (bytesRead != bytes.Length)
+        {
+            throw new Exception("Failed to read public key.");
+        }
+#endif
     }
 }

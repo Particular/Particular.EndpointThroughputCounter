@@ -1,5 +1,7 @@
 ﻿namespace Particular.ThroughputTool.Data
 {
+    using System;
+
     public class SignedReport
     {
         public Report ReportData { get; init; }

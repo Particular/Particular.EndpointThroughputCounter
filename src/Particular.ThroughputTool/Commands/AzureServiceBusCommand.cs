@@ -1,6 +1,11 @@
-﻿using System.CommandLine;
+﻿using System;
+using System.CommandLine;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.ThroughputTool.Data;
@@ -42,12 +47,14 @@ class AzureServiceBusCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
+        await Task.Yield();
+
         var endTime = DateTime.UtcNow.Date.AddDays(1);
         var startTime = endTime.AddDays(-30);
 
         var command = $"az monitor metrics list --resource {resourceId} --dimension EntityName --aggregation Total --start-time {startTime:yyyy-MM-dd}T00:00:00+00:00 --end-time {endTime:yyyy-MM-dd}T00:00:00+00:00 --interval 24h --metrics CompleteMessage";
 
-        var jsonText = await AzCommand(command, cancellationToken);
+        var jsonText = AzCommand(command);
 
         var json = JsonConvert.DeserializeObject<JObject>(jsonText);
 
@@ -87,7 +94,7 @@ class AzureServiceBusCommand : BaseCommand
         });
     }
 
-    async Task<string> AzCommand(string command, CancellationToken cancellationToken)
+    string AzCommand(string command)
     {
         var tmpPath = Path.GetTempPath();
 
@@ -109,7 +116,7 @@ class AzureServiceBusCommand : BaseCommand
             p.StartInfo.WorkingDirectory = Environment.GetEnvironmentVariable("USERPROFILE");
 
             p.Start();
-            await p.WaitForExitAsync(cancellationToken);
+            p.WaitForExit();
 
             var output = File.Exists(outFile) ? File.ReadAllText(outFile) : null;
             var error = File.Exists(errFile) ? File.ReadAllText(errFile) : null;

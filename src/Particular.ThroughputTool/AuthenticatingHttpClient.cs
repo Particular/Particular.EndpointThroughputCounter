@@ -1,4 +1,9 @@
-﻿using System.Net;
+﻿using System;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 class AuthenticatingHttpClient : IDisposable
 {
@@ -12,7 +17,7 @@ class AuthenticatingHttpClient : IDisposable
 
     public Task<Stream> GetStreamAsync(string url, CancellationToken cancellationToken = default)
     {
-        return RetryLoopOnUnauthorized(url, 3, token => http.GetStreamAsync(url, token), cancellationToken);
+        return RetryLoopOnUnauthorized(url, 3, token => HttpGetStreamWithUsefulException(url, token), cancellationToken);
     }
 
     Task<TResult> RetryLoopOnUnauthorized<TResult>(string url, int tries, Func<CancellationToken, Task<TResult>> getResult, CancellationToken cancellationToken)
@@ -26,8 +31,10 @@ class AuthenticatingHttpClient : IDisposable
             {
                 return await getResult(cancellationToken);
             }
-            catch (HttpRequestException x) when (x.StatusCode == HttpStatusCode.Unauthorized)
+            catch (HttpRequestExceptionWithStatus x) when (x.StatusCode == HttpStatusCode.Unauthorized)
             {
+                Console.WriteLine(x.Exception);
+
                 if (--tries <= 0)
                 {
                     throw;
@@ -57,6 +64,40 @@ class AuthenticatingHttpClient : IDisposable
                 oldHttp.Dispose();
             }
         }
+    }
+
+    // Replace with http.GetStreamAsync(url) when supporting only net6.0 and greater
+    async Task<Stream> HttpGetStreamWithUsefulException(string url, CancellationToken cancellationToken)
+    {
+        var response = await http.GetAsync(url, cancellationToken);
+
+        try
+        {
+            response.EnsureSuccessStatusCode();
+            var content = response.Content;
+#if NET6_0_OR_GREATER
+            return await content.ReadAsStreamAsync(cancellationToken);
+#else
+            return await content.ReadAsStreamAsync();
+#endif
+        }
+        catch (HttpRequestException x)
+        {
+            throw new HttpRequestExceptionWithStatus(x, response.StatusCode);
+        }
+    }
+
+    class HttpRequestExceptionWithStatus : Exception
+    {
+        public HttpRequestExceptionWithStatus(HttpRequestException inner, HttpStatusCode statusCode)
+            : base(inner.Message, inner)
+        {
+            Exception = inner;
+            StatusCode = statusCode;
+        }
+
+        public HttpRequestException Exception { get; }
+        public HttpStatusCode StatusCode { get; }
     }
 
     string ReadPassword()
