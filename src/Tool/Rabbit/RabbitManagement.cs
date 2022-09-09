@@ -21,7 +21,7 @@ class RabbitManagement
         serializer = new JsonSerializer();
     }
 
-    public async Task<List<RabbitQueueDetails>> GetThroughput(CancellationToken cancellationToken = default)
+    public async Task<List<RabbitQueueDetails>> GetQueueDetails(CancellationToken cancellationToken = default)
     {
         int page = 1;
 

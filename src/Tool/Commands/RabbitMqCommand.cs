@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Particular.EndpointThroughputCounter.Data;
 
-class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
+class RabbitMqCommand : BaseCommand
 {
     public static Command CreateCommand()
     {
@@ -38,10 +38,41 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
     public RabbitMqCommand(RabbitManagement rabbit, string[] maskNames)
         : base(maskNames) => this.rabbit = rabbit;
 
-    protected override Task<List<RabbitQueueDetails>> SampleData(CancellationToken cancellationToken = default)
-        => rabbit.GetThroughput(cancellationToken);
+    protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine("Taking initial queue statistics.");
+        var startData = await rabbit.GetQueueDetails(cancellationToken);
+        var startTime = DateTimeOffset.Now;
 
-    protected override IEnumerable<QueueThroughput> CalculateThroughput(List<RabbitQueueDetails> start, List<RabbitQueueDetails> end)
+        Console.WriteLine("Waiting until next reading...");
+        var waitUntil = DateTime.UtcNow + PollingRunTime;
+        while (DateTime.UtcNow < waitUntil)
+        {
+            var timeLeft = waitUntil - DateTime.UtcNow;
+            Console.Write($"\rWait Time Left: {timeLeft:hh':'mm':'ss}");
+            await Task.Delay(250, cancellationToken);
+        }
+
+        Console.WriteLine();
+        Console.WriteLine();
+
+        Console.WriteLine("Taking final queue statistics.");
+        var endData = await rabbit.GetQueueDetails(cancellationToken);
+        var endTime = DateTimeOffset.Now;
+
+        var queues = CalculateThroughput(startData, endData)
+            .OrderBy(q => q.QueueName)
+            .ToArray();
+
+        return new QueueDetails
+        {
+            Queues = queues,
+            StartTime = startTime,
+            EndTime = endTime
+        };
+    }
+
+    protected IEnumerable<QueueThroughput> CalculateThroughput(List<RabbitQueueDetails> start, List<RabbitQueueDetails> end)
     {
         var queueThroughputs = new List<QueueThroughput>();
         var endDict = end.ToDictionary(q => q.Name, StringComparer.OrdinalIgnoreCase);
