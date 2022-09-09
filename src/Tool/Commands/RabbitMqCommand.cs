@@ -19,26 +19,24 @@ class RabbitMqCommand : BaseSamplingCommand<List<RabbitQueueDetails>>
         command.AddOption(urlArg);
 
         var maskNames = SharedOptions.CreateMaskNamesOption();
-        var outputPath = SharedOptions.CreateOutputPathOption();
         command.AddOption(maskNames);
-        command.AddOption(outputPath);
 
 
-        command.SetHandler(async (url, outputPath, maskNames) =>
+        command.SetHandler(async (url, maskNames) =>
         {
             var rabbitManagement = new RabbitManagement(url);
-            var runner = new RabbitMqCommand(rabbitManagement, outputPath, maskNames);
+            var runner = new RabbitMqCommand(rabbitManagement, maskNames);
             await runner.Run(CancellationToken.None);
         },
-        urlArg, outputPath, maskNames);
+        urlArg, maskNames);
 
         return command;
     }
 
     readonly RabbitManagement rabbit;
 
-    public RabbitMqCommand(RabbitManagement rabbit, string outputPath, string[] maskNames)
-        : base(outputPath, maskNames) => this.rabbit = rabbit;
+    public RabbitMqCommand(RabbitManagement rabbit, string[] maskNames)
+        : base(maskNames) => this.rabbit = rabbit;
 
     protected override Task<List<RabbitQueueDetails>> SampleData(CancellationToken cancellationToken = default)
         => rabbit.GetThroughput(cancellationToken);

@@ -22,16 +22,14 @@ class SqlServerCommand : BaseCommand
         command.AddOption(connStrArg);
 
         var maskNames = SharedOptions.CreateMaskNamesOption();
-        var outputPath = SharedOptions.CreateOutputPathOption();
         command.AddOption(maskNames);
-        command.AddOption(outputPath);
 
-        command.SetHandler(async (connStr, maskNames, outputPath) =>
+        command.SetHandler(async (connStr, maskNames) =>
         {
-            var runner = new SqlServerCommand(outputPath, maskNames, connStr);
+            var runner = new SqlServerCommand(maskNames, connStr);
             await runner.Run(CancellationToken.None);
         },
-        connStrArg, maskNames, outputPath);
+        connStrArg, maskNames);
 
         return command;
     }
@@ -40,8 +38,8 @@ class SqlServerCommand : BaseCommand
     int totalQueues;
     int sampledQueues;
 
-    public SqlServerCommand(string outputPath, string[] maskNames, string connectionString)
-        : base(outputPath, maskNames)
+    public SqlServerCommand(string[] maskNames, string connectionString)
+        : base(maskNames)
     {
         this.connectionString = connectionString;
     }

@@ -7,8 +7,8 @@ using Particular.EndpointThroughputCounter.Data;
 
 abstract class BaseSamplingCommand<TQueueState> : BaseCommand
 {
-    public BaseSamplingCommand(string outputPath, string[] maskNames)
-        : base(outputPath, maskNames)
+    public BaseSamplingCommand(string[] maskNames)
+        : base(maskNames)
     {
     }
 

@@ -8,17 +8,45 @@ using Particular.EndpointThroughputCounter.Data;
 
 abstract class BaseCommand
 {
-    readonly string outputPath;
     readonly string[] maskNames;
+    readonly string outputPath;
+    readonly bool isDevelopment;
 
-    public BaseCommand(string outputPath, string[] maskNames)
+    public BaseCommand(string[] maskNames)
     {
-        this.outputPath = outputPath;
         this.maskNames = maskNames;
+
+        outputPath = Path.Combine(Environment.CurrentDirectory, "throughput-report.json");
+
+        var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
+
+        if (!bool.TryParse(Environment.GetEnvironmentVariable("IS_DEVELOPMENT"), out isDevelopment))
+        {
+            isDevelopment = false;
+        }
+
     }
 
     public async Task Run(CancellationToken cancellationToken = default)
     {
+        if (File.Exists(outputPath) && !isDevelopment)
+        {
+            Console.Error.WriteLine($"ERROR: File already exists at {outputPath}, running would overwrite");
+            Environment.Exit(1);
+        }
+
+        try
+        {
+            using (var writer = new StreamWriter(outputPath, false))
+            {
+            }
+        }
+        catch (Exception x)
+        {
+            Console.Error.WriteLine($"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
+            Environment.Exit(1);
+        }
+
         Console.Write("Enter customer name: ");
         string customerName = Console.ReadLine();
         Console.WriteLine();
@@ -56,6 +84,7 @@ abstract class BaseCommand
 
         var ser = new JsonSerializer();
 
+        Console.WriteLine();
         Console.WriteLine($"Writing report to {outputPath}");
         using (var writer = new StreamWriter(outputPath, false))
         using (var jsonWriter = new JsonTextWriter(writer))
@@ -63,6 +92,7 @@ abstract class BaseCommand
             jsonWriter.Formatting = Formatting.Indented;
             ser.Serialize(jsonWriter, report, typeof(SignedReport));
         }
+        Console.WriteLine("EndpointThroughputTool complete.");
     }
 
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);

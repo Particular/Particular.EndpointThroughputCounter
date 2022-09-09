@@ -27,16 +27,14 @@ class ServiceControlCommand : BaseCommand
         command.AddOption(monitoringUrlArg);
 
         var maskNames = SharedOptions.CreateMaskNamesOption();
-        var outputPath = SharedOptions.CreateOutputPathOption();
         command.AddOption(maskNames);
-        command.AddOption(outputPath);
 
-        command.SetHandler(async (scUrl, monUrl, maskNames, outputPath) =>
+        command.SetHandler(async (scUrl, monUrl, maskNames) =>
         {
-            var runner = new ServiceControlCommand(outputPath, maskNames, scUrl, monUrl);
+            var runner = new ServiceControlCommand(maskNames, scUrl, monUrl);
             await runner.Run(CancellationToken.None);
         },
-        scUrlArg, monitoringUrlArg, maskNames, outputPath);
+        scUrlArg, monitoringUrlArg, maskNames);
 
         return command;
     }
@@ -55,8 +53,8 @@ class ServiceControlCommand : BaseCommand
     const int minutesPerSample = 60;
 #endif
 
-    public ServiceControlCommand(string outputPath, string[] maskNames, string primaryUrl, string monitoringUrl)
-        : base(outputPath, maskNames)
+    public ServiceControlCommand(string[] maskNames, string primaryUrl, string monitoringUrl)
+        : base(maskNames)
     {
         this.primaryUrl = primaryUrl.TrimEnd('/');
         this.monitoringUrl = monitoringUrl.TrimEnd('/');

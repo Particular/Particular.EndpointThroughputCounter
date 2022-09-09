@@ -33,8 +33,6 @@ class AuthenticatingHttpClient : IDisposable
             }
             catch (HttpRequestExceptionWithStatus x) when (x.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine(x.Exception);
-
                 if (--tries <= 0)
                 {
                     throw;
@@ -50,6 +48,7 @@ class AuthenticatingHttpClient : IDisposable
                 var user = Console.ReadLine();
                 Console.Write("Password: ");
                 var pass = ReadPassword();
+                Console.WriteLine();
 
                 var newHandler = new HttpClientHandler
                 {

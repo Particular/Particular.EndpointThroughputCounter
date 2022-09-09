@@ -23,24 +23,22 @@ class AzureServiceBusCommand : BaseCommand
         command.AddOption(resourceIdArg);
 
         var maskNames = SharedOptions.CreateMaskNamesOption();
-        var outputPath = SharedOptions.CreateOutputPathOption();
         command.AddOption(maskNames);
-        command.AddOption(outputPath);
 
-        command.SetHandler(async (resourceId, maskNames, outputPath) =>
+        command.SetHandler(async (resourceId, maskNames) =>
         {
-            var runner = new AzureServiceBusCommand(outputPath, maskNames, resourceId);
+            var runner = new AzureServiceBusCommand(maskNames, resourceId);
             await runner.Run(CancellationToken.None);
         },
-        resourceIdArg, maskNames, outputPath);
+        resourceIdArg, maskNames);
 
         return command;
     }
 
     readonly string resourceId;
 
-    public AzureServiceBusCommand(string outputPath, string[] maskNames, string resourceId)
-    : base(outputPath, maskNames)
+    public AzureServiceBusCommand(string[] maskNames, string resourceId)
+    : base(maskNames)
     {
         this.resourceId = resourceId;
     }

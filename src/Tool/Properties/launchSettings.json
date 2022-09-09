@@ -2,19 +2,31 @@
   "profiles": {
     "ThroughputTool-RabbitMQ": {
       "commandName": "Project",
-      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --queueNameMasks Samples --outputPath H:\\licensetool\\report-rabbit.json"
+      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --queueNameMasks Samples",
+      "environmentVariables": {
+        "IS_DEVELOPMENT": "true"
+      }
     },
     "ThroughputTool-ServiceControl": {
       "commandName": "Project",
-      "commandLineArgs": "servicecontrol --serviceControlApiUrl http://localhost:33333/api --monitoringApiUrl http://localhost:33633/ --queueNameMasks Samples --outputPath H:\\licensetool\\report-sc.json"
+      "commandLineArgs": "servicecontrol --serviceControlApiUrl http://localhost:33333/api --monitoringApiUrl http://localhost:33633/ --queueNameMasks Samples",
+      "environmentVariables": {
+        "IS_DEVELOPMENT": "true"
+      }
     },
     "ThroughputTool-SqlServer": {
       "commandName": "Project",
-      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples --outputPath H:\\licensetool\\report-sql.json"
+      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples",
+      "environmentVariables": {
+        "IS_DEVELOPMENT": "true"
+      }
     },
     "ThroughputTool-ASB": {
       "commandName": "Project",
-      "commandLineArgs": "azureservicebus --resourceId {resourceId} --queueNameMasks Samples --outputPath H:\\licensetool\\report-asb.json"
+      "commandLineArgs": "azureservicebus --resourceId {resourceId} --queueNameMasks Samples",
+      "environmentVariables": {
+        "IS_DEVELOPMENT": "true"
+      }
     }
   }
 }

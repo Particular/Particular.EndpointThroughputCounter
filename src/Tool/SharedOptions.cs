@@ -12,11 +12,4 @@ static class SharedOptions
             AllowMultipleArgumentsPerToken = true
         };
     }
-
-    public static Option<string> CreateOutputPathOption()
-    {
-        return new Option<string>(
-            name: "--outputPath",
-            description: "The path to output the report file, should end in '.json'");
-    }
 }
