@@ -37,6 +37,7 @@ class SqlServerCommand : BaseCommand
     readonly string connectionString;
     int totalQueues;
     int sampledQueues;
+    List<TableDetails> tables;
 
     public SqlServerCommand(string[] maskNames, string connectionString)
         : base(maskNames)
@@ -46,8 +47,6 @@ class SqlServerCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        var tables = await GetTables(cancellationToken);
-
         tables.RemoveAll(t => t.IgnoreTable());
         totalQueues = tables.Count;
         sampledQueues = 0;
@@ -200,12 +199,17 @@ class SqlServerCommand : BaseCommand
         }
     }
 
-    protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
-        => Task.FromResult(new EnvironmentDetails
+    protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
+    {
+        tables = await GetTables(cancellationToken);
+
+        return new EnvironmentDetails
         {
             MessageTransport = "SqlTransport",
-            ReportMethod = "SqlServerQuery"
-        });
+            ReportMethod = "SqlServerQuery",
+            QueueNames = tables.Select(t => t.FullName).OrderBy(x => x).ToArray()
+        };
+    }
 
 
     async Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)

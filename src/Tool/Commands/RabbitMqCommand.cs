@@ -77,23 +77,8 @@ class RabbitMqCommand : BaseCommand
         var queueThroughputs = new List<QueueThroughput>();
         var endDict = end.ToDictionary(q => q.Name, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var queue in start)
+        foreach (var queue in start.Where(q => IncludeQueue(q.Name)))
         {
-            if (queue.Name.StartsWith("nsb.delay-level-") || queue.Name.StartsWith("nsb.v2.delay-level-") || queue.Name.StartsWith("nsb.v2.verify-"))
-            {
-                continue;
-            }
-
-            if (queue.Name is "error" or "audit")
-            {
-                continue;
-            }
-
-            if (queue.Name.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
             if (endDict.TryGetValue(queue.Name, out var queueEnd))
             {
                 queueThroughputs.Add(new QueueThroughput { QueueName = queue.Name, Throughput = queueEnd.AckedMessages - queue.AckedMessages });
@@ -103,11 +88,39 @@ class RabbitMqCommand : BaseCommand
         return queueThroughputs;
     }
 
-    protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
-        => Task.FromResult(new EnvironmentDetails
+    protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
+    {
+        var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
+            .Where(q => IncludeQueue(q.Name))
+            .OrderBy(q => q.Name)
+            .Select(q => q.Name)
+            .ToArray();
+
+        return new EnvironmentDetails
         {
             MessageTransport = "RabbitMQ",
-            ReportMethod = "ThroughputTool: RabbitMQ Admin"
-        });
+            ReportMethod = "ThroughputTool: RabbitMQ Admin",
+            QueueNames = queueNames
+        };
+    }
+
+    static bool IncludeQueue(string name)
+    {
+        if (name.StartsWith("nsb.delay-level-") || name.StartsWith("nsb.v2.delay-level-") || name.StartsWith("nsb.v2.verify-"))
+        {
+            return false;
+        }
+        if (name is "error" or "audit")
+        {
+            return false;
+        }
+
+        if (name.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
+    }
 }
 

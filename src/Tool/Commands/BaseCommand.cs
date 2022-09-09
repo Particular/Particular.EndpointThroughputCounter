@@ -47,19 +47,52 @@ abstract class BaseCommand
             Environment.Exit(1);
         }
 
+        Console.WriteLine();
         Console.Write("Enter customer name: ");
         string customerName = Console.ReadLine();
         Console.WriteLine();
 
+        Console.WriteLine("Collecting environment info...");
         var metadata = await GetEnvironment(cancellationToken);
+
+        var mappedQueueNames = metadata.QueueNames
+            .Select(name => new { Name = name, Masked = MaskName(name) })
+            .ToArray();
+
+        Console.WriteLine();
+        Console.WriteLine("Writing endpoint/queue names discovered:");
+        Console.WriteLine();
+
+        const string leftLabel = "Queue/Endpoint Name";
+        const string rightLabel = "Will be reported as";
+        var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.Length).Max());
+        var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.Masked.Length).Max());
+
+        var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
+
+        Console.WriteLine(lineFormat, leftLabel, rightLabel);
+        Console.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
+        foreach (var set in mappedQueueNames)
+        {
+            Console.WriteLine(lineFormat, set.Name, set.Masked);
+        }
+        Console.WriteLine();
+
+        Console.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
+        Console.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
+        Console.WriteLine();
+        if (!Confirm("Do you wish to proceed?"))
+        {
+            Console.WriteLine("Exiting...");
+            Environment.Exit(1);
+        }
+        Console.WriteLine();
+
         var data = await GetData(cancellationToken);
 
         foreach (var q in data.Queues)
         {
-            foreach (string mask in maskNames)
-            {
-                q.QueueName = q.QueueName.Replace(mask, "***", StringComparison.OrdinalIgnoreCase);
-            }
+            q.QueueName = MaskName(q.QueueName);
         }
 
         var reportData = new Report
@@ -93,6 +126,38 @@ abstract class BaseCommand
             ser.Serialize(jsonWriter, report, typeof(SignedReport));
         }
         Console.WriteLine("EndpointThroughputTool complete.");
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0010:Add missing cases", Justification = "Don't need every key")]
+    bool Confirm(string prompt)
+    {
+        Console.Write(prompt);
+        Console.Write(" (Y/N): ");
+        while (true)
+        {
+            var key = Console.ReadKey(true);
+            switch (key.Key)
+            {
+                case ConsoleKey.Y:
+                    Console.WriteLine("Yes");
+                    return true;
+                case ConsoleKey.N:
+                    Console.WriteLine("No");
+                    return false;
+                default:
+                    continue;
+            }
+        }
+    }
+
+    string MaskName(string queueName)
+    {
+        foreach (string mask in maskNames)
+        {
+            queueName = queueName.Replace(mask, "***", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return queueName;
     }
 
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);

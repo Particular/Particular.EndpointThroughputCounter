@@ -6,9 +6,9 @@ class RabbitQueueDetails
     {
         Name = token["name"].Value<string>();
         Messages = token["messages"].Value<int>();
-        if (token["message_stats"] is JObject stats)
+        if (token["message_stats"] is JObject stats && stats["ack"] is JObject val)
         {
-            AckedMessages = stats["ack"].Value<int>();
+            AckedMessages = val.Value<int>();
         }
     }
     public string Name { get; }

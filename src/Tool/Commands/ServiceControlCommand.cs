@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.IO;
@@ -43,6 +44,7 @@ class ServiceControlCommand : BaseCommand
     readonly JsonSerializer serializer;
     readonly string primaryUrl;
     readonly string monitoringUrl;
+    string[] knownEndpoints;
 
 #if DEBUG
     // So that a run can be done in 3 minutes in debug mode
@@ -95,27 +97,15 @@ class ServiceControlCommand : BaseCommand
 
         var recordedEndpoints = queues.Select(q => q.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var knownEndpointsUrl = $"{primaryUrl}/endpoints/known";
-
-        using (var stream = await http.GetStreamAsync(knownEndpointsUrl, cancellationToken))
-        using (var reader = new StreamReader(stream))
-        using (var jsonReader = new JsonTextReader(reader))
+        foreach (var knownEndpoint in knownEndpoints)
         {
-            var arr = serializer.Deserialize<JArray>(jsonReader);
-
-            var knownEndpoints = arr.Select(token => token["endpoint_details"]["name"].Value<string>())
-                .ToArray();
-
-            foreach (var knownEndpoint in knownEndpoints)
+            if (!recordedEndpoints.Contains(knownEndpoint))
             {
-                if (!recordedEndpoints.Contains(knownEndpoint))
+                queues.Add(new QueueThroughput
                 {
-                    queues.Add(new QueueThroughput
-                    {
-                        QueueName = knownEndpoint,
-                        Throughput = -1
-                    });
-                }
+                    QueueName = knownEndpoint,
+                    Throughput = -1
+                });
             }
         }
 
@@ -157,6 +147,8 @@ class ServiceControlCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
+        knownEndpoints = await GetKnownEndpoints(cancellationToken);
+
         var configUrl = $"{primaryUrl}/configuration";
 
         using (var stream = await http.GetStreamAsync(configUrl, cancellationToken))
@@ -183,8 +175,26 @@ class ServiceControlCommand : BaseCommand
             return new EnvironmentDetails
             {
                 MessageTransport = className,
-                ReportMethod = "ServiceControl API"
+                ReportMethod = "ServiceControl API",
+                QueueNames = knownEndpoints.OrderBy(name => name).ToArray()
             };
+        }
+    }
+
+    async Task<string[]> GetKnownEndpoints(CancellationToken cancellationToken)
+    {
+        var knownEndpointsUrl = $"{primaryUrl}/endpoints/known";
+
+        using (var stream = await http.GetStreamAsync(knownEndpointsUrl, cancellationToken))
+        using (var reader = new StreamReader(stream))
+        using (var jsonReader = new JsonTextReader(reader))
+        {
+            var arr = serializer.Deserialize<JArray>(jsonReader);
+
+            var knownEndpoints = arr.Select(token => token["endpoint_details"]["name"].Value<string>())
+                .ToArray();
+
+            return knownEndpoints;
         }
     }
 }
