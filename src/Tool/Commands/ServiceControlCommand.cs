@@ -149,6 +149,12 @@ class ServiceControlCommand : BaseCommand
     {
         knownEndpoints = await GetKnownEndpoints(cancellationToken);
 
+        if (!knownEndpoints.Any())
+        {
+            Console.Error.WriteLine("Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
+            Environment.Exit(1);
+        }
+
         var configUrl = $"{primaryUrl}/configuration";
 
         using (var stream = await http.GetStreamAsync(configUrl, cancellationToken))

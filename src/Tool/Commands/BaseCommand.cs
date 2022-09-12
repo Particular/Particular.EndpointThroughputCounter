@@ -55,36 +55,39 @@ abstract class BaseCommand
         Console.WriteLine("Collecting environment info...");
         var metadata = await GetEnvironment(cancellationToken);
 
-        var mappedQueueNames = metadata.QueueNames
-            .Select(name => new { Name = name, Masked = MaskName(name) })
-            .ToArray();
-
-        Console.WriteLine();
-        Console.WriteLine("Writing endpoint/queue names discovered:");
-        Console.WriteLine();
-
-        const string leftLabel = "Queue/Endpoint Name";
-        const string rightLabel = "Will be reported as";
-        var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.Length).Max());
-        var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.Masked.Length).Max());
-
-        var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
-
-        Console.WriteLine(lineFormat, leftLabel, rightLabel);
-        Console.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
-        foreach (var set in mappedQueueNames)
+        if (!metadata.SkipEndpointListCheck)
         {
-            Console.WriteLine(lineFormat, set.Name, set.Masked);
-        }
-        Console.WriteLine();
+            var mappedQueueNames = metadata.QueueNames
+                .Select(name => new { Name = name, Masked = MaskName(name) })
+                .ToArray();
 
-        Console.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
-        Console.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
-        Console.WriteLine();
-        if (!Confirm("Do you wish to proceed?"))
-        {
-            Console.WriteLine("Exiting...");
-            Environment.Exit(1);
+            Console.WriteLine();
+            Console.WriteLine("Writing endpoint/queue names discovered:");
+            Console.WriteLine();
+
+            const string leftLabel = "Queue/Endpoint Name";
+            const string rightLabel = "Will be reported as";
+            var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.Length).Max());
+            var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.Masked.Length).Max());
+
+            var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
+
+            Console.WriteLine(lineFormat, leftLabel, rightLabel);
+            Console.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
+            foreach (var set in mappedQueueNames)
+            {
+                Console.WriteLine(lineFormat, set.Name, set.Masked);
+            }
+            Console.WriteLine();
+
+            Console.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
+            Console.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
+            Console.WriteLine();
+            if (!Confirm("Do you wish to proceed?"))
+            {
+                Console.WriteLine("Exiting...");
+                Environment.Exit(1);
+            }
         }
         Console.WriteLine();
 

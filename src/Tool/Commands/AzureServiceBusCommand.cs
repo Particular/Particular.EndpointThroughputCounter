@@ -88,7 +88,8 @@ class AzureServiceBusCommand : BaseCommand
         return Task.FromResult(new EnvironmentDetails
         {
             MessageTransport = "AzureServiceBus",
-            ReportMethod = "AzureServiceBus Metrics"
+            ReportMethod = "AzureServiceBus Metrics",
+            SkipEndpointListCheck = true
         });
     }
 
