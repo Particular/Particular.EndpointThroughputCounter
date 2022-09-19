@@ -75,7 +75,7 @@
                 ToolVersion = "1.0.0",
                 StartTime = start,
                 EndTime = end,
-                TestDuration = end - start,
+                ReportDuration = end - start,
                 Queues = queues,
                 TotalThroughput = queues.Sum(q => q.Throughput),
                 TotalQueues = queues.Length

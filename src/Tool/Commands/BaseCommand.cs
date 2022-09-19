@@ -106,7 +106,7 @@ abstract class BaseCommand
             ToolVersion = Versioning.NuGetVersion,
             StartTime = data.StartTime,
             EndTime = data.EndTime,
-            TestDuration = data.EndTime - data.StartTime,
+            ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,
             Queues = data.Queues,
             TotalThroughput = data.Queues.Sum(q => q.Throughput),
             TotalQueues = data.Queues.Length

@@ -16,7 +16,11 @@
         public string ToolVersion { get; init; }
         public DateTimeOffset StartTime { get; init; }
         public DateTimeOffset EndTime { get; init; }
-        public TimeSpan TestDuration { get; init; }
+        /// <summary>
+        /// Not necessarily the difference between Start/End time. ASB for example collects
+        /// 30 days worth of data and reports the max daily throughput for one 24h period.
+        /// </summary>
+        public TimeSpan ReportDuration { get; init; }
         public QueueThroughput[] Queues { get; init; }
         public int TotalThroughput { get; init; }
         public int TotalQueues { get; init; }

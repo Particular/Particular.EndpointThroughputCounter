@@ -79,7 +79,8 @@ class AzureServiceBusCommand : BaseCommand
         {
             StartTime = new DateTimeOffset(startTime, TimeSpan.Zero),
             EndTime = new DateTimeOffset(endTime, TimeSpan.Zero),
-            Queues = data
+            Queues = data,
+            TimeOfObservation = TimeSpan.FromDays(1)
         };
     }
 
