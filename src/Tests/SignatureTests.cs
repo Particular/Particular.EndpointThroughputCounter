@@ -120,18 +120,26 @@
             }
 
             var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
+            var shaHash = GetShaHash(reserializedReportBytes);
 
             using (var rsa = RSA.Create())
-            using (var sha = SHA512.Create())
             {
                 ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
-                var correctSignature = Convert.ToBase64String(sha.ComputeHash(reserializedReportBytes));
+                var correctSignature = Convert.ToBase64String(shaHash);
 
                 var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
                 var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
                 return correctSignature == decryptedSignature;
+            }
+        }
+
+        byte[] GetShaHash(byte[] reportBytes)
+        {
+            using (var sha = SHA512.Create())
+            {
+                return sha.ComputeHash(reportBytes);
             }
         }
 
