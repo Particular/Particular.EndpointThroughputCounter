@@ -8,8 +8,6 @@ The app uses a public/private key pair to prevent tampering with the reports ret
 
 The file is verified by deserializing the JSON, then repeating the parts of the process, but ensuring that the decrypted signature matches the correct hash of the data.
 
-It would technically be possible for a user to decompile this code and submit whatever report they want with a valid signature. That is unavoidable as long as the user can use the tool on their own system. The goal is to make it inconvenient enough to do so that most won't try. Even the mere presence of a cryptographic signature in the report is enough of a psychological deterrent from making subtle changes to the report text.
-
 ### Generating a key pair
 
 The key pair can be trivially regenerated in case the private key is exposed, becuase we only need to trust the latest version of the tool. Follow these steps:
