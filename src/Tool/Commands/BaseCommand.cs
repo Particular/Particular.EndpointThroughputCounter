@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -9,14 +11,12 @@ using Particular.EndpointThroughputCounter.Data;
 abstract class BaseCommand
 {
     readonly string[] maskNames;
-    readonly string outputPath;
+    readonly string reportName = "throughput-report";
     readonly bool isDevelopment;
 
     public BaseCommand(string[] maskNames)
     {
         this.maskNames = maskNames;
-
-        outputPath = Path.Combine(Environment.CurrentDirectory, "throughput-report.json");
 
         var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
 
@@ -24,10 +24,38 @@ abstract class BaseCommand
         {
             isDevelopment = false;
         }
-
     }
 
-    public async Task Run(CancellationToken cancellationToken = default)
+    string GenerateReportTimeStamp(DateTime dateTime)
+    {
+        return $"{dateTime.Year}{dateTime.Month}-{dateTime.Day}-{dateTime.Hour}-{dateTime.Minute}-{dateTime.Second}";
+    }
+
+    bool ReportsExist(string customerName)
+    {
+        var currentDirectory = new DirectoryInfo(Environment.CurrentDirectory);
+
+        var customerReport = $"{customerName}-{reportName}-{GenerateReportTimeStamp(DateTime.Now)}.json";
+
+        var files = currentDirectory.GetFiles($"{customerReport}*");
+
+        return files.Any();
+    }
+
+    bool ConfirmCreateNewReport()
+    {
+        return Confirm($"Existing throughput reports were found.{Environment.NewLine}Would you like to create a new report?");
+    }
+
+    string CreateReportOutputPath(string customerName)
+    {
+        var outputPath = Path.Join(Environment.CurrentDirectory,
+            $"{customerName}-{reportName}");
+
+        return outputPath;
+    }
+
+    void ValidateOutputPath(string outputPath)
     {
         if (File.Exists(outputPath) && !isDevelopment)
         {
@@ -37,7 +65,7 @@ abstract class BaseCommand
 
         try
         {
-            using (var writer = new StreamWriter(outputPath, false))
+            using (new StreamWriter(outputPath, false))
             {
             }
         }
@@ -46,10 +74,27 @@ abstract class BaseCommand
             Console.Error.WriteLine($"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
             Environment.Exit(1);
         }
+    }
 
+    public async Task Run(CancellationToken cancellationToken = default)
+    {
         Console.WriteLine();
         Console.Write("Enter customer name: ");
         string customerName = Console.ReadLine();
+
+        if (ReportsExist(customerName))
+        {
+            if (!ConfirmCreateNewReport())
+            {
+                Console.WriteLine("Throughput report generation cancelled by user");
+                Environment.Exit(1);
+            }
+        }
+
+        var outputPath = CreateReportOutputPath(customerName);
+
+        ValidateOutputPath(outputPath);
+
         Console.WriteLine();
 
         Console.WriteLine("Collecting environment info...");
