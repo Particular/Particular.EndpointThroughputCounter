@@ -3,13 +3,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.CloudWatch;
 using Amazon.CloudWatch.Model;
-using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Particular.EndpointThroughputCounter.Data;
@@ -20,44 +18,60 @@ class SqsCommand : BaseCommand
     {
         var command = new Command("sqs", "Measure endpoints and throughput using CloudWatch metrics for Amazon SQS");
 
-        //var resourceIdArg = new Option<string>(
-        //    name: "--resourceId",
-        //    description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.");
+        var profileOption = new Option<string>(
+            name: "--profile",
+            description: "The name of the credentials profile to use when accessing AWS services. If not provided, the default profile or environment variables will be used.");
 
-        //command.AddOption(resourceIdArg);
+        command.AddOption(profileOption);
 
-        var maskNames = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNames);
+        var regionOption = new Option<string>(
+            name: "--region",
+            description: "The AWS region to use when accessing AWS services. If not provided, the default profile or AWS_REGION environment variable will be used.");
 
-        command.SetHandler(async (maskNames) =>
+        var maskNamesOption = SharedOptions.CreateMaskNamesOption();
+        command.AddOption(maskNamesOption);
+
+        command.SetHandler(async (profile, region, maskNames) =>
         {
-            var runner = new SqsCommand(maskNames);
+            var runner = new SqsCommand(profile, region, maskNames);
             await runner.Run(CancellationToken.None);
         },
-        maskNames);
+        profileOption, regionOption, maskNamesOption);
 
         return command;
     }
 
-    public SqsCommand(string[] maskNames)
+    public SqsCommand(string profile, string regionName, string[] maskNames)
     : base(maskNames)
     {
+        if (profile is not null)
+        {
+            Console.WriteLine($"Specifying credentials profile '{profile}'");
+            AWSConfigs.AWSProfileName = profile;
+        }
+
+        if (regionName is not null)
+        {
+            var region = RegionEndpoint.GetBySystemName(regionName);
+            Console.WriteLine($"Specifying region {region.SystemName} ({region.DisplayName})");
+            AWSConfigs.RegionEndpoint = region;
+        }
     }
+
 
     int metricsReceived;
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
+        var queueNames = await GetQueues(cancellationToken);
+
         var endTime = DateTime.UtcNow.Date.AddDays(1);
         var startTime = endTime.AddDays(-30);
 
-        var credentials = GetCredentials();
-
-        var cloudWatch = new AmazonCloudWatchClient(credentials, RegionEndpoint.USEast1);
+        var cloudWatch = new AmazonCloudWatchClient();
+        Console.WriteLine($"Loading CloudWatch metrics from {cloudWatch.Config.RegionEndpoint.SystemName}.");
 
         var data = new ConcurrentBag<QueueThroughput>();
-
-        var queueNames = await GetQueues(credentials, cancellationToken);
 
         var tasks = queueNames.Select(async queueName =>
         {
@@ -90,6 +104,7 @@ class SqsCommand : BaseCommand
 
         await Task.WhenAll(tasks);
 
+        // Clear out the last write of \r
         Console.WriteLine();
 
         return new QueueDetails
@@ -101,9 +116,11 @@ class SqsCommand : BaseCommand
         };
     }
 
-    async Task<string[]> GetQueues(AWSCredentials credentials, CancellationToken cancellationToken)
+    async Task<string[]> GetQueues(CancellationToken cancellationToken)
     {
-        var sqs = new AmazonSQSClient(credentials, RegionEndpoint.USEast1);
+        var sqs = new AmazonSQSClient();
+
+        Console.WriteLine($"Loading SQS queue names from {sqs.Config.RegionEndpoint.SystemName}.");
 
         var request = new ListQueuesRequest
         {
@@ -142,13 +159,5 @@ class SqsCommand : BaseCommand
             ReportMethod = "AWS CloudWatch Metrics",
             SkipEndpointListCheck = true
         });
-    }
-
-    AWSCredentials GetCredentials()
-    {
-        var accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
-        var secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
-
-        return new BasicAWSCredentials(accessKey, secretKey);
     }
 }
