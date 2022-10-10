@@ -27,6 +27,13 @@
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
+    },
+    "ThroughputTool-SQS": {
+      "commandName": "Project",
+      "commandLineArgs": "sqs",
+      "environmentVariables": {
+        "IS_DEVELOPMENT": "true"
+      }
     }
   }
 }
