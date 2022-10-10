@@ -165,13 +165,24 @@ class AzureServiceBusCommand : BaseCommand
     bool TestExecutable(string exe)
     {
         var p = new Process();
-        p.StartInfo.UseShellExecute = true;
-        p.StartInfo.FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "where.exe" : "where";
-        p.StartInfo.Arguments = exe;
-        p.StartInfo.WorkingDirectory = Environment.GetEnvironmentVariable("USERPROFILE");
+        var start = p.StartInfo;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            start.UseShellExecute = true;
+            start.FileName = "where.exe";
+            start.Arguments = exe;
+            start.WorkingDirectory = Environment.GetEnvironmentVariable("USERPROFILE");
+        }
+        else
+        {
+            start.FileName = "/bin/bash";
+            start.Arguments = $"-c \"which {exe}\"";
+            start.UseShellExecute = false;
+            start.CreateNoWindow = true;
+        }
 
         p.Start();
-
         p.WaitForExit();
 
         return p.ExitCode == 0;

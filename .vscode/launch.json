@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to find out which attributes exist for C# debugging
+    // Use hover for the description of the existing attributes
+    // For further information visit https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "ASB",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/src/Tool/bin/Debug/net6.0/Particular.EndpointThroughputCounter.dll",
+            "args": ["azureservicebus", "--resourceId", "{resourceId}", "--queueNameMasks", "Samples"],
+            "cwd": "${workspaceFolder}",
+            "console":"integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "SQS",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/src/Tool/bin/Debug/net6.0/Particular.EndpointThroughputCounter.dll",
+            "args": ["sqs", 
+            "--queueNameMasks", "FixedAT"],
+            "cwd": "${workspaceFolder}",
+            "console":"integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        }
+     ]
+ }
