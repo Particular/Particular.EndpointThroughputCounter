@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CommandLine;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -43,10 +44,9 @@ class AzureServiceBusCommand : BaseCommand
         this.resourceId = resourceId;
     }
 
+#pragma warning disable CS1998 // Haven't been able to get AzCommand to work async yet, currently synchronous
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        await Task.Yield();
-
         var endTime = DateTime.UtcNow.Date.AddDays(1);
         var startTime = endTime.AddDays(-30);
 
@@ -83,6 +83,7 @@ class AzureServiceBusCommand : BaseCommand
             TimeOfObservation = TimeSpan.FromDays(1)
         };
     }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
     protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {

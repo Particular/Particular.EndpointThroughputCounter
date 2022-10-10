@@ -11,5 +11,6 @@ rootCommand.AddCommand(RabbitMqCommand.CreateCommand());
 rootCommand.AddCommand(ServiceControlCommand.CreateCommand());
 rootCommand.AddCommand(SqlServerCommand.CreateCommand());
 rootCommand.AddCommand(AzureServiceBusCommand.CreateCommand());
+rootCommand.AddCommand(SqsCommand.CreateCommand());
 
 return await rootCommand.InvokeAsync(args);
