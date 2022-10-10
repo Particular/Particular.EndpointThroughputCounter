@@ -49,8 +49,9 @@ abstract class BaseCommand
 
     string CreateReportOutputPath(string customerName)
     {
+        var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower()  
         var outputPath = Path.Join(Environment.CurrentDirectory,
-            $"{customerName}-{reportName}");
+            $"{customerFileName-{reportName}");
 
         return outputPath;
     }
