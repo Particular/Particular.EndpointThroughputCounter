@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -9,14 +10,12 @@ using Particular.EndpointThroughputCounter.Data;
 abstract class BaseCommand
 {
     readonly string[] maskNames;
-    readonly string outputPath;
+    readonly string reportName = "throughput-report";
     readonly bool isDevelopment;
 
     public BaseCommand(string[] maskNames)
     {
         this.maskNames = maskNames;
-
-        outputPath = Path.Combine(Environment.CurrentDirectory, "throughput-report.json");
 
         var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
 
@@ -24,10 +23,18 @@ abstract class BaseCommand
         {
             isDevelopment = false;
         }
-
     }
 
-    public async Task Run(CancellationToken cancellationToken = default)
+    string CreateReportOutputPath(string customerName)
+    {
+        var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower();
+        var outputPath = Path.Join(Environment.CurrentDirectory,
+            $"{customerFileName}-{reportName}-{DateTime.Now:yyyyMMdd-HHmmss}");
+
+        return outputPath;
+    }
+
+    void ValidateOutputPath(string outputPath)
     {
         if (File.Exists(outputPath) && !isDevelopment)
         {
@@ -37,7 +44,7 @@ abstract class BaseCommand
 
         try
         {
-            using (var writer = new StreamWriter(outputPath, false))
+            using (new StreamWriter(outputPath, false))
             {
             }
         }
@@ -46,10 +53,18 @@ abstract class BaseCommand
             Console.Error.WriteLine($"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
             Environment.Exit(1);
         }
+    }
 
+    public async Task Run(CancellationToken cancellationToken = default)
+    {
         Console.WriteLine();
         Console.Write("Enter customer name: ");
         string customerName = Console.ReadLine();
+
+        var outputPath = CreateReportOutputPath(customerName);
+
+        ValidateOutputPath(outputPath);
+
         Console.WriteLine();
 
         Console.WriteLine("Collecting environment info...");
