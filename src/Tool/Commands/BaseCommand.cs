@@ -25,11 +25,6 @@ abstract class BaseCommand
         }
     }
 
-    string GenerateReportTimeStamp(DateTime dateTime)
-    {
-        return $"{dateTime.Year}{dateTime.Month}-{dateTime.Day}-{dateTime.Hour}-{dateTime.Minute}-{dateTime.Second}";
-    }
-
     string CreateReportOutputPath(string customerName)
     {
         var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower();
