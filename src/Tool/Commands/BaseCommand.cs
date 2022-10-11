@@ -34,7 +34,7 @@ abstract class BaseCommand
     {
         var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower();
         var outputPath = Path.Join(Environment.CurrentDirectory,
-            $"{customerFileName}-{reportName}-{GenerateReportTimeStamp(DateTime.Now)}");
+            $"{customerFileName}-{reportName}-{DateTime.Now:yyyyMMdd-HHmmss}");
 
         return outputPath;
     }
