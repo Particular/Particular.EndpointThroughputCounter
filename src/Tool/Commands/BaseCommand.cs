@@ -30,27 +30,11 @@ abstract class BaseCommand
         return $"{dateTime.Year}{dateTime.Month}-{dateTime.Day}-{dateTime.Hour}-{dateTime.Minute}-{dateTime.Second}";
     }
 
-    bool ReportsExist(string customerName)
-    {
-        var currentDirectory = new DirectoryInfo(Environment.CurrentDirectory);
-
-        var customerReport = $"{customerName}-{reportName}-{GenerateReportTimeStamp(DateTime.Now)}.json";
-
-        var files = currentDirectory.GetFiles($"{customerReport}*");
-
-        return files.Any();
-    }
-
-    bool ConfirmCreateNewReport()
-    {
-        return Confirm($"Existing throughput reports were found.{Environment.NewLine}Would you like to create a new report?");
-    }
-
     string CreateReportOutputPath(string customerName)
     {
         var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower();
         var outputPath = Path.Join(Environment.CurrentDirectory,
-            $"{customerFileName}-{reportName}");
+            $"{customerFileName}-{reportName}-{GenerateReportTimeStamp(DateTime.Now)}");
 
         return outputPath;
     }
@@ -81,15 +65,6 @@ abstract class BaseCommand
         Console.WriteLine();
         Console.Write("Enter customer name: ");
         string customerName = Console.ReadLine();
-
-        if (ReportsExist(customerName))
-        {
-            if (!ConfirmCreateNewReport())
-            {
-                Console.WriteLine("Throughput report generation cancelled by user");
-                Environment.Exit(1);
-            }
-        }
 
         var outputPath = CreateReportOutputPath(customerName);
 
