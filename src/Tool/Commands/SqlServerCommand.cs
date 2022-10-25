@@ -203,6 +203,15 @@ class SqlServerCommand : BaseCommand
     {
         tables = await GetTables(cancellationToken);
 
+        if (!tables.Any())
+        {
+            Console.WriteLine();
+            Console.Error.WriteLine("ERROR: We were unable to locate any queues in the specified database. Please check the provided connection string and try again.");
+            Console.WriteLine();
+            Console.WriteLine("Exiting...");
+            Environment.Exit(1);
+        }
+
         return new EnvironmentDetails
         {
             MessageTransport = "SqlTransport",
