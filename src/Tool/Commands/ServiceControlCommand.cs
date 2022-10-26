@@ -198,6 +198,7 @@ class ServiceControlCommand : BaseCommand
             var arr = serializer.Deserialize<JArray>(jsonReader);
 
             var knownEndpoints = arr.Select(token => token["endpoint_details"]["name"].Value<string>())
+                .Distinct()
                 .ToArray();
 
             return knownEndpoints;
