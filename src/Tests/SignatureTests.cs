@@ -14,28 +14,36 @@
     [TestFixture]
     public class SignatureTests
     {
-        [Test]
-        public void SignatureRoundTrip()
+        [TestCase("Serialized")]
+        [TestCase("Deserialized")]
+        public void SignatureRoundTrip(string scenario)
         {
             var report = CreateReport();
 
             var reportString = SerializeReport(report);
-            Approver.Verify(reportString,
-                scrubber: input => input.Replace(report.Signature, "SIGNATURE"),
-                scenario: "Serialized");
-
-            var deserialized = DeserializeReport(reportString);
-            Approver.Verify(reportString,
-                scrubber: input => input.Replace(report.Signature, "SIGNATURE"),
-                scenario: "Deserialized");
-
-            // We don't distribute the private key to do local testing, this only happens during CI
-            if (Environment.GetEnvironmentVariable("CI") != "true")
+            if (scenario == "Serialized")
             {
-                return;
+                Approver.Verify(reportString,
+                    scrubber: input => input.Replace(report.Signature, "SIGNATURE"),
+                    scenario: scenario);
             }
 
-            Assert.IsTrue(ValidateReport(deserialized));
+            if (scenario == "Deserialized")
+            {
+                var deserialized = DeserializeReport(reportString);
+
+                Approver.Verify(reportString,
+                    scrubber: input => input.Replace(report.Signature, "SIGNATURE"),
+                    scenario: scenario);
+
+                // We don't distribute the private key to do local testing, this only happens during CI
+                if (Environment.GetEnvironmentVariable("CI") != "true")
+                {
+                    return;
+                }
+
+                Assert.IsTrue(ValidateReport(deserialized));
+            }
         }
 
         [Test]
