@@ -1,6 +1,7 @@
 ﻿namespace Tests
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
@@ -122,17 +123,38 @@
             var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
             var shaHash = GetShaHash(reserializedReportBytes);
 
-            using (var rsa = RSA.Create())
+            // This check has been a heisenbug on CI, want to see if it's systemic within a single run
+            var exceptions = new List<Exception>();
+            bool result = false;
+
+            for (var i = 0; i < 3; i++)
             {
-                ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
+                try
+                {
+                    using (var rsa = RSA.Create())
+                    {
+                        ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
-                var correctSignature = Convert.ToBase64String(shaHash);
+                        var correctSignature = Convert.ToBase64String(shaHash);
 
-                var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
-                var decryptedSignature = Convert.ToBase64String(decryptedHash);
+                        var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
+                        var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
-                return correctSignature == decryptedSignature;
+                        result = correctSignature == decryptedSignature;
+                    }
+                }
+                catch (CryptographicException x)
+                {
+                    exceptions.Add(x);
+                }
             }
+
+            if (exceptions.Any())
+            {
+                throw new AggregateException($"Validation has thrown exception on {exceptions.Count}/3 attempts.", exceptions);
+            }
+
+            return result;
         }
 
         byte[] GetShaHash(byte[] reportBytes)
