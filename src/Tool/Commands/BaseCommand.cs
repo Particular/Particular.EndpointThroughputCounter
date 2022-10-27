@@ -123,7 +123,7 @@ abstract class BaseCommand
             EndTime = data.EndTime,
             ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,
             Queues = data.Queues,
-            TotalThroughput = data.Queues.Sum(q => q.Throughput),
+            TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
             TotalQueues = data.Queues.Length
         };
 

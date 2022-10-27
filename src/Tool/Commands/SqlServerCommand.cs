@@ -290,7 +290,9 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
                 return new QueueThroughput { QueueName = FullName, Throughput = throughput };
             }
 
-            return new QueueThroughput { QueueName = FullName, Throughput = -1 };
+            // For now, not being able to detect messages probably means the true value
+            // is close enough to zero that it doesn't matter.
+            return new QueueThroughput { QueueName = FullName, Throughput = 0 };
         }
     }
 

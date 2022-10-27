@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.IO;
@@ -104,7 +103,7 @@ class ServiceControlCommand : BaseCommand
                 queues.Add(new QueueThroughput
                 {
                     QueueName = knownEndpoint,
-                    Throughput = -1
+                    NoDataOrSendOnly = true
                 });
             }
         }
