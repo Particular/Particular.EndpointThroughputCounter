@@ -1,6 +1,7 @@
 ﻿namespace Particular.EndpointThroughputCounter.Data
 {
     using System;
+    using Newtonsoft.Json;
 
     public class SignedReport
     {
@@ -29,6 +30,11 @@
     public class QueueThroughput
     {
         public string QueueName { get; set; }
-        public int Throughput { get; init; }
+
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public int? Throughput { get; init; }
+
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public bool NoDataOrSendOnly { get; init; }
     }
 }

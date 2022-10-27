@@ -74,6 +74,7 @@
             {
                 new QueueThroughput { QueueName = "Queue1", Throughput = 42 },
                 new QueueThroughput { QueueName = "Queue1", Throughput = 10000 },
+                new QueueThroughput { QueueName = "NoData", NoDataOrSendOnly = true },
             };
 
             var reportData = new Report
@@ -86,7 +87,7 @@
                 EndTime = end,
                 ReportDuration = end - start,
                 Queues = queues,
-                TotalThroughput = queues.Sum(q => q.Throughput),
+                TotalThroughput = queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = queues.Length
             };
 

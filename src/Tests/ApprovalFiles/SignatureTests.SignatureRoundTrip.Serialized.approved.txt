@@ -15,10 +15,14 @@
       {
         "QueueName": "Queue1",
         "Throughput": 10000
+      },
+      {
+        "QueueName": "NoData",
+        "NoDataOrSendOnly": true
       }
     ],
     "TotalThroughput": 10042,
-    "TotalQueues": 2
+    "TotalQueues": 3
   },
   "Signature": "SIGNATURE"
 }
