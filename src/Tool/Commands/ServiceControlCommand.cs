@@ -156,51 +156,50 @@ class ServiceControlCommand : BaseCommand
 
         var configUrl = $"{primaryUrl}/configuration";
 
-        using (var stream = await http.GetStreamAsync(configUrl, cancellationToken))
-        using (var reader = new StreamReader(stream))
-        using (var jsonReader = new JsonTextReader(reader))
+        var obj = await GetServiceControlData<JObject>(configUrl, cancellationToken);
+
+        var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
+
+        var split = transportCustomizationTypeStr.Split(',');
+
+        var classNameSplit = split[0].Split('.');
+
+        var className = classNameSplit.Last().Trim();
+
+        const string postfix = "TransportCustomization";
+
+        if (className.EndsWith(postfix))
         {
-            var obj = serializer.Deserialize<JObject>(jsonReader);
-
-            var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
-
-            var split = transportCustomizationTypeStr.Split(',');
-
-            var classNameSplit = split[0].Split('.');
-
-            var className = classNameSplit.Last().Trim();
-
-            const string postfix = "TransportCustomization";
-
-            if (className.EndsWith(postfix))
-            {
-                className = className[..^postfix.Length];
-            }
-
-            return new EnvironmentDetails
-            {
-                MessageTransport = className,
-                ReportMethod = "ServiceControl API",
-                QueueNames = knownEndpoints.OrderBy(name => name).ToArray()
-            };
+            className = className[..^postfix.Length];
         }
+
+        return new EnvironmentDetails
+        {
+            MessageTransport = className,
+            ReportMethod = "ServiceControl API",
+            QueueNames = knownEndpoints.OrderBy(name => name).ToArray()
+        };
     }
 
     async Task<string[]> GetKnownEndpoints(CancellationToken cancellationToken)
     {
         var knownEndpointsUrl = $"{primaryUrl}/endpoints/known";
 
-        using (var stream = await http.GetStreamAsync(knownEndpointsUrl, cancellationToken))
+        var arr = await GetServiceControlData<JArray>(knownEndpointsUrl, cancellationToken);
+
+        return arr.Select(token => token["endpoint_details"]["name"].Value<string>())
+            .Distinct()
+            .ToArray();
+    }
+
+    async Task<TJsonType> GetServiceControlData<TJsonType>(string url, CancellationToken cancellationToken)
+        where TJsonType : JToken
+    {
+        using (var stream = await http.GetStreamAsync(url, cancellationToken))
         using (var reader = new StreamReader(stream))
         using (var jsonReader = new JsonTextReader(reader))
         {
-            var arr = serializer.Deserialize<JArray>(jsonReader);
-
-            var knownEndpoints = arr.Select(token => token["endpoint_details"]["name"].Value<string>())
-                .Distinct()
-                .ToArray();
-
-            return knownEndpoints;
+            return serializer.Deserialize<TJsonType>(jsonReader);
         }
     }
 }
