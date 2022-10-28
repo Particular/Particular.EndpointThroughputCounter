@@ -1,0 +1,32 @@
+﻿namespace Particular.EndpointThroughputCounter.Data
+{
+    public class QueueThroughput
+    {
+        public QueueThroughput() { }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public bool NoDataOrSendOnly { get; set; }
+        public string QueueName { get; set; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public int? Throughput { get; set; }
+    }
+    public class Report
+    {
+        public Report() { }
+        public string CustomerName { get; set; }
+        public System.DateTimeOffset EndTime { get; set; }
+        public string MessageTransport { get; set; }
+        public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; set; }
+        public System.TimeSpan ReportDuration { get; set; }
+        public string ReportMethod { get; set; }
+        public System.DateTimeOffset StartTime { get; set; }
+        public string ToolVersion { get; set; }
+        public int TotalQueues { get; set; }
+        public int TotalThroughput { get; set; }
+    }
+    public class SignedReport
+    {
+        public SignedReport() { }
+        public Particular.EndpointThroughputCounter.Data.Report ReportData { get; set; }
+        public string Signature { get; set; }
+    }
+}
