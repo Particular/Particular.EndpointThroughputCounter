@@ -29,7 +29,7 @@ abstract class BaseCommand
     {
         var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower();
         var outputPath = Path.Join(Environment.CurrentDirectory,
-            $"{customerFileName}-{reportName}-{DateTime.Now:yyyyMMdd-HHmmss}");
+            $"{customerFileName}-{reportName}-{DateTime.Now:yyyyMMdd-HHmmss}.json");
 
         return outputPath;
     }
