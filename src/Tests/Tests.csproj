@@ -6,10 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove=".editorconfig" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Tool\Particular.EndpointThroughputCounter.csproj" />
   </ItemGroup>
 
@@ -20,6 +16,10 @@
     <PackageReference Include="NUnit3TestAdapter" Version="4.3.0" />
     <PackageReference Include="Particular.Approvals" Version="0.3.0" />
     <PackageReference Include="PublicApiGenerator" Version="10.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="throughput-report-v1.0.json" />
   </ItemGroup>
 
 </Project>

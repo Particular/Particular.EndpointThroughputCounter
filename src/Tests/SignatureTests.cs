@@ -1,7 +1,6 @@
 ﻿namespace Tests
 {
     using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
@@ -36,12 +35,6 @@
                     scrubber: input => input.Replace(report.Signature, "SIGNATURE"),
                     scenario: scenario);
 
-                // We don't distribute the private key to do local testing, this only happens during CI
-                if (Environment.GetEnvironmentVariable("CI") != "true")
-                {
-                    return;
-                }
-
                 Assert.IsTrue(ValidateReport(deserialized));
             }
         }
@@ -52,17 +45,101 @@
             var report = CreateReport();
             var reportString = SerializeReport(report);
 
-            reportString = reportString.Replace("42", "13");
+            reportString = reportString.Replace("\"Throughput\": 42", "\"Throughput\": 13");
 
             var deserialized = DeserializeReport(reportString);
 
-            // We don't distribute the private key to do local testing, this only happens during CI
-            if (Environment.GetEnvironmentVariable("CI") != "true")
+            if (PrivateKeyAvailable)
             {
-                return;
+                Assert.IsFalse(ValidateReport(deserialized));
+            }
+        }
+
+        [Test]
+        public void BunchOfReports()
+        {
+            var random = new Random();
+            var failures = 0;
+
+            for (var i = 0; i < 100; i++)
+            {
+                var queues = Enumerable.Range(0, 10)
+                    .Select(_ => new QueueThroughput { QueueName = Guid.NewGuid().ToString(), Throughput = random.Next(0, 10000) })
+                    .ToArray();
+
+                var report = new Report
+                {
+                    CustomerName = Guid.NewGuid().ToString(),
+                    MessageTransport = Guid.NewGuid().ToString(),
+                    ReportMethod = Guid.NewGuid().ToString(),
+                    ToolVersion = new Version(random.Next(1, 100), random.Next(1, 100), random.Next(1, 100)).ToString(),
+                    StartTime = new DateTimeOffset(2022, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(random.Next(0, 31_536_000)),
+                    EndTime = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(random.Next(0, 31_536_000)),
+                    Queues = queues,
+                    TotalQueues = queues.Length,
+                    TotalThroughput = queues.Sum(q => q.Throughput ?? 0)
+                };
+
+                var signed = new SignedReport
+                {
+                    ReportData = report,
+                    Signature = Signature.SignReport(report)
+                };
+
+                try
+                {
+                    ValidateReport(signed);
+                }
+                catch (CryptographicException x)
+                {
+                    failures++;
+                    Console.WriteLine($"Failure {failures}:");
+                    Console.WriteLine(x);
+                }
             }
 
-            Assert.IsFalse(ValidateReport(deserialized));
+            Assert.That(failures, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void CanReadV1Report()
+        {
+            var reportString = GetResource("throughput-report-v1.0.json");
+
+            var report = DeserializeReport(reportString);
+            var data = report.ReportData;
+
+            // Want to be explicit with asserts to ensure that a 1.0 report can be read correctly
+            // An approval test would be too easy to just accept changes on
+            Assert.That(data.CustomerName, Is.EqualTo("Testing"));
+            Assert.That(data.MessageTransport, Is.EqualTo("RabbitMQ"));
+            Assert.That(data.ReportMethod, Is.EqualTo("ThroughputTool: RabbitMQ Admin"));
+            Assert.That(data.ToolVersion, Is.EqualTo("1.0.0"));
+            Assert.That(data.StartTime.ToString("O"), Is.EqualTo("2022-11-01T10:58:55.5665172-05:00"));
+            Assert.That(data.EndTime.ToString("O"), Is.EqualTo("2022-11-01T10:59:55.6677584-05:00"));
+            Assert.That(data.ReportDuration, Is.EqualTo(TimeSpan.Parse("00:01:00.1012412")));
+
+            Assert.That(data.Queues.Length, Is.EqualTo(7));
+            Assert.That(data.Queues.All(q => q.Throughput == 0));
+            Assert.That(data.Queues.All(q => !string.IsNullOrEmpty(q.QueueName)));
+
+            Assert.That(data.TotalThroughput, Is.EqualTo(0));
+            Assert.That(data.TotalQueues, Is.EqualTo(7));
+
+            Assert.That(report.Signature, Is.EqualTo("ybIzoo9ogZtbSm5+jJa3GxncjCX3fxAfiLSI7eogG20KjJiv43aCE+7Lsvhkat7AALM34HgwI3VsgzRmyLYXD5n0+XRrWXNgeRGbLEG6d1W2djLRHNjXo423zpGTYDeMq3vhI9yAcil0K0dCC/ZCnw8dPd51pNmgKYIvrfELW0hyN70trUeCMDhYRfXruWLNe8Hfy+tS8Bm13B5vknXNlAjBIuGjXn3XILRRSVrTbb4QMIRzSluSnSTFPTCyE9wMWwC0BUGSf7ZEA0XdeN6UkaO/5URSOQVesiSLRqQWbfUc87XlY1hMs5Z7kLSOr5WByIQIfQKum1nGVjLMzshyhQ=="));
+
+            ValidateReport(report);
+        }
+
+        string GetResource(string resourceName)
+        {
+            var assembly = typeof(SignatureTests).Assembly;
+            var assemblyName = assembly.GetName().Name;
+            using (var stream = assembly.GetManifestResourceStream($"{assemblyName}.{resourceName}"))
+            using (var reader = new StreamReader(stream))
+            {
+                return reader.ReadToEnd();
+            }
         }
 
         SignedReport CreateReport()
@@ -122,6 +199,8 @@
             }
         }
 
+        bool PrivateKeyAvailable => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
+
         bool ValidateReport(SignedReport signedReport)
         {
             if (signedReport.Signature is null)
@@ -129,41 +208,38 @@
                 return false;
             }
 
+#if DEBUG
+            if (!PrivateKeyAvailable)
+            {
+                // We don't distribute the private key to do local testing, this only happens during CI
+                Console.WriteLine("Ignoring report validation as this is a DEBUG build and the RSA_PRIVATE_KEY environment variable is missing.");
+                return true;
+            }
+#endif
+
             var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
             var shaHash = GetShaHash(reserializedReportBytes);
 
-            // This check has been a heisenbug on CI, want to see if it's systemic within a single run
-            var exceptions = new List<Exception>();
-            bool result = false;
-
-            for (var i = 0; i < 3; i++)
+            try
             {
-                try
+                using (var rsa = RSA.Create())
                 {
-                    using (var rsa = RSA.Create())
-                    {
-                        ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
+                    var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
+                    ImportPrivateKey(rsa, privateKeyText);
 
-                        var correctSignature = Convert.ToBase64String(shaHash);
+                    var correctSignature = Convert.ToBase64String(shaHash);
 
-                        var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
-                        var decryptedSignature = Convert.ToBase64String(decryptedHash);
+                    var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
+                    var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
-                        result = correctSignature == decryptedSignature;
-                    }
-                }
-                catch (CryptographicException x)
-                {
-                    exceptions.Add(x);
+                    return correctSignature == decryptedSignature;
                 }
             }
-
-            if (exceptions.Any())
+            catch (CryptographicException)
             {
-                throw new AggregateException($"Validation has thrown exception on {exceptions.Count}/3 attempts.", exceptions);
+                // The signature was invalid and couldn't be decrypted
+                return false;
             }
-
-            return result;
         }
 
         byte[] GetShaHash(byte[] reportBytes)
@@ -197,7 +273,8 @@
                 }
             }
 
-            var bytes = Convert.FromBase64String(base64Builder.ToString());
+            var base64Key = base64Builder.ToString();
+            var bytes = Convert.FromBase64String(base64Key);
 
             rsa.ImportRSAPrivateKey(bytes, out int bytesRead);
 
