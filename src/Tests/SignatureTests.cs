@@ -102,24 +102,24 @@
         {
             var serializer = new JsonSerializer();
 
-            using (var writer = new StringWriter())
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                jsonWriter.Formatting = Formatting.Indented;
-                serializer.Serialize(jsonWriter, report, typeof(SignedReport));
-                return writer.ToString();
-            }
+            using var writer = new StringWriter();
+            using var jsonWriter = new JsonTextWriter(writer);
+
+            jsonWriter.Formatting = Formatting.Indented;
+            serializer.Serialize(jsonWriter, report, typeof(SignedReport));
+            return writer.ToString();
+
         }
 
         SignedReport DeserializeReport(string reportString)
         {
             var serializer = new JsonSerializer();
 
-            using (var reader = new StringReader(reportString))
-            using (var jsonReader = new JsonTextReader(reader))
-            {
-                return serializer.Deserialize<SignedReport>(jsonReader);
-            }
+            using var reader = new StringReader(reportString);
+            using var jsonReader = new JsonTextReader(reader);
+
+            return serializer.Deserialize<SignedReport>(jsonReader);
+
         }
 
         bool ValidateReport(SignedReport signedReport)
@@ -141,15 +141,15 @@
                 try
                 {
                     using var rsa = RSA.Create();
-                    
-                        ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
-                        var correctSignature = Convert.ToBase64String(shaHash);
+                    ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
-                        var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
-                        var decryptedSignature = Convert.ToBase64String(decryptedHash);
+                    var correctSignature = Convert.ToBase64String(shaHash);
 
-                        result = correctSignature == decryptedSignature;                   
+                    var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
+                    var decryptedSignature = Convert.ToBase64String(decryptedHash);
+
+                    result = correctSignature == decryptedSignature;
                 }
                 catch (CryptographicException x)
                 {
@@ -167,10 +167,9 @@
 
         byte[] GetShaHash(byte[] reportBytes)
         {
-            using (var sha = SHA512.Create())
-            {
-                return sha.ComputeHash(reportBytes);
-            }
+            using var sha = SHA512.Create();
+
+            return sha.ComputeHash(reportBytes);
         }
 
         static void ImportPrivateKey(RSA rsa, string privateKeyText)
