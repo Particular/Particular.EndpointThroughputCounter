@@ -36,12 +36,6 @@
                     scrubber: input => input.Replace(report.Signature, "SIGNATURE"),
                     scenario: scenario);
 
-                // We don't distribute the private key to do local testing, this only happens during CI
-                if (Environment.GetEnvironmentVariable("CI") != "true")
-                {
-                    return;
-                }
-
                 Assert.IsTrue(ValidateReport(deserialized));
             }
         }
@@ -56,13 +50,56 @@
 
             var deserialized = DeserializeReport(reportString);
 
-            // We don't distribute the private key to do local testing, this only happens during CI
-            if (Environment.GetEnvironmentVariable("CI") != "true")
+            if (PrivateKeyAvailable)
             {
-                return;
+                Assert.IsFalse(ValidateReport(deserialized));
+            }
+        }
+
+        [Test]
+        public void BunchOfReports()
+        {
+            var random = new Random();
+            var failures = 0;
+
+            for (var i = 0; i < 500; i++)
+            {
+                var queues = Enumerable.Range(0, 10)
+                    .Select(_ => new QueueThroughput { QueueName = Guid.NewGuid().ToString(), Throughput = random.Next(0, 10000) })
+                    .ToArray();
+
+                var report = new Report
+                {
+                    CustomerName = Guid.NewGuid().ToString(),
+                    MessageTransport = Guid.NewGuid().ToString(),
+                    ReportMethod = Guid.NewGuid().ToString(),
+                    ToolVersion = new Version(random.Next(1, 100), random.Next(1, 100), random.Next(1, 100)).ToString(),
+                    StartTime = new DateTimeOffset(2022, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(random.Next(0, 31_536_000)),
+                    EndTime = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(random.Next(0, 31_536_000)),
+                    Queues = queues,
+                    TotalQueues = queues.Length,
+                    TotalThroughput = queues.Sum(q => q.Throughput ?? 0)
+                };
+
+                var signed = new SignedReport
+                {
+                    ReportData = report,
+                    Signature = Signature.SignReport(report)
+                };
+
+                try
+                {
+                    ValidateReport(signed);
+                }
+                catch (CryptographicException x)
+                {
+                    failures++;
+                    Console.WriteLine($"Failure {failures}:");
+                    Console.WriteLine(x);
+                }
             }
 
-            Assert.IsFalse(ValidateReport(deserialized));
+            Assert.That(failures, Is.EqualTo(0));
         }
 
         [Test]
@@ -91,12 +128,6 @@
             Assert.That(data.TotalQueues, Is.EqualTo(7));
 
             Assert.That(report.Signature, Is.EqualTo("ybIzoo9ogZtbSm5+jJa3GxncjCX3fxAfiLSI7eogG20KjJiv43aCE+7Lsvhkat7AALM34HgwI3VsgzRmyLYXD5n0+XRrWXNgeRGbLEG6d1W2djLRHNjXo423zpGTYDeMq3vhI9yAcil0K0dCC/ZCnw8dPd51pNmgKYIvrfELW0hyN70trUeCMDhYRfXruWLNe8Hfy+tS8Bm13B5vknXNlAjBIuGjXn3XILRRSVrTbb4QMIRzSluSnSTFPTCyE9wMWwC0BUGSf7ZEA0XdeN6UkaO/5URSOQVesiSLRqQWbfUc87XlY1hMs5Z7kLSOr5WByIQIfQKum1nGVjLMzshyhQ=="));
-
-            // We don't distribute the private key to do local testing, this only happens during CI
-            if (Environment.GetEnvironmentVariable("CI") != "true")
-            {
-                return;
-            }
 
             ValidateReport(report);
         }
@@ -169,12 +200,23 @@
             }
         }
 
+        bool PrivateKeyAvailable => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
+
         bool ValidateReport(SignedReport signedReport)
         {
             if (signedReport.Signature is null)
             {
                 return false;
             }
+
+#if DEBUG
+            if (!PrivateKeyAvailable)
+            {
+                // We don't distribute the private key to do local testing, this only happens during CI
+                Console.WriteLine("Ignoring report validation as this is a DEBUG build and the RSA_PRIVATE_KEY environment variable is missing.");
+                return true;
+            }
+#endif
 
             var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
             var shaHash = GetShaHash(reserializedReportBytes);
