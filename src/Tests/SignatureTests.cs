@@ -1,7 +1,6 @@
 ﻿namespace Tests
 {
     using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
@@ -46,7 +45,7 @@
             var report = CreateReport();
             var reportString = SerializeReport(report);
 
-            reportString = reportString.Replace("42", "13");
+            reportString = reportString.Replace("\"Throughput\": 42", "\"Throughput\": 13");
 
             var deserialized = DeserializeReport(reportString);
 
@@ -62,7 +61,7 @@
             var random = new Random();
             var failures = 0;
 
-            for (var i = 0; i < 500; i++)
+            for (var i = 0; i < 100; i++)
             {
                 var queues = Enumerable.Range(0, 10)
                     .Select(_ => new QueueThroughput { QueueName = Guid.NewGuid().ToString(), Throughput = random.Next(0, 10000) })
@@ -221,44 +220,26 @@
             var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
             var shaHash = GetShaHash(reserializedReportBytes);
 
-            // This check has been a heisenbug on CI, want to see if it's systemic within a single run
-            var exceptions = new List<Exception>();
-            bool result = false;
-
-            for (var i = 0; i < 3; i++)
+            try
             {
-                try
+                using (var rsa = RSA.Create())
                 {
-                    Console.WriteLine("Creating RSA instance.");
-                    using (var rsa = RSA.Create())
-                    {
-                        var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
-                        Console.WriteLine($"Loaded private key text, length = {privateKeyText.Length}");
-                        ImportPrivateKey(rsa, privateKeyText);
+                    var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
+                    ImportPrivateKey(rsa, privateKeyText);
 
-                        Console.WriteLine("Calculating correct signature");
-                        var correctSignature = Convert.ToBase64String(shaHash);
+                    var correctSignature = Convert.ToBase64String(shaHash);
 
-                        Console.WriteLine("Decrypting signature with private key");
-                        var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
-                        var decryptedSignature = Convert.ToBase64String(decryptedHash);
+                    var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
+                    var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
-                        result = correctSignature == decryptedSignature;
-                    }
-                }
-                catch (CryptographicException x)
-                {
-                    Console.WriteLine(x);
-                    exceptions.Add(x);
+                    return correctSignature == decryptedSignature;
                 }
             }
-
-            if (exceptions.Any())
+            catch (CryptographicException)
             {
-                throw new AggregateException($"Validation has thrown exception on {exceptions.Count}/3 attempts.", exceptions);
+                // The signature was invalid and couldn't be decrypted
+                return false;
             }
-
-            return result;
         }
 
         byte[] GetShaHash(byte[] reportBytes)
@@ -272,10 +253,8 @@
         static void ImportPrivateKey(RSA rsa, string privateKeyText)
         {
 #if NET5_0_OR_GREATER
-            Console.WriteLine("Importing private key using .NET5+ ImportFromPem() method");
             rsa.ImportFromPem(privateKeyText);
 #else
-            Console.WriteLine("Importing private key without .NET 5 APIs - parsing base64 text from pem file");
             var base64Builder = new StringBuilder();
             using (var reader = new StringReader(privateKeyText))
             {
@@ -295,13 +274,9 @@
             }
 
             var base64Key = base64Builder.ToString();
-            Console.WriteLine($"Private key in base64 is {base64Key.Length} chars");
             var bytes = Convert.FromBase64String(base64Key);
-            Console.WriteLine($"Private key is {bytes.Length} bytes");
 
-            Console.WriteLine("Importing private key...");
             rsa.ImportRSAPrivateKey(bytes, out int bytesRead);
-            Console.WriteLine($"Private key imported, {bytesRead} bytes read");
 
             if (bytesRead != bytes.Length)
             {
