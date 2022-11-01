@@ -187,12 +187,17 @@
             {
                 try
                 {
+                    Console.WriteLine("Creating RSA instance.");
                     using (var rsa = RSA.Create())
                     {
-                        ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
+                        var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
+                        Console.WriteLine($"Loaded private key text, length = {privateKeyText.Length}");
+                        ImportPrivateKey(rsa, privateKeyText);
 
+                        Console.WriteLine("Calculating correct signature");
                         var correctSignature = Convert.ToBase64String(shaHash);
 
+                        Console.WriteLine("Decrypting signature with private key");
                         var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
                         var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
@@ -201,6 +206,7 @@
                 }
                 catch (CryptographicException x)
                 {
+                    Console.WriteLine(x);
                     exceptions.Add(x);
                 }
             }
@@ -224,8 +230,10 @@
         static void ImportPrivateKey(RSA rsa, string privateKeyText)
         {
 #if NET5_0_OR_GREATER
+            Console.WriteLine("Importing private key using .NET5+ ImportFromPem() method");
             rsa.ImportFromPem(privateKeyText);
 #else
+            Console.WriteLine("Importing private key without .NET 5 APIs - parsing base64 text from pem file");
             var base64Builder = new StringBuilder();
             using (var reader = new StringReader(privateKeyText))
             {
@@ -244,9 +252,14 @@
                 }
             }
 
-            var bytes = Convert.FromBase64String(base64Builder.ToString());
+            var base64Key = base64Builder.ToString();
+            Console.WriteLine($"Private key in base64 is {base64Key.Length} chars");
+            var bytes = Convert.FromBase64String(base64Key);
+            Console.WriteLine($"Private key is {bytes.Length} bytes");
 
+            Console.WriteLine("Importing private key...");
             rsa.ImportRSAPrivateKey(bytes, out int bytesRead);
+            Console.WriteLine($"Private key imported, {bytesRead} bytes read");
 
             if (bytesRead != bytes.Length)
             {
