@@ -187,28 +187,17 @@
             {
                 try
                 {
-<<<<<<< HEAD
-                    using var rsa = RSA.Create();
-
-                    ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
-
-                    var correctSignature = Convert.ToBase64String(shaHash);
-=======
                     Console.WriteLine("Creating RSA instance.");
-                    using (var rsa = RSA.Create())
-                    {
-                        var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
-                        Console.WriteLine($"Loaded private key text, length = {privateKeyText.Length}");
-                        ImportPrivateKey(rsa, privateKeyText);
+                    using var rsa = RSA.Create();
+                    
+                    var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
+                    Console.WriteLine($"Loaded private key text, length = {privateKeyText.Length}");
+                    ImportPrivateKey(rsa, privateKeyText);
 
-                        Console.WriteLine("Calculating correct signature");
-                        var correctSignature = Convert.ToBase64String(shaHash);
+                    Console.WriteLine("Calculating correct signature");
+                    var correctSignature = Convert.ToBase64String(shaHash);
 
-                        Console.WriteLine("Decrypting signature with private key");
-                        var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
-                        var decryptedSignature = Convert.ToBase64String(decryptedHash);
->>>>>>> f8f6eee (Add diagnostics for heisenbug test)
-
+                    Console.WriteLine("Decrypting signature with private key");
                     var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
                     var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
