@@ -189,7 +189,7 @@
                 {
                     Console.WriteLine("Creating RSA instance.");
                     using var rsa = RSA.Create();
-                    
+
                     var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
                     Console.WriteLine($"Loaded private key text, length = {privateKeyText.Length}");
                     ImportPrivateKey(rsa, privateKeyText);
