@@ -140,8 +140,8 @@
             {
                 try
                 {
-                    using (var rsa = RSA.Create())
-                    {
+                    using var rsa = RSA.Create();
+                    
                         ImportPrivateKey(rsa, Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
                         var correctSignature = Convert.ToBase64String(shaHash);
@@ -149,8 +149,7 @@
                         var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
                         var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
-                        result = correctSignature == decryptedSignature;
-                    }
+                        result = correctSignature == decryptedSignature;                   
                 }
                 catch (CryptographicException x)
                 {
