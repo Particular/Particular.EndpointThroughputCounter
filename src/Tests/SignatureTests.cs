@@ -65,6 +65,53 @@
             Assert.IsFalse(ValidateReport(deserialized));
         }
 
+        [Test]
+        public void CanReadV1Report()
+        {
+            var reportString = GetResource("throughput-report-v1.0.json");
+
+            var report = DeserializeReport(reportString);
+            var data = report.ReportData;
+
+            // Want to be explicit with asserts to ensure that a 1.0 report can be read correctly
+            // An approval test would be too easy to just accept changes on
+            Assert.That(data.CustomerName, Is.EqualTo("Testing"));
+            Assert.That(data.MessageTransport, Is.EqualTo("RabbitMQ"));
+            Assert.That(data.ReportMethod, Is.EqualTo("ThroughputTool: RabbitMQ Admin"));
+            Assert.That(data.ToolVersion, Is.EqualTo("1.0.0"));
+            Assert.That(data.StartTime.ToString("O"), Is.EqualTo("2022-11-01T10:58:55.5665172-05:00"));
+            Assert.That(data.EndTime.ToString("O"), Is.EqualTo("2022-11-01T10:59:55.6677584-05:00"));
+            Assert.That(data.ReportDuration, Is.EqualTo(TimeSpan.Parse("00:01:00.1012412")));
+
+            Assert.That(data.Queues.Length, Is.EqualTo(7));
+            Assert.That(data.Queues.All(q => q.Throughput == 0));
+            Assert.That(data.Queues.All(q => !string.IsNullOrEmpty(q.QueueName)));
+
+            Assert.That(data.TotalThroughput, Is.EqualTo(0));
+            Assert.That(data.TotalQueues, Is.EqualTo(7));
+
+            Assert.That(report.Signature, Is.EqualTo("ybIzoo9ogZtbSm5+jJa3GxncjCX3fxAfiLSI7eogG20KjJiv43aCE+7Lsvhkat7AALM34HgwI3VsgzRmyLYXD5n0+XRrWXNgeRGbLEG6d1W2djLRHNjXo423zpGTYDeMq3vhI9yAcil0K0dCC/ZCnw8dPd51pNmgKYIvrfELW0hyN70trUeCMDhYRfXruWLNe8Hfy+tS8Bm13B5vknXNlAjBIuGjXn3XILRRSVrTbb4QMIRzSluSnSTFPTCyE9wMWwC0BUGSf7ZEA0XdeN6UkaO/5URSOQVesiSLRqQWbfUc87XlY1hMs5Z7kLSOr5WByIQIfQKum1nGVjLMzshyhQ=="));
+
+            // We don't distribute the private key to do local testing, this only happens during CI
+            if (Environment.GetEnvironmentVariable("CI") != "true")
+            {
+                return;
+            }
+
+            ValidateReport(report);
+        }
+
+        string GetResource(string resourceName)
+        {
+            var assembly = typeof(SignatureTests).Assembly;
+            var assemblyName = assembly.GetName().Name;
+            using (var stream = assembly.GetManifestResourceStream($"{assemblyName}.{resourceName}"))
+            using (var reader = new StreamReader(stream))
+            {
+                return reader.ReadToEnd();
+            }
+        }
+
         SignedReport CreateReport()
         {
             var start = new DateTimeOffset(2022, 09, 01, 0, 0, 0, TimeSpan.Zero);
