@@ -105,11 +105,10 @@
         {
             var assembly = typeof(SignatureTests).Assembly;
             var assemblyName = assembly.GetName().Name;
-            using (var stream = assembly.GetManifestResourceStream($"{assemblyName}.{resourceName}"))
-            using (var reader = new StreamReader(stream))
-            {
-                return reader.ReadToEnd();
-            }
+            using var stream = assembly.GetManifestResourceStream($"{assemblyName}.{resourceName}");
+            using var reader = new StreamReader(stream);
+
+            return reader.ReadToEnd();
         }
 
         SignedReport CreateReport()
@@ -233,21 +232,20 @@
 #else
             Console.WriteLine("Importing private key without .NET 5 APIs - parsing base64 text from pem file");
             var base64Builder = new StringBuilder();
-            using (var reader = new StringReader(privateKeyText))
+            using var reader = new StringReader(privateKeyText);
+
+            while (true)
             {
-                while (true)
+                var line = reader.ReadLine();
+                if (line == null)
                 {
-                    var line = reader.ReadLine();
-                    if (line == null)
-                    {
-                        break;
-                    }
-                    if (line.StartsWith("---"))
-                    {
-                        continue;
-                    }
-                    base64Builder.Append(line.Trim());
+                    break;
                 }
+                if (line.StartsWith("---"))
+                {
+                    continue;
+                }
+                base64Builder.Append(line.Trim());
             }
 
             var base64Key = base64Builder.ToString();
