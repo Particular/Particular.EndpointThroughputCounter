@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -47,13 +48,13 @@ class ServiceControlCommand : BaseCommand
 
 #if DEBUG
     // So that a run can be done in 3 minutes in debug mode
-    const int samples = 3;
-    const int minutesPerSample = 1;
-    const int auditSamplingPageSize = 5;
+    const int SampleCount = 3;
+    const int MinutesPerSample = 1;
+    const int AuditSamplingPageSize = 5;
 #else
-    const int samples = 24;
-    const int minutesPerSample = 60;
-    const int auditSamplingPageSize = 500;
+    const int SampleCount = 24;
+    const int MinutesPerSample = 60;
+    const int AuditSamplingPageSize = 500;
 #endif
 
     public ServiceControlCommand(string[] maskNames, string primaryUrl, string monitoringUrl)
@@ -70,17 +71,17 @@ class ServiceControlCommand : BaseCommand
     {
         var allData = new List<QueueThroughput>();
 
-        var start = DateTimeOffset.Now.AddMinutes(-minutesPerSample);
+        var start = DateTimeOffset.Now.AddMinutes(-MinutesPerSample);
 
-        Console.WriteLine($"The tool will sample ServiceControl data {samples} times at {minutesPerSample}-minute intervals.");
+        Console.WriteLine($"The tool will sample ServiceControl data {SampleCount} times at {MinutesPerSample}-minute intervals.");
 
         Console.WriteLine("Performing initial data sampling...");
-        allData.AddRange(await SampleData(minutesPerSample, cancellationToken));
+        allData.AddRange(await SampleData(MinutesPerSample, cancellationToken));
 
-        for (var i = 1; i < samples; i++)
+        for (var i = 1; i < SampleCount; i++)
         {
-            Console.WriteLine($"{i}/{samples} samplings complete");
-            DateTime waitUntil = DateTime.Now.AddMinutes(minutesPerSample);
+            Console.WriteLine($"{i}/{SampleCount} samplings complete");
+            DateTime waitUntil = DateTime.Now.AddMinutes(MinutesPerSample);
             while (DateTime.Now < waitUntil)
             {
                 var timeLeft = waitUntil - DateTime.Now;
@@ -88,7 +89,7 @@ class ServiceControlCommand : BaseCommand
                 await Task.Delay(250, cancellationToken);
             }
             Console.WriteLine();
-            allData.AddRange(await SampleData(minutesPerSample, cancellationToken));
+            allData.AddRange(await SampleData(MinutesPerSample, cancellationToken));
         }
         Console.WriteLine("Sampling complete");
 
@@ -126,7 +127,7 @@ class ServiceControlCommand : BaseCommand
 
         var arr = await GetServiceControlData<JArray>(monitoringDataUrl, cancellationToken);
 
-        var results = arr.Select(token =>
+        var queueResults = arr.Select(token =>
         {
             var name = token["name"].Value<string>();
             var throughputAvgPerSec = token["metrics"]["throughput"]["average"].Value<double>();
@@ -139,65 +140,74 @@ class ServiceControlCommand : BaseCommand
             };
         }).ToList();
 
-        var monitoredNames = results.Select(ep => ep.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var monitoredNames = queueResults.Select(ep => ep.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var endpoint in knownEndpoints.Where(ep => !monitoredNames.Contains(ep.Name) && ep.AuditedMessages))
         {
             var fromAuditing = await GetThroughputFromAudits(endpoint.Name, cancellationToken);
             if (fromAuditing is not null)
             {
-                results.Add(fromAuditing);
+                queueResults.Add(fromAuditing);
             }
         }
 
-        return results.ToArray();
+        return queueResults.ToArray();
     }
 
     async Task<QueueThroughput> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken)
     {
         Console.WriteLine($"Getting throughput from {endpointName} using audit data.");
 
-        var sampleStart = DateTime.UtcNow.AddMinutes(-minutesPerSample);
+        var collectionPeriodStartTime = DateTime.UtcNow.AddMinutes(-MinutesPerSample);
 
         async Task<AuditBatch> GetPage(int page)
         {
-            Console.WriteLine($"  * Getting page {page}");
-            return await GetAuditBatch(endpointName, page, auditSamplingPageSize, cancellationToken);
+            Debug($"  * Getting page {page}");
+            return await GetAuditBatch(endpointName, page, AuditSamplingPageSize, cancellationToken);
         }
 
         var firstPage = await GetPage(1);
 
-        if (firstPage.ContainsTime(sampleStart))
+        if (firstPage.ContainsTime(collectionPeriodStartTime))
         {
-            return new QueueThroughput { QueueName = endpointName, Throughput = firstPage.CountGreaterThan(sampleStart) };
+            return new QueueThroughput { QueueName = endpointName, Throughput = firstPage.MessagesProcessedAfter(collectionPeriodStartTime) };
         }
 
-        var estimatedMessagesThisSample = TimeSpan.FromMinutes(minutesPerSample).TotalSeconds / firstPage.EstimatedSecPerMsg;
-        // Go 120% so that if the real math estimate is almost exactly right, the page is ensured to be in the first range for the binary search.
-        // Also saves us from double-to-int conversion slicing off the estimate just before where the answer lies.
-        var estimatedPages = 1.2 * estimatedMessagesThisSample / auditSamplingPageSize;
-        Console.WriteLine($"  * Estimating {estimatedPages:0.0} pages");
-
+        // Goal: arrive with a minimum and maximum page where the collectionPeriodStartTime occurs somewhere in the middle,
+        // and at that point we can start a binary search to find the exact page in the middle contianing that timestamp.
+        // Start with minimum page is one (duh) and maximum page is currently unknown, use -1 to represent that.
         var minPage = 1;
         var maxPage = -1;
 
-        // Start at the best guess for max page, increasing by same amount until we find a minDate that is
-        // earlier than an hour ago. Setting maxPage to its real value stops the loop.
+        // First we need to "guess" which page the collectionPeriodStartTime might exist on based on the time it took to
+        // process the messages that exist on page 1.
+        var estimatedMessagesThisSample = TimeSpan.FromMinutes(MinutesPerSample).TotalSeconds / firstPage.AverageSecondsPerMessage;
+        // Make our educated guess 120% of what the math-based extrapolation tells us so that if the real math estimate is almost exactly right,
+        // the page is ensured to be in the first range for the binary search. This also saves us from double-to-int conversion slicing off
+        // the estimate resulting in the true page being just outside the first min-max page range causing us to have to go to the next range.
+        var estimatedPages = 1.2 * estimatedMessagesThisSample / AuditSamplingPageSize;
+        Debug($"  * Estimating {estimatedPages:0.0} pages");
+
+        // This is not a "normal" for loop because we're not using the same variable in each of the 3 segments.
+        // 1. Start with factor = 1, this expresses a hope that our "guess" from above is accurate
+        // 2. We continue as long as maxPage is set to an actual (positive) number, this is not a "factor < N" situation.
+        //    So this loop is more like a while (maxPage == -1) than a for loop but we have our iteration of factor built in.
+        // 3. Each time the loop runs, we increase the factor - we didn't find the range so we need to try the next range
         for (var factor = 1; maxPage == -1; factor++)
         {
             var attemptPageNum = (int)(factor * estimatedPages);
             var page = await GetPage(attemptPageNum);
 
-            if (page.ContainsTime(sampleStart))
+            if (page.ContainsTime(collectionPeriodStartTime))
             {
                 return new QueueThroughput
                 {
                     QueueName = endpointName,
-                    Throughput = (auditSamplingPageSize * (attemptPageNum - 1)) + page.CountGreaterThan(sampleStart)
+                    Throughput = (AuditSamplingPageSize * (attemptPageNum - 1)) + page.MessagesProcessedAfter(collectionPeriodStartTime)
                 };
             }
 
-            if (page.Count == 0 || page.ProcessedAtMin < sampleStart)
+            if (page.DataIsBefore(collectionPeriodStartTime))
             {
                 // Either we got past the retention period of data, or we're past the sample period
                 // Which means it's time to assign the max page and start the binary search
@@ -211,7 +221,7 @@ class ServiceControlCommand : BaseCommand
             }
         }
 
-        Console.WriteLine($"  * Starting binary search with min {minPage}, max {maxPage}");
+        Debug($"  * Starting binary search with min {minPage}, max {maxPage}");
         // Do a binary search to find the page that represents where 1 hour ago was
         while (minPage != maxPage)
         {
@@ -219,22 +229,22 @@ class ServiceControlCommand : BaseCommand
             var pageData = await GetPage(middlePageNum);
 
             // If we've backtracked to a page we've hit before, or the page actually contains the time we seek, we're done
-            if (middlePageNum == minPage || middlePageNum == maxPage || pageData.ContainsTime(sampleStart))
+            if (middlePageNum == minPage || middlePageNum == maxPage || pageData.ContainsTime(collectionPeriodStartTime))
             {
-                Console.WriteLine($"  * Found => {(auditSamplingPageSize * (middlePageNum - 1)) + pageData.CountGreaterThan(sampleStart)} messages");
+                Debug($"  * Found => {(AuditSamplingPageSize * (middlePageNum - 1)) + pageData.MessagesProcessedAfter(collectionPeriodStartTime)} messages");
                 return new QueueThroughput
                 {
                     QueueName = endpointName,
-                    Throughput = (auditSamplingPageSize * (middlePageNum - 1)) + pageData.CountGreaterThan(sampleStart)
+                    Throughput = (AuditSamplingPageSize * (middlePageNum - 1)) + pageData.MessagesProcessedAfter(collectionPeriodStartTime)
                 };
             }
 
-            if (pageData.Count == 0 || pageData.ProcessedAtMax < sampleStart)
+            if (pageData.DataIsBefore(collectionPeriodStartTime))
             {
                 // Went too far, cut out the top half
                 maxPage = middlePageNum;
             }
-            else if (pageData.ProcessedAtMin > sampleStart)
+            else if (pageData.DataIsAfter(collectionPeriodStartTime))
             {
                 // Not far enough, cut out the bottom half
                 minPage = middlePageNum;
@@ -243,11 +253,11 @@ class ServiceControlCommand : BaseCommand
 
         // Likely we don't get here, but for completeness
         var finalPage = await GetPage(minPage);
-        Console.WriteLine($"  * Catch-All => {(auditSamplingPageSize * (minPage - 1)) + finalPage.CountGreaterThan(sampleStart)} messages");
+        Debug($"  * Catch-All => {(AuditSamplingPageSize * (minPage - 1)) + finalPage.MessagesProcessedAfter(collectionPeriodStartTime)} messages");
         return new QueueThroughput
         {
             QueueName = endpointName,
-            Throughput = (auditSamplingPageSize * (minPage - 1)) + finalPage.CountGreaterThan(sampleStart)
+            Throughput = (AuditSamplingPageSize * (minPage - 1)) + finalPage.MessagesProcessedAfter(collectionPeriodStartTime)
         };
     }
 
@@ -267,36 +277,43 @@ class ServiceControlCommand : BaseCommand
         public AuditBatch(DateTime[] timestamps)
         {
             this.timestamps = timestamps;
-            Count = timestamps.Length;
 
-            if (Count > 0)
+            if (timestamps.Length > 0)
             {
-                ProcessedAtMin = timestamps.Min();
-                ProcessedAtMax = timestamps.Max();
-                EstimatedSecPerMsg = (ProcessedAtMax - ProcessedAtMin).TotalSeconds / Count;
+                firstMessageProcessedAt = timestamps.Min();
+                lastMessageProcessedAt = timestamps.Max();
+                AverageSecondsPerMessage = (lastMessageProcessedAt - firstMessageProcessedAt).TotalSeconds / timestamps.Length;
             }
             else
             {
-                ProcessedAtMin = default;
-                ProcessedAtMax = default;
-                EstimatedSecPerMsg = 0;
+                firstMessageProcessedAt = default;
+                lastMessageProcessedAt = default;
+                AverageSecondsPerMessage = 0;
             }
         }
 
         DateTime[] timestamps;
+        DateTime firstMessageProcessedAt;
+        DateTime lastMessageProcessedAt;
 
-        public int Count { get; }
-        public DateTime ProcessedAtMin { get; }
-        public DateTime ProcessedAtMax { get; }
-
-        public double EstimatedSecPerMsg { get; }
+        public double AverageSecondsPerMessage { get; }
 
         public bool ContainsTime(DateTime targetTime)
         {
-            return ProcessedAtMin <= targetTime && targetTime <= ProcessedAtMax;
+            return timestamps.Length > 0 && firstMessageProcessedAt <= targetTime && targetTime <= lastMessageProcessedAt;
         }
 
-        public int CountGreaterThan(DateTime cutoff)
+        public bool DataIsBefore(DateTime cutoff)
+        {
+            return timestamps.Length == 0 || lastMessageProcessedAt < cutoff;
+        }
+
+        public bool DataIsAfter(DateTime cutoff)
+        {
+            return timestamps.Length > 0 && firstMessageProcessedAt > cutoff;
+        }
+
+        public int MessagesProcessedAfter(DateTime cutoff)
         {
             return timestamps.Count(dt => dt >= cutoff);
         }
@@ -381,6 +398,12 @@ class ServiceControlCommand : BaseCommand
         {
             return serializer.Deserialize<TJsonType>(jsonReader);
         }
+    }
+
+    [Conditional("DEBUG")]
+    void Debug(string message)
+    {
+        Console.WriteLine(message);
     }
 
     class ServiceControlEndpoint
