@@ -8,7 +8,6 @@ if (!await Versioning.CheckForCurrentVersion())
 
 try
 {
-    Console.WriteLine("Let's go");
     var rootCommand = new RootCommand("A tool to measure NServiceBus endpoints and throughput.");
 
     rootCommand.AddCommand(RabbitMqCommand.CreateCommand());
