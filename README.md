@@ -2,6 +2,8 @@
 
 A tool to measure per-endpoint throughput of an NServiceBus system.
 
+More documentation is [on our website](https://docs.particular.net/nservicebus/throughput-tool/).
+
 ## RSA key pair
 
 The app uses a public/private key pair to prevent tampering with the reports returned from end users. The body of the report is serialized with JSON.NET as unindented, then hashed, and then the hash is encrypted with the private key. The `SignedReport` type then contains the report data along with the Base64-encoded signature, which is JSON-serialized (with indenting for readability) to a file.
