@@ -1,7 +1,6 @@
 ﻿using System;
 using System.CommandLine;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -23,15 +22,18 @@ class AzureServiceBusCommand : BaseCommand
 
         command.AddOption(resourceIdArg);
 
-        var maskNames = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNames);
+        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
+        command.AddOption(maskNamesOpt);
 
-        command.SetHandler(async (resourceId, maskNames) =>
+        command.SetHandler(async context =>
         {
+            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var resourceId = context.ParseResult.GetValueForOption(resourceIdArg);
+            var cancellationToken = context.GetCancellationToken();
+
             var runner = new AzureServiceBusCommand(maskNames, resourceId);
-            await runner.Run(CancellationToken.None);
-        },
-        resourceIdArg, maskNames);
+            await runner.Run(cancellationToken);
+        });
 
         return command;
     }

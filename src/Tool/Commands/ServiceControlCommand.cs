@@ -27,15 +27,19 @@ class ServiceControlCommand : BaseCommand
         command.AddOption(scUrlArg);
         command.AddOption(monitoringUrlArg);
 
-        var maskNames = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNames);
+        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
+        command.AddOption(maskNamesOpt);
 
-        command.SetHandler(async (scUrl, monUrl, maskNames) =>
+        command.SetHandler(async context =>
         {
+            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
+            var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
+            var cancellationToken = context.GetCancellationToken();
+
             var runner = new ServiceControlCommand(maskNames, scUrl, monUrl);
-            await runner.Run(CancellationToken.None);
-        },
-        scUrlArg, monitoringUrlArg, maskNames);
+            await runner.Run(cancellationToken);
+        });
 
         return command;
     }
