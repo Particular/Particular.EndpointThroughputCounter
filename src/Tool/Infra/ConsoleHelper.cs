@@ -25,4 +25,24 @@ public static class ConsoleHelper
             Console.ForegroundColor = current;
         }
     }
+
+    public static void SetupUnhandledExceptionHandling()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+        {
+            WriteError(w =>
+            {
+                // Just to tell the difference between e.Terminating or not based on the log
+                var msg = $"An unhandled exception was caught{(e.IsTerminating ? ", forcing a runtime exit" : "")}.";
+
+                Console.WriteLine();
+                Console.WriteLine(msg);
+                Console.WriteLine(e.ExceptionObject);
+                Console.WriteLine();
+                Console.WriteLine("Contact Particular Software support for assistance.");
+
+                Environment.Exit(-1);
+            });
+        };
+    }
 }

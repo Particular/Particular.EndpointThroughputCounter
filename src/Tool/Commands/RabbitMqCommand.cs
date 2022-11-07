@@ -18,17 +18,20 @@ class RabbitMqCommand : BaseCommand
 
         command.AddOption(urlArg);
 
-        var maskNames = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNames);
+        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
+        command.AddOption(maskNamesOpt);
 
-
-        command.SetHandler(async (url, maskNames) =>
+        command.SetHandler(async context =>
         {
+            var url = context.ParseResult.GetValueForOption(urlArg);
+            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var cancellationToken = context.GetCancellationToken();
+
             var rabbitManagement = new RabbitManagement(url);
             var runner = new RabbitMqCommand(rabbitManagement, maskNames);
-            await runner.Run(CancellationToken.None);
-        },
-        urlArg, maskNames);
+
+            await runner.Run(cancellationToken);
+        });
 
         return command;
     }

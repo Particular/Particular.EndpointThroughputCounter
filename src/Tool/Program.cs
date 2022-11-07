@@ -6,6 +6,8 @@ if (!await Versioning.CheckForCurrentVersion())
     return -1;
 }
 
+ConsoleHelper.SetupUnhandledExceptionHandling();
+
 try
 {
     var rootCommand = new RootCommand("A tool to measure NServiceBus endpoints and throughput.");

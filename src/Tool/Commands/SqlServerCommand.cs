@@ -21,15 +21,18 @@ class SqlServerCommand : BaseCommand
 
         command.AddOption(connStrArg);
 
-        var maskNames = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNames);
+        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
+        command.AddOption(maskNamesOpt);
 
-        command.SetHandler(async (connStr, maskNames) =>
+        command.SetHandler(async context =>
         {
+            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var connStr = context.ParseResult.GetValueForOption(connStrArg);
+            var cancellationToken = context.GetCancellationToken();
+
             var runner = new SqlServerCommand(maskNames, connStr);
-            await runner.Run(CancellationToken.None);
-        },
-        connStrArg, maskNames);
+            await runner.Run(cancellationToken);
+        });
 
         return command;
     }
