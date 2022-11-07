@@ -325,7 +325,7 @@ class ServiceControlCommand : BaseCommand
 
         if (!knownEndpoints.Any())
         {
-            Console.Error.WriteLine("Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
+            ConsoleHelper.WriteError("Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
             Environment.Exit(1);
         }
 
