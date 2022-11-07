@@ -71,7 +71,7 @@ static class Versioning
                 }
                 catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
                 {
-                    Console.Error.WriteLine("WARNING: Unable to connect to MyGet within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
+                    ConsoleHelper.WriteError("WARNING: Unable to connect to MyGet within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
                     return true;
                 }
             }
@@ -91,7 +91,7 @@ static class Versioning
         }
         catch (NuGetProtocolException)
         {
-            Console.Error.WriteLine("WARNING: Unable to connect to www.myget.org to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
+            ConsoleHelper.WriteError("WARNING: Unable to connect to www.myget.org to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
         }
 
         return true;

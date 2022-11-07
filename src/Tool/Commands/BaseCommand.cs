@@ -38,7 +38,7 @@ abstract class BaseCommand
     {
         if (File.Exists(outputPath) && !isDevelopment)
         {
-            Console.Error.WriteLine($"ERROR: File already exists at {outputPath}, running would overwrite");
+            ConsoleHelper.WriteError($"ERROR: File already exists at {outputPath}, running would overwrite");
             Environment.Exit(1);
         }
 
@@ -50,12 +50,36 @@ abstract class BaseCommand
         }
         catch (Exception x)
         {
-            Console.Error.WriteLine($"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
+            ConsoleHelper.WriteError($"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
             Environment.Exit(1);
         }
     }
 
     public async Task Run(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await RunInternal(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            ConsoleHelper.WriteError("Exiting because cancellation was requested.");
+            Environment.Exit(-2);
+        }
+        catch (Exception x)
+        {
+            ConsoleHelper.WriteError(w =>
+            {
+                w.WriteLine(x);
+                w.WriteLine();
+                w.WriteLine("Unable to run tool, please contact Particular Software support.");
+            });
+
+            Environment.Exit(-3);
+        }
+    }
+
+    async Task RunInternal(CancellationToken cancellationToken)
     {
         Console.WriteLine();
         Console.Write("Enter customer name: ");
