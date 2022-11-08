@@ -38,7 +38,7 @@ jobs:
      #- name: Deploy to MyGet
        #run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}       
       - name: Build SelfContained
-        run: |
+        run: >
           dotnet publish src/tool/Particular.EndpointThroughputCounter.csproj -r win-x64 `
           -c Release `
           -p:TargetFramework=net6.0 `
