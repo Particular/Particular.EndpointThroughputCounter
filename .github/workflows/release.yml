@@ -39,17 +39,17 @@ jobs:
        #run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}       
       - name: Build SelfContained
         run: >
-          dotnet publish src/Tool/Particular.EndpointThroughputCounter.csproj -r win-x64 `
-          -c Release `
-          -p:TargetFramework=net6.0 `
-          -p:PublishSingleFile=true `
-          -p:SelfContained=true `
-          -p:PublishReadyToRun=true `
-          -p:IncludeAllContentForSelfExtract=true `
-          -p:TargetLatestRuntimePath=true `
-          -p:DebugType=embedded `
-          -p:EnableCompressSingleFile=true `
-          -p:PackAsTool=false `
+          dotnet publish src/Tool/Particular.EndpointThroughputCounter.csproj -r win-x64
+          -c Release
+          -p:TargetFramework=net6.0
+          -p:PublishSingleFile=true
+          -p:SelfContained=true
+          -p:PublishReadyToRun=true
+          -p:IncludeAllContentForSelfExtract=true
+          -p:TargetLatestRuntimePath=true
+          -p:DebugType=embedded
+          -p:EnableCompressSingleFile=true
+          -p:PackAsTool=false
           -o ./src/binaries
       - name: Configure AWS credentials from Test account
         uses: aws-actions/configure-aws-credentials@v1
