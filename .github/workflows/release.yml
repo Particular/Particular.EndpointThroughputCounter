@@ -51,12 +51,6 @@ jobs:
           -p:EnableCompressSingleFile=true
           -p:PackAsTool=false
           -o ./src/binaries
-      - name: Configure AWS credentials from Test account
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESSKEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRETKEY }}
-          aws-region: us-east-1
       - name: Install AzureSignTool
         run: dotnet tool install --global azuresigntool
       - name: Sign binaries
@@ -71,7 +65,7 @@ jobs:
           --azure-key-vault-certificate ${{ secrets.AZURE_KEY_VAULT_CERTIFICATE_NAME }}
           src/binaries/Particular.EndpointThroughputCounter.exe
       - name: Setup AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1.5.8
+        uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESSKEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRETKEY }}
