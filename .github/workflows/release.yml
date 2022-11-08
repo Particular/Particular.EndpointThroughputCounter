@@ -55,7 +55,7 @@ jobs:
         run: dotnet tool install --global azuresigntool
       - name: Sign binaries
         run: >
-          AzureSignTool sign
+          azuresigntool sign
           --file-digest sha256
           --timestamp-rfc3161 http://timestamp.digicert.com
           --azure-key-vault-url https://particularcodesigning.vault.azure.net
