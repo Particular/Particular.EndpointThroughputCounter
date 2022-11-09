@@ -38,19 +38,8 @@ jobs:
      #- name: Deploy to MyGet
        #run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}       
       - name: Build SelfContained
-        run: >
-          dotnet publish src/Tool/Particular.EndpointThroughputCounter.csproj -r win-x64
-          -c Release
-          -p:TargetFramework=net6.0
-          -p:PublishSingleFile=true
-          -p:SelfContained=true
-          -p:PublishReadyToRun=true
-          -p:IncludeAllContentForSelfExtract=true
-          -p:TargetLatestRuntimePath=true
-          -p:DebugType=embedded
-          -p:EnableCompressSingleFile=true
-          -p:PackAsTool=false
-          -o ./src/binaries
+        run: |
+          dotnet publish ./src/Particular.EndpointThroughputCounter.WinX64/ -c Release
       - name: Install AzureSignTool
         run: dotnet tool install --global azuresigntool
       - name: Sign exe
@@ -63,7 +52,7 @@ jobs:
           --azure-key-vault-tenant-id ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
           --azure-key-vault-client-secret ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
           --azure-key-vault-certificate ${{ secrets.AZURE_KEY_VAULT_CERTIFICATE_NAME }}
-          src/binaries/Particular.EndpointThroughputCounter.exe
+          ./src/Particular.EndpointThroughputCounter.WinX64/bin/release/net6.0/win-x64/Particular.EndpointThroughputCounter.WinX64.exe
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
@@ -75,7 +64,7 @@ jobs:
         run: |
           echo "Creating Particular.EndpointThroughputCounter.zip archive"
 
-          Compress-Archive -Path ./src/binaries/* -DestinationPath ./Particular.EndpointThroughputCounter.zip
+          Compress-Archive -Path ./src/Particular.EndpointThroughputCounter.WinX64/bin/release/net6.0/win-x64/publish/* -DestinationPath ./Particular.EndpointThroughputCounter.zip
 
           echo "Uploading zip file to AWS"
 
