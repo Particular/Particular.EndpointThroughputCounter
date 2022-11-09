@@ -1,9 +1,11 @@
 ﻿using System.CommandLine;
 
+#if !WINX64
 if (!await Versioning.CheckForCurrentVersion())
 {
     return -1;
 }
+#endif
 
 var rootCommand = new RootCommand("A tool to measure NServiceBus endpoints and throughput.");
 
