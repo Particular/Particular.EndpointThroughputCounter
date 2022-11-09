@@ -1,7 +1,6 @@
 ﻿using System;
 using System.CommandLine;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
