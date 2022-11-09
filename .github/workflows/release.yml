@@ -75,7 +75,7 @@ jobs:
         run: |
           echo "Creating Particular.EndpointThroughputCounter.zip archive"
 
-          Compress-Archive -Path .src/binaries/* -DestinationPath ./Particular.EndpointThroughputCounter.zip
+          Compress-Archive -Path ./src/binaries/* -DestinationPath ./Particular.EndpointThroughputCounter.zip
 
           echo "Uploading zip file to AWS"
 
