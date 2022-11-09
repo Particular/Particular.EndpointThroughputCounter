@@ -51,19 +51,21 @@ jobs:
           -p:EnableCompressSingleFile=true
           -p:PackAsTool=false
           -o ./src/binaries
-      - name: Install AzureSignTool
-        run: dotnet tool install --global azuresigntool
-      - name: Sign binaries
+      - name: Install NuGetKeyVaultSignTool
+        shell: pwsh
+        run: dotnet tool install --global NuGetKeyVaultSignTool
+      - name: Sign Exe
+        shell: pwsh
         run: >
-          azuresigntool sign
-          --file-digest sha256
-          --timestamp-rfc3161 http://timestamp.digicert.com
-          --azure-key-vault-url https://particularcodesigning.vault.azure.net
-          --azure-key-vault-client-id ${{ secrets.AZURE_KEY_VAULT_CLIENT_ID }}
-          --azure-key-vault-tenant-id ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
-          --azure-key-vault-client-secret ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
-          --azure-key-vault-certificate ${{ secrets.AZURE_KEY_VAULT_CERTIFICATE_NAME }}
-          src/binaries/Particular.EndpointThroughputCounter.exe
+              NuGetKeyVaultSignTool sign  src/binaries/Particular.EndpointThroughputCounter.exe
+              --file-digest sha256
+              --timestamp-rfc3161 http://timestamp.digicert.com
+              --timestamp-digest sha256
+              --azure-key-vault-url https://particularcodesigning.vault.azure.net
+              --azure-key-vault-client-id ${{ inputs.client-id }}
+              --azure-key-vault-tenant-id ${{ inputs.tenant-id }}
+              --azure-key-vault-client-secret ${{ inputs.client-secret }}
+              --azure-key-vault-certificate ${{ inputs.certificate-name }}
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
