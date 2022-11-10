@@ -13,7 +13,7 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <IsPackable>false</IsPackable>
-    <DefineConstants>$(DefineConstants);WINX64</DefineConstants>
+    <DefineConstants>$(DefineConstants);EXE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

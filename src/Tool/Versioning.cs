@@ -83,7 +83,7 @@ static class Versioning
             {
                 Console.WriteLine();
                 Console.WriteLine($"** New version detected: {latest.ToNormalizedString()}");
-#if WINX64
+#if EXE
                 Console.WriteLine("** Download the latest version here: https://s3.amazonaws.com/particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip");
 #else
                 Console.WriteLine("** To install, execute the following command:");
