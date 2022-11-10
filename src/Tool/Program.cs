@@ -1,6 +1,5 @@
 ﻿using System.CommandLine;
 
-
 if (!await Versioning.CheckForCurrentVersion())
 {
     return -1;
