@@ -36,10 +36,9 @@ jobs:
           path: nugets/*
           retention-days: 1
      #- name: Deploy to MyGet
-       #run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}       
+       #run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}
       - name: Build SelfContained
-        run: |
-          dotnet publish ./src/Particular.EndpointThroughputCounter.WinX64/ -c Release
+        run: dotnet publish src/Exe --configuration Release --output binaries
       - name: Install AzureSignTool
         run: dotnet tool install --global azuresigntool
       - name: Sign exe
@@ -52,7 +51,7 @@ jobs:
           --azure-key-vault-tenant-id ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
           --azure-key-vault-client-secret ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
           --azure-key-vault-certificate ${{ secrets.AZURE_KEY_VAULT_CERTIFICATE_NAME }}
-          ./src/Particular.EndpointThroughputCounter.WinX64/bin/release/net6.0/win-x64/Particular.EndpointThroughputCounter.WinX64.exe
+          ./binaries/Particular.EndpointThroughputCounter.exe
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
@@ -64,10 +63,10 @@ jobs:
         run: |
           echo "Creating Particular.EndpointThroughputCounter.zip archive"
 
-          Compress-Archive -Path ./src/Particular.EndpointThroughputCounter.WinX64/bin/release/net6.0/win-x64/publish/* -DestinationPath ./Particular.EndpointThroughputCounter.zip
+          Compress-Archive -Path ./binaries/* -DestinationPath ./binaries/Particular.EndpointThroughputCounter.zip
 
           echo "Uploading zip file to AWS"
 
-          aws s3 cp ./Particular.EndpointThroughputCounter.zip s3://particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip --content-type application/zip --acl public-read
+          aws s3 cp ./binaries/Particular.EndpointThroughputCounter.zip s3://particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip --content-type application/zip --acl public-read
 
           echo "Complete"
