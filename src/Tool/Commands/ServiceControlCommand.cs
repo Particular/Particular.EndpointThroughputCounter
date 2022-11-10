@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
 
-class ServiceControlCommand : BaseCommand
+partial class ServiceControlCommand : BaseCommand
 {
     public static Command CreateCommand()
     {
@@ -67,7 +67,7 @@ class ServiceControlCommand : BaseCommand
         this.primaryUrl = primaryUrl.TrimEnd('/');
         this.monitoringUrl = monitoringUrl.TrimEnd('/');
 
-        http = new AuthenticatingHttpClient();
+        http = new AuthenticatingHttpClient(client => client.Timeout = TimeSpan.FromSeconds(10));
         serializer = new JsonSerializer();
     }
 
@@ -129,7 +129,8 @@ class ServiceControlCommand : BaseCommand
     {
         var monitoringDataUrl = $"{monitoringUrl}/monitored-endpoints?history={minutes}";
 
-        var arr = await GetServiceControlData<JArray>(monitoringDataUrl, cancellationToken);
+        // Lots of retries here because we get multiple queues in one go
+        var arr = await GetServiceControlData<JArray>(monitoringDataUrl, cancellationToken, 5);
 
         var queueResults = arr.Select(token =>
         {
@@ -162,6 +163,19 @@ class ServiceControlCommand : BaseCommand
     {
         Console.WriteLine($"Getting throughput from {endpointName} using audit data.");
 
+        try
+        {
+            return await GetThroughputFromAuditsInternal(endpointName, cancellationToken);
+        }
+        catch (ServiceControlDataException x)
+        {
+            ConsoleHelper.WriteError($"Warning: Unable to read ServiceControl data from {x.Url} after {x.Attempts} attempts: {x.Message}");
+            return null;
+        }
+    }
+
+    async Task<QueueThroughput> GetThroughputFromAuditsInternal(string endpointName, CancellationToken cancellationToken)
+    {
         var collectionPeriodStartTime = DateTime.UtcNow.AddMinutes(-MinutesPerSample);
 
         async Task<AuditBatch> GetPage(int page)
@@ -171,6 +185,11 @@ class ServiceControlCommand : BaseCommand
         }
 
         var firstPage = await GetPage(1);
+
+        if (!firstPage.IsValid)
+        {
+            return null;
+        }
 
         if (firstPage.ContainsTime(collectionPeriodStartTime))
         {
@@ -282,7 +301,9 @@ class ServiceControlCommand : BaseCommand
         {
             this.timestamps = timestamps;
 
-            if (timestamps.Length > 0)
+            IsValid = timestamps.Length > 0;
+
+            if (IsValid)
             {
                 firstMessageProcessedAt = timestamps.Min();
                 lastMessageProcessedAt = timestamps.Max();
@@ -301,6 +322,7 @@ class ServiceControlCommand : BaseCommand
         DateTime lastMessageProcessedAt;
 
         public double AverageSecondsPerMessage { get; }
+        public bool IsValid { get; }
 
         public bool ContainsTime(DateTime targetTime)
         {
@@ -335,7 +357,8 @@ class ServiceControlCommand : BaseCommand
 
         var configUrl = $"{primaryUrl}/configuration";
 
-        var obj = await GetServiceControlData<JObject>(configUrl, cancellationToken);
+        // Tool can't proceed without this data, try 5 times
+        var obj = await GetServiceControlData<JObject>(configUrl, cancellationToken, 5);
 
         var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
 
@@ -364,7 +387,8 @@ class ServiceControlCommand : BaseCommand
     {
         var endpointsUrl = $"{primaryUrl}/endpoints";
 
-        var arr = await GetServiceControlData<JArray>(endpointsUrl, cancellationToken);
+        // Tool can't proceed without this data, try 5 times
+        var arr = await GetServiceControlData<JArray>(endpointsUrl, cancellationToken, 5);
 
         var endpoints = arr.Select(endpointToken => new
         {
@@ -383,9 +407,9 @@ class ServiceControlCommand : BaseCommand
 
         foreach (var endpoint in endpoints)
         {
-            var messagesUrl = $"{primaryUrl}/endpoints/{endpoint.Name}/messages/?per_page=5";
+            var messagesUrl = $"{primaryUrl}/endpoints/{endpoint.Name}/messages/?per_page=1";
 
-            var recentMessages = await GetServiceControlData<JArray>(messagesUrl, cancellationToken);
+            var recentMessages = await GetServiceControlData<JArray>(messagesUrl, cancellationToken, 2);
 
             endpoint.AuditedMessages = recentMessages.Any();
         }
@@ -393,15 +417,33 @@ class ServiceControlCommand : BaseCommand
         return endpoints;
     }
 
-    async Task<TJsonType> GetServiceControlData<TJsonType>(string url, CancellationToken cancellationToken)
+    async Task<TJsonType> GetServiceControlData<TJsonType>(string url, CancellationToken cancellationToken, int tryCount = 1)
         where TJsonType : JToken
     {
-        using (var stream = await http.GetStreamAsync(url, cancellationToken))
-        using (var reader = new StreamReader(stream))
-        using (var jsonReader = new JsonTextReader(reader))
+        for (int i = 0; i < tryCount; i++)
         {
-            return serializer.Deserialize<TJsonType>(jsonReader);
+            try
+            {
+                using (var stream = await http.GetStreamAsync(url, cancellationToken))
+                using (var reader = new StreamReader(stream))
+                using (var jsonReader = new JsonTextReader(reader))
+                {
+                    return serializer.Deserialize<TJsonType>(jsonReader);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception x)
+            {
+                if (i + 1 >= tryCount)
+                {
+                    throw new ServiceControlDataException(url, tryCount, x);
+                }
+            }
         }
+
+        throw new InvalidOperationException("Retry loop ended without returning or throwing. This should not happen.");
     }
 
     [Conditional("DEBUG")]

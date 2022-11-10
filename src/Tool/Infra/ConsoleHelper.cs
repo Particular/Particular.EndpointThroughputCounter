@@ -9,7 +9,7 @@ public static class ConsoleHelper
     {
         WriteError(writer =>
         {
-            writer.Write(message);
+            writer.WriteLine(message);
         });
     }
 

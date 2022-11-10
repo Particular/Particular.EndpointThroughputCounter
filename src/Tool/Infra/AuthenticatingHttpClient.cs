@@ -8,11 +8,15 @@ using System.Threading.Tasks;
 class AuthenticatingHttpClient : IDisposable
 {
     HttpClient http;
+    Action<HttpClient> configureNewClient;
     string currentUser;
 
-    public AuthenticatingHttpClient()
+    public AuthenticatingHttpClient(Action<HttpClient> configureNewClient = null)
     {
+        this.configureNewClient = configureNewClient ?? (http => { });
+
         http = new HttpClient();
+        this.configureNewClient(http);
     }
 
     public Task<Stream> GetStreamAsync(string url, CancellationToken cancellationToken = default)
@@ -56,6 +60,8 @@ class AuthenticatingHttpClient : IDisposable
                 };
 
                 var newHttp = new HttpClient(newHandler);
+                configureNewClient(newHttp);
+
                 var oldHttp = http;
                 http = newHttp;
                 currentUser = user;
