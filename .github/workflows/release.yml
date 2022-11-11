@@ -8,7 +8,7 @@ env:
   DOTNET_NOLOGO: true
 jobs:
   release:
-    runs-on: ubuntu-20.04
+    runs-on: windows-2019
     steps:
       - name: Checkout
         uses: actions/checkout@v3.1.0
@@ -34,4 +34,43 @@ jobs:
           path: nugets/*
           retention-days: 1
       - name: Deploy to MyGet
-        run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --source https://www.myget.org/F/particular/api/v2/package --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }}
+        run: dotnet nuget push nugets/*.nupkg --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }} --source "https://www.myget.org/F/particular/api/v3/index.json"
+      - name: Build SelfContained
+        run: dotnet publish src/Exe --configuration Release --output binaries
+      - name: Install AzureSignTool
+        run: dotnet tool install --global azuresigntool
+      - name: Sign exe
+        run: >
+          AzureSignTool sign
+          --file-digest sha256
+          --timestamp-rfc3161 http://timestamp.digicert.com
+          --azure-key-vault-url https://particularcodesigning.vault.azure.net
+          --azure-key-vault-client-id ${{ secrets.AZURE_KEY_VAULT_CLIENT_ID }}
+          --azure-key-vault-tenant-id ${{ secrets.AZURE_KEY_VAULT_TENANT_ID }}
+          --azure-key-vault-client-secret ${{ secrets.AZURE_KEY_VAULT_CLIENT_SECRET }}
+          --azure-key-vault-certificate ${{ secrets.AZURE_KEY_VAULT_CERTIFICATE_NAME }}
+          ./binaries/Particular.EndpointThroughputCounter.exe
+      - name: Publish exe artifacts
+        uses: actions/upload-artifact@v3.1.1
+        with:
+          name: exe
+          path: binaries/*
+          retention-days: 1
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_DEPLOY_ACCESSKEY }}
+          aws-secret-access-key: ${{ secrets.AWS_DEPLOY_SECRETKEY }}
+          aws-region: us-east-1
+      - name: Deploy to S3
+        shell: pwsh
+        run: |
+          echo "Creating Particular.EndpointThroughputCounter.zip archive"
+
+          Compress-Archive -Path ./binaries/* -DestinationPath ./binaries/Particular.EndpointThroughputCounter.zip
+
+          echo "Uploading zip file to AWS"
+
+          aws s3 cp ./binaries/Particular.EndpointThroughputCounter.zip s3://particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip --content-type application/zip --acl public-read
+
+          echo "Complete"

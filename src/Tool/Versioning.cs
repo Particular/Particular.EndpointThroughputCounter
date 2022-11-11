@@ -83,8 +83,12 @@ static class Versioning
             {
                 Console.WriteLine();
                 Console.WriteLine($"** New version detected: {latest.ToNormalizedString()}");
+#if EXE
+                Console.WriteLine("** Download the latest version here: https://s3.amazonaws.com/particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip");
+#else
                 Console.WriteLine("** To install, execute the following command:");
                 Console.WriteLine(" > dotnet tool update -g Particular.EndpointThroughputCounter --add-source=https://www.myget.org/F/particular/api/v3/index.json");
+#endif
                 Console.WriteLine();
                 return false;
             }
