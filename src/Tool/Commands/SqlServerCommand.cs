@@ -59,7 +59,7 @@ class SqlServerCommand : BaseCommand
             }
             if (!File.Exists(sourcePath))
             {
-                throw new FileNotFoundException($"Could not find file specified by {ConnectionStringSource.Name} parameter", fullPath);
+                throw new FileNotFoundException($"Could not find file specified by {ConnectionStringSource.Name} parameter", sourcePath);
             }
 
             return File.ReadAllLines(sourcePath)
