@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,54 +13,109 @@ using Particular.EndpointThroughputCounter.Data;
 
 class SqlServerCommand : BaseCommand
 {
+    static readonly Option<string> ConnectionString = new("--connectionString",
+        "A connection string for SQL Server that has access to all NServiceBus queue tables");
+
+    static readonly Option<string> ConnectionStringSource = new("--connectionStringSource",
+        "A file that contains multiple SQL Server connection strings, one connection string per line, for each database catalog that contains NServiceBus queue tables");
+
+    static readonly Option<string[]> AddCatalogs = new("--addCatalogs")
+    {
+        Description = "A list of additional database catalogs on the same server containing NServiceBus queue tables",
+        Arity = ArgumentArity.OneOrMore,
+        AllowMultipleArgumentsPerToken = true
+    };
+
     public static Command CreateCommand()
     {
         var command = new Command("sqlserver", "Measure endpoints in SQL Server transport using the direct query method");
 
-        var connStrArg = new Option<string>(
-            name: "--connectionString",
-            description: "A connection string for SQL Server that has access to all queue tables");
-
-        command.AddOption(connStrArg);
-
-        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNamesOpt);
+        command.AddOption(ConnectionString);
+        command.AddOption(ConnectionStringSource);
+        command.AddOption(AddCatalogs);
 
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
-            var connStr = context.ParseResult.GetValueForOption(connStrArg);
+            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var connectionStrings = GetConnectionStrings(context.ParseResult);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new SqlServerCommand(maskNames, connStr);
+            var runner = new SqlServerCommand(maskNames, connectionStrings);
             await runner.Run(cancellationToken);
         });
 
         return command;
     }
 
-    readonly string connectionString;
+    static string[] GetConnectionStrings(ParseResult parsed)
+    {
+        var sourcePath = parsed.GetValueForOption(ConnectionStringSource);
+
+        if (!string.IsNullOrEmpty(sourcePath))
+        {
+            var fullPath = Path.GetFullPath(Path.Join(Environment.CurrentDirectory, sourcePath));
+            if (!File.Exists(fullPath))
+            {
+                throw new FileNotFoundException($"Could not find file specified by {ConnectionStringSource.Name} parameter", fullPath);
+            }
+        }
+
+        var single = parsed.GetValueForOption(ConnectionString);
+        var addCatalogs = parsed.GetValueForOption(AddCatalogs);
+
+        if (single is null)
+        {
+            throw new InvalidOperationException($"No connection strings were provided.");
+        }
+
+        if (addCatalogs is null || !addCatalogs.Any())
+        {
+            return new[] { single };
+        }
+
+        var builder = new SqlConnectionStringBuilder
+        {
+            ConnectionString = single
+        };
+
+        var dbKey = builder["Initial Catalog"] is not null ? "Initial Catalog" : "Database";
+
+        var list = new List<string> { single };
+
+        foreach (var db in addCatalogs)
+        {
+            builder[dbKey] = db;
+            list.Add(builder.ToString());
+        }
+
+        return list.ToArray();
+    }
+
+    readonly string[] connectionStrings;
     int totalQueues;
     int sampledQueues;
-    List<TableDetails> tables;
+    DatabaseDetails[] databases;
 
-    public SqlServerCommand(string[] maskNames, string connectionString)
+    public SqlServerCommand(string[] maskNames, string[] connectionStrings)
         : base(maskNames)
     {
-        this.connectionString = connectionString;
+        this.connectionStrings = connectionStrings;
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        tables.RemoveAll(t => t.IgnoreTable());
-        totalQueues = tables.Count;
+        foreach (var db in databases)
+        {
+            db.RemoveIgnored();
+        }
+        totalQueues = databases.Sum(d => d.TableCount);
         sampledQueues = 0;
 
         var start = DateTimeOffset.Now;
         var targetEnd = start + PollingRunTime;
 
         var tokenSource = new CancellationTokenSource();
-        var getMinimumsTask = GetMinimums(tables, tokenSource.Token);
+        var getMinimumsTask = GetMinimums(tokenSource.Token);
 
         Console.WriteLine("Waiting to collect maximum row versions...");
         while (DateTimeOffset.Now < targetEnd)
@@ -74,19 +131,20 @@ class SqlServerCommand : BaseCommand
         tokenSource.Cancel();
         await getMinimumsTask;
 
-        await GetMaximums(tables, cancellationToken);
+        await GetMaximums(cancellationToken);
 
         var end = DateTimeOffset.Now;
+        var queues = databases.SelectMany(db => db.Tables).Select(t => t.ToQueueThroughput()).OrderBy(q => q.QueueName).ToArray();
 
         return new QueueDetails
         {
             StartTime = start,
             EndTime = end,
-            Queues = tables.Select(t => t.ToQueueThroughput()).OrderBy(q => q.QueueName).ToArray()
+            Queues = queues
         };
     }
 
-    async Task GetMaximums(List<TableDetails> tables, CancellationToken cancellationToken)
+    async Task GetMaximums(CancellationToken cancellationToken)
     {
         Console.WriteLine("Sampling started for maximum row versions...");
         Console.WriteLine("(This may still take up to 15 minutes depending on queue traffic.)");
@@ -96,28 +154,33 @@ class SqlServerCommand : BaseCommand
 
         DateTimeOffset maxWaitUntil = DateTimeOffset.Now.AddMinutes(15);
 
+        var allTables = databases.SelectMany(db => db.Tables).ToArray();
+
         while (sampledQueues < totalQueues && DateTimeOffset.Now < maxWaitUntil)
         {
-            using (var conn = await OpenConnectionAsync(cancellationToken))
+            foreach (var db in databases)
             {
-                foreach (var table in tables.Where(t => t.MaxRowVersion is null))
+                using (var conn = await db.OpenConnectionAsync(cancellationToken))
                 {
-                    using (var cmd = conn.CreateCommand())
+                    foreach (var table in db.Tables.Where(t => t.MaxRowVersion is null))
                     {
-                        cmd.CommandText = $"select max(RowVersion) from {table.FullName} with (nolock);";
-                        var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                        if (value is long rowversion)
+                        using (var cmd = conn.CreateCommand())
                         {
-                            table.MaxRowVersion = rowversion;
-                            // If Min version isn't filled in and we somehow got lucky now, mark it down
-                            table.MinRowVersion ??= rowversion;
+                            cmd.CommandText = $"select max(RowVersion) from {table.FullName} with (nolock);";
+                            var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                            if (value is long rowversion)
+                            {
+                                table.MaxRowVersion = rowversion;
+                                // If Min version isn't filled in and we somehow got lucky now, mark it down
+                                table.MinRowVersion ??= rowversion;
+                            }
                         }
                     }
                 }
             }
 
-            sampledQueues = tables.Count(t => t.MaxRowVersion is not null);
+            sampledQueues = allTables.Count(t => t.MaxRowVersion is not null);
             Console.Write($"\r{sampledQueues}/{totalQueues} sampled");
             if (sampledQueues < totalQueues)
             {
@@ -138,11 +201,13 @@ class SqlServerCommand : BaseCommand
         Console.WriteLine();
     }
 
-    async Task GetMinimums(List<TableDetails> tables, CancellationToken cancellationToken)
+    async Task GetMinimums(CancellationToken cancellationToken)
     {
         Console.WriteLine("Sampling started for minimum row versions...");
         int counter = 0;
         int totalMsWaited = 0;
+
+        var allTables = databases.SelectMany(db => db.Tables).ToArray();
 
         try
         {
@@ -153,24 +218,27 @@ class SqlServerCommand : BaseCommand
                     return;
                 }
 
-                using (var conn = await OpenConnectionAsync(cancellationToken))
+                foreach (var db in databases)
                 {
-                    foreach (var table in tables.Where(t => t.MinRowVersion is null))
+                    using (var conn = await db.OpenConnectionAsync(cancellationToken))
                     {
-                        using (var cmd = conn.CreateCommand())
+                        foreach (var table in db.Tables.Where(t => t.MinRowVersion is null))
                         {
-                            cmd.CommandText = $"select min(RowVersion) from {table.FullName} with (nolock);";
-                            var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                            if (value is long rowversion)
+                            using (var cmd = conn.CreateCommand())
                             {
-                                table.MinRowVersion = rowversion;
+                                cmd.CommandText = $"select min(RowVersion) from {table.FullName} with (nolock);";
+                                var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                                if (value is long rowversion)
+                                {
+                                    table.MinRowVersion = rowversion;
+                                }
                             }
                         }
                     }
                 }
 
-                sampledQueues = tables.Count(t => t.MinRowVersion is not null);
+                sampledQueues = allTables.Count(t => t.MinRowVersion is not null);
                 if (sampledQueues < totalQueues)
                 {
                     await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
@@ -189,46 +257,37 @@ class SqlServerCommand : BaseCommand
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            int successCount = tables.Count(t => t.MinRowVersion is not null);
-            Console.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{tables.Count} values.");
-        }
-    }
-
-    async Task<List<TableDetails>> GetTables(CancellationToken cancellationToken)
-    {
-        using (var conn = await OpenConnectionAsync(cancellationToken))
-        {
-            return (await conn.QueryAsync<TableDetails>(GetQueueListCommandText)).ToList();
+            int successCount = allTables.Count(t => t.MinRowVersion is not null);
+            Console.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{allTables.Length} values.");
         }
     }
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        tables = await GetTables(cancellationToken);
+        databases = connectionStrings.Select(connStr => new DatabaseDetails(connStr)).ToArray();
 
-        if (!tables.Any())
+        foreach (var db in databases)
         {
-            Console.WriteLine();
-            ConsoleHelper.WriteError("ERROR: We were unable to locate any queues in the specified database. Please check the provided connection string and try again.");
-            Console.WriteLine();
-            Console.WriteLine("Exiting...");
-            Environment.Exit(1);
+            await db.GetTables(cancellationToken);
+
+            if (!db.Tables.Any())
+            {
+                Console.WriteLine();
+                ConsoleHelper.WriteError($"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
+                Console.WriteLine();
+                Console.WriteLine("Exiting...");
+                Environment.Exit(1);
+            }
         }
+
+        var queueNames = databases.SelectMany(db => db.Tables).Select(t => t.DisplayName).OrderBy(x => x).ToArray();
 
         return new EnvironmentDetails
         {
             MessageTransport = "SqlTransport",
             ReportMethod = "SqlServerQuery",
-            QueueNames = tables.Select(t => t.FullName).OrderBy(x => x).ToArray()
+            QueueNames = queueNames
         };
-    }
-
-
-    async Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)
-    {
-        var conn = new SqlConnection(connectionString);
-        await conn.OpenAsync(cancellationToken);
-        return conn;
     }
 
     static int GetDelayMilliseconds(ref int counter, ref int totalMsWaited)
@@ -261,6 +320,50 @@ INNER JOIN [INFORMATION_SCHEMA].[COLUMNS] cBody WITH (NOLOCK) ON t.TABLE_NAME = 
 INNER JOIN [INFORMATION_SCHEMA].[COLUMNS] cRowVersion WITH (NOLOCK) ON t.TABLE_NAME = cRowVersion.TABLE_NAME AND cRowVersion.COLUMN_NAME = 'RowVersion' AND cRowVersion.DATA_TYPE = 'bigint'
 WHERE t.TABLE_TYPE = 'BASE TABLE'";
 
+    class DatabaseDetails
+    {
+        readonly string connectionString;
+
+        public string DatabaseName { get; }
+        public List<TableDetails> Tables { get; private set; }
+
+        public DatabaseDetails(string connectionString)
+        {
+            this.connectionString = connectionString;
+
+            var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString };
+            DatabaseName = (builder["Initial Catalog"] as string) ?? (builder["Database"] as string);
+        }
+
+        public int TableCount => Tables.Count;
+        public void RemoveIgnored() => Tables.RemoveAll(t => t.IgnoreTable());
+
+        public async Task GetTables(CancellationToken cancellationToken = default)
+        {
+            List<TableDetails> tables = null;
+
+            using (var conn = await OpenConnectionAsync(cancellationToken))
+            {
+                tables = (await conn.QueryAsync<TableDetails>(GetQueueListCommandText)).ToList();
+            }
+
+            tables.RemoveAll(t => t.IgnoreTable());
+            foreach (var table in tables)
+            {
+                table.Database = this;
+            }
+
+            Tables = tables;
+        }
+
+        public async Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
+        {
+            var conn = new SqlConnection(connectionString);
+            await conn.OpenAsync(cancellationToken);
+            return conn;
+        }
+    }
+
     [DebuggerDisplay("{FullName}")]
     class TableDetails
     {
@@ -268,7 +371,11 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
         public string TableName { get; init; }
         public long? MinRowVersion { get; set; }
         public long? MaxRowVersion { get; set; }
+        public DatabaseDetails Database { get; set; }
+
         public string FullName => $"[{TableSchema}].[{TableName}]";
+
+        public string DisplayName => Database is null ? FullName : $"[{Database.DatabaseName}].{FullName}";
 
         public bool IgnoreTable()
         {
@@ -290,12 +397,12 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
             if (MinRowVersion is not null && MaxRowVersion is not null)
             {
                 var throughput = (int)(MaxRowVersion.Value - MinRowVersion.Value);
-                return new QueueThroughput { QueueName = FullName, Throughput = throughput };
+                return new QueueThroughput { QueueName = DisplayName, Throughput = throughput };
             }
 
             // For now, not being able to detect messages probably means the true value
             // is close enough to zero that it doesn't matter.
-            return new QueueThroughput { QueueName = FullName, Throughput = 0 };
+            return new QueueThroughput { QueueName = DisplayName, Throughput = 0 };
         }
     }
 

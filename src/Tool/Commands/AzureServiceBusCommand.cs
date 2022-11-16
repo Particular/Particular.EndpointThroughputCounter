@@ -22,12 +22,9 @@ class AzureServiceBusCommand : BaseCommand
 
         command.AddOption(resourceIdArg);
 
-        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNamesOpt);
-
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
             var resourceId = context.ParseResult.GetValueForOption(resourceIdArg);
             var cancellationToken = context.GetCancellationToken();
 

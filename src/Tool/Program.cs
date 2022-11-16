@@ -18,6 +18,8 @@ try
     rootCommand.AddCommand(AzureServiceBusCommand.CreateCommand());
     rootCommand.AddCommand(SqsCommand.CreateCommand());
 
+    rootCommand.AddGlobalOption(SharedOptions.MaskNames);
+
     var returnCode = await rootCommand.InvokeAsync(args);
     return returnCode;
 }

@@ -27,12 +27,9 @@ partial class ServiceControlCommand : BaseCommand
         command.AddOption(scUrlArg);
         command.AddOption(monitoringUrlArg);
 
-        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNamesOpt);
-
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
             var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
             var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
             var cancellationToken = context.GetCancellationToken();
