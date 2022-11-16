@@ -53,11 +53,18 @@ class SqlServerCommand : BaseCommand
 
         if (!string.IsNullOrEmpty(sourcePath))
         {
-            var fullPath = Path.GetFullPath(Path.Join(Environment.CurrentDirectory, sourcePath));
-            if (!File.Exists(fullPath))
+            if (!Path.IsPathFullyQualified(sourcePath))
+            {
+                sourcePath = Path.GetFullPath(Path.Join(Environment.CurrentDirectory, sourcePath));
+            }
+            if (!File.Exists(sourcePath))
             {
                 throw new FileNotFoundException($"Could not find file specified by {ConnectionStringSource.Name} parameter", fullPath);
             }
+
+            return File.ReadAllLines()
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .ToArray();
         }
 
         var single = parsed.GetValueForOption(ConnectionString);
