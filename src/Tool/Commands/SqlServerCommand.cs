@@ -62,7 +62,7 @@ class SqlServerCommand : BaseCommand
                 throw new FileNotFoundException($"Could not find file specified by {ConnectionStringSource.Name} parameter", fullPath);
             }
 
-            return File.ReadAllLines()
+            return File.ReadAllLines(sourcePath)
                 .Where(line => !string.IsNullOrWhiteSpace(line))
                 .ToArray();
         }
