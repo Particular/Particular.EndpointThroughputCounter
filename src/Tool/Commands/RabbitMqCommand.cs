@@ -18,13 +18,10 @@ class RabbitMqCommand : BaseCommand
 
         command.AddOption(urlArg);
 
-        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNamesOpt);
-
         command.SetHandler(async context =>
         {
             var url = context.ParseResult.GetValueForOption(urlArg);
-            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
             var cancellationToken = context.GetCancellationToken();
 
             var rabbitManagement = new RabbitManagement(url);

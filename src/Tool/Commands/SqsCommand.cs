@@ -28,14 +28,11 @@ class SqsCommand : BaseCommand
             name: "--region",
             description: "The AWS region to use when accessing AWS services. If not provided, the default profile or AWS_REGION environment variable will be used.");
 
-        var maskNamesOpt = SharedOptions.CreateMaskNamesOption();
-        command.AddOption(maskNamesOpt);
-
         command.SetHandler(async context =>
         {
             var profile = context.ParseResult.GetValueForOption(profileOption);
             var region = context.ParseResult.GetValueForOption(regionOption);
-            var maskNames = context.ParseResult.GetValueForOption(maskNamesOpt);
+            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
             var cancellationToken = context.GetCancellationToken();
 
             var runner = new SqsCommand(profile, region, maskNames);
