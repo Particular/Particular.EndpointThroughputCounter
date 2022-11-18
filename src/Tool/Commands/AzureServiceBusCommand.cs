@@ -24,11 +24,11 @@ class AzureServiceBusCommand : BaseCommand
 
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var shared = SharedOptions.Parse(context);
             var resourceId = context.ParseResult.GetValueForOption(resourceIdArg);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new AzureServiceBusCommand(maskNames, resourceId);
+            var runner = new AzureServiceBusCommand(shared, resourceId);
             await runner.Run(cancellationToken);
         });
 
@@ -37,8 +37,8 @@ class AzureServiceBusCommand : BaseCommand
 
     readonly string resourceId;
 
-    public AzureServiceBusCommand(string[] maskNames, string resourceId)
-    : base(maskNames)
+    public AzureServiceBusCommand(SharedOptions shared, string resourceId)
+    : base(shared)
     {
         this.resourceId = resourceId;
     }

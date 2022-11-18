@@ -21,11 +21,11 @@ class RabbitMqCommand : BaseCommand
         command.SetHandler(async context =>
         {
             var url = context.ParseResult.GetValueForOption(urlArg);
-            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
 
             var rabbitManagement = new RabbitManagement(url);
-            var runner = new RabbitMqCommand(rabbitManagement, maskNames);
+            var runner = new RabbitMqCommand(shared, rabbitManagement);
 
             await runner.Run(cancellationToken);
         });
@@ -35,8 +35,8 @@ class RabbitMqCommand : BaseCommand
 
     readonly RabbitManagement rabbit;
 
-    public RabbitMqCommand(RabbitManagement rabbit, string[] maskNames)
-        : base(maskNames) => this.rabbit = rabbit;
+    public RabbitMqCommand(SharedOptions shared, RabbitManagement rabbit)
+        : base(shared) => this.rabbit = rabbit;
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {

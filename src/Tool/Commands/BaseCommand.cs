@@ -9,13 +9,13 @@ using Particular.EndpointThroughputCounter.Data;
 
 abstract class BaseCommand
 {
-    readonly string[] maskNames;
+    readonly SharedOptions shared;
     readonly string reportName = "throughput-report";
     readonly bool isDevelopment;
 
-    public BaseCommand(string[] maskNames)
+    public BaseCommand(SharedOptions shared)
     {
-        this.maskNames = maskNames;
+        this.shared = shared;
 
         var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
 
@@ -63,6 +63,8 @@ abstract class BaseCommand
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            Console.WriteLine();
+            Console.WriteLine();
             ConsoleHelper.WriteError("Exiting because cancellation was requested.");
             Environment.Exit(-2);
         }
@@ -82,10 +84,20 @@ abstract class BaseCommand
     async Task RunInternal(CancellationToken cancellationToken)
     {
         Console.WriteLine();
-        Console.Write("Enter customer name: ");
-        string customerName = Console.ReadLine();
+        if (!string.IsNullOrEmpty(shared.CustomerName))
+        {
+            Console.WriteLine($"Customer name is '{shared.CustomerName}'.");
+        }
+        else
+        {
+            while (string.IsNullOrEmpty(shared.CustomerName))
+            {
+                Console.Write("Enter customer name: ");
+                shared.CustomerName = Console.ReadLine();
+            }
+        }
 
-        var outputPath = CreateReportOutputPath(customerName);
+        var outputPath = CreateReportOutputPath(shared.CustomerName);
 
         ValidateOutputPath(outputPath);
 
@@ -122,10 +134,14 @@ abstract class BaseCommand
             Console.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
             Console.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
             Console.WriteLine();
-            if (!Confirm("Do you wish to proceed?"))
+
+            if (!shared.RunUnattended)
             {
-                Console.WriteLine("Exiting...");
-                Environment.Exit(1);
+                if (!Confirm("Do you wish to proceed?"))
+                {
+                    Console.WriteLine("Exiting...");
+                    Environment.Exit(1);
+                }
             }
         }
         Console.WriteLine();
@@ -139,7 +155,7 @@ abstract class BaseCommand
 
         var reportData = new Report
         {
-            CustomerName = customerName,
+            CustomerName = shared.CustomerName,
             MessageTransport = metadata.MessageTransport,
             ReportMethod = metadata.ReportMethod,
             ToolVersion = Versioning.NuGetVersion,
@@ -194,7 +210,7 @@ abstract class BaseCommand
 
     string MaskName(string queueName)
     {
-        foreach (string mask in maskNames)
+        foreach (string mask in shared.MaskNames)
         {
             queueName = queueName.Replace(mask, "***", StringComparison.OrdinalIgnoreCase);
         }

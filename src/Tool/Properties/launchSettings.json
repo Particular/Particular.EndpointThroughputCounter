@@ -2,35 +2,35 @@
   "profiles": {
     "ThroughputTool-RabbitMQ": {
       "commandName": "Project",
-      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --queueNameMasks Samples",
+      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
     },
     "ThroughputTool-ServiceControl": {
       "commandName": "Project",
-      "commandLineArgs": "servicecontrol --serviceControlApiUrl http://localhost:33333/api --monitoringApiUrl http://localhost:33633/ --queueNameMasks Samples",
+      "commandLineArgs": "servicecontrol --serviceControlApiUrl http://localhost:33333/api --monitoringApiUrl http://localhost:33633/ --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
     },
     "ThroughputTool-SqlServer": {
       "commandName": "Project",
-      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples",
+      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
     },
     "ThroughputTool-ASB": {
       "commandName": "Project",
-      "commandLineArgs": "azureservicebus --resourceId {resourceId} --queueNameMasks Samples",
+      "commandLineArgs": "azureservicebus --resourceId {resourceId} --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
     },
     "ThroughputTool-SQS": {
       "commandName": "Project",
-      "commandLineArgs": "sqs",
+      "commandLineArgs": "sqs --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }

@@ -36,11 +36,11 @@ class SqlServerCommand : BaseCommand
 
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var shared = SharedOptions.Parse(context);
             var connectionStrings = GetConnectionStrings(context.ParseResult);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new SqlServerCommand(maskNames, connectionStrings);
+            var runner = new SqlServerCommand(shared, connectionStrings);
             await runner.Run(cancellationToken);
         });
 
@@ -103,8 +103,8 @@ class SqlServerCommand : BaseCommand
     int sampledQueues;
     DatabaseDetails[] databases;
 
-    public SqlServerCommand(string[] maskNames, string[] connectionStrings)
-        : base(maskNames)
+    public SqlServerCommand(SharedOptions shared, string[] connectionStrings)
+        : base(shared)
     {
         this.connectionStrings = connectionStrings;
     }

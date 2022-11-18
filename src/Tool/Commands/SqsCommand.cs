@@ -32,18 +32,18 @@ class SqsCommand : BaseCommand
         {
             var profile = context.ParseResult.GetValueForOption(profileOption);
             var region = context.ParseResult.GetValueForOption(regionOption);
-            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new SqsCommand(profile, region, maskNames);
+            var runner = new SqsCommand(shared, profile, region);
             await runner.Run(cancellationToken);
         });
 
         return command;
     }
 
-    public SqsCommand(string profile, string regionName, string[] maskNames)
-    : base(maskNames)
+    public SqsCommand(SharedOptions shared, string profile, string regionName)
+    : base(shared)
     {
         if (profile is not null)
         {

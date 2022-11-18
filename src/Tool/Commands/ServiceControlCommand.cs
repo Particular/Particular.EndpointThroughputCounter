@@ -29,12 +29,12 @@ partial class ServiceControlCommand : BaseCommand
 
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var shared = SharedOptions.Parse(context);
             var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
             var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new ServiceControlCommand(maskNames, scUrl, monUrl);
+            var runner = new ServiceControlCommand(shared, scUrl, monUrl);
             await runner.Run(cancellationToken);
         });
 
@@ -58,8 +58,8 @@ partial class ServiceControlCommand : BaseCommand
     const int AuditSamplingPageSize = 500;
 #endif
 
-    public ServiceControlCommand(string[] maskNames, string primaryUrl, string monitoringUrl)
-        : base(maskNames)
+    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl)
+        : base(shared)
     {
         this.primaryUrl = primaryUrl.TrimEnd('/');
         this.monitoringUrl = monitoringUrl.TrimEnd('/');
