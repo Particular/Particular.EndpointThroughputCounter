@@ -357,6 +357,14 @@ partial class ServiceControlCommand : BaseCommand
         // Tool can't proceed without this data, try 5 times
         var obj = await GetServiceControlData<JObject>(configUrl, cancellationToken, 5);
 
+        var transportTypeToken = obj["transport"]["transport_customization_type"];
+        if (transportTypeToken is null)
+        {
+            ConsoleHelper.WriteError("This version of ServiceControl is not supported. Update to a supported version of ServiceControl.");
+            ConsoleHelper.WriteError("See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
+            Environment.Exit(1);
+        }
+
         var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
 
         var split = transportCustomizationTypeStr.Split(',');
