@@ -29,12 +29,12 @@ partial class ServiceControlCommand : BaseCommand
 
         command.SetHandler(async context =>
         {
-            var maskNames = context.ParseResult.GetValueForOption(SharedOptions.MaskNames);
+            var shared = SharedOptions.Parse(context);
             var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
             var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new ServiceControlCommand(maskNames, scUrl, monUrl);
+            var runner = new ServiceControlCommand(shared, scUrl, monUrl);
             await runner.Run(cancellationToken);
         });
 
@@ -58,8 +58,8 @@ partial class ServiceControlCommand : BaseCommand
     const int AuditSamplingPageSize = 500;
 #endif
 
-    public ServiceControlCommand(string[] maskNames, string primaryUrl, string monitoringUrl)
-        : base(maskNames)
+    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl)
+        : base(shared)
     {
         this.primaryUrl = primaryUrl.TrimEnd('/');
         this.monitoringUrl = monitoringUrl.TrimEnd('/');
@@ -356,6 +356,14 @@ partial class ServiceControlCommand : BaseCommand
 
         // Tool can't proceed without this data, try 5 times
         var obj = await GetServiceControlData<JObject>(configUrl, cancellationToken, 5);
+
+        var transportTypeToken = obj["transport"]["transport_customization_type"];
+        if (transportTypeToken is null)
+        {
+            ConsoleHelper.WriteError("This version of ServiceControl is not supported. Update to a supported version of ServiceControl.");
+            ConsoleHelper.WriteError("See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
+            Environment.Exit(1);
+        }
 
         var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
 
