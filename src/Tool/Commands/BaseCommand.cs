@@ -38,8 +38,7 @@ abstract class BaseCommand
     {
         if (File.Exists(outputPath) && !isDevelopment)
         {
-            ConsoleHelper.WriteError($"ERROR: File already exists at {outputPath}, running would overwrite");
-            Environment.Exit(1);
+            throw new HaltException(1, $"ERROR: File already exists at {outputPath}, running would overwrite");
         }
 
         try
@@ -50,8 +49,7 @@ abstract class BaseCommand
         }
         catch (Exception x)
         {
-            ConsoleHelper.WriteError($"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
-            Environment.Exit(1);
+            throw new HaltException(2, $"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
         }
     }
 
@@ -61,12 +59,19 @@ abstract class BaseCommand
         {
             await RunInternal(cancellationToken);
         }
+        catch (HaltException halt)
+        {
+            Console.WriteLine();
+            Console.WriteLine();
+            ConsoleHelper.WriteError(halt.Message);
+            Environment.ExitCode = halt.ExitCode;
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             Console.WriteLine();
             Console.WriteLine();
             ConsoleHelper.WriteError("Exiting because cancellation was requested.");
-            Environment.Exit(-2);
+            Environment.ExitCode = -1;
         }
         catch (Exception x)
         {
@@ -77,7 +82,7 @@ abstract class BaseCommand
                 w.WriteLine("Unable to run tool, please contact Particular Software support.");
             });
 
-            Environment.Exit(-3);
+            Environment.ExitCode = -2;
         }
     }
 
@@ -92,6 +97,7 @@ abstract class BaseCommand
         {
             while (string.IsNullOrEmpty(shared.CustomerName))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Console.Write("Enter customer name: ");
                 shared.CustomerName = Console.ReadLine();
             }
@@ -139,8 +145,7 @@ abstract class BaseCommand
             {
                 if (!Confirm("Do you wish to proceed?"))
                 {
-                    Console.WriteLine("Exiting...");
-                    Environment.Exit(1);
+                    throw new HaltException(3, "Exiting at user's request");
                 }
             }
         }

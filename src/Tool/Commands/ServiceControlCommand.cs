@@ -348,8 +348,7 @@ partial class ServiceControlCommand : BaseCommand
 
         if (!knownEndpoints.Any())
         {
-            ConsoleHelper.WriteError("Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
-            Environment.Exit(1);
+            throw new HaltException(6, "Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
         }
 
         var configUrl = $"{primaryUrl}/configuration";
@@ -360,9 +359,7 @@ partial class ServiceControlCommand : BaseCommand
         var transportTypeToken = obj["transport"]["transport_customization_type"];
         if (transportTypeToken is null)
         {
-            ConsoleHelper.WriteError("This version of ServiceControl is not supported. Update to a supported version of ServiceControl.");
-            ConsoleHelper.WriteError("See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
-            Environment.Exit(1);
+            throw new HaltException(4, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
         }
 
         var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
