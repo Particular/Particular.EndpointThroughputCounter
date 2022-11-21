@@ -12,10 +12,10 @@ try
 {
     var rootCommand = new RootCommand("A tool to measure NServiceBus endpoints and throughput.");
 
-    rootCommand.AddCommand(RabbitMqCommand.CreateCommand());
     rootCommand.AddCommand(ServiceControlCommand.CreateCommand());
-    rootCommand.AddCommand(SqlServerCommand.CreateCommand());
     rootCommand.AddCommand(AzureServiceBusCommand.CreateCommand());
+    rootCommand.AddCommand(RabbitMqCommand.CreateCommand());
+    rootCommand.AddCommand(SqlServerCommand.CreateCommand());
     rootCommand.AddCommand(SqsCommand.CreateCommand());
 
     SharedOptions.Register(rootCommand);

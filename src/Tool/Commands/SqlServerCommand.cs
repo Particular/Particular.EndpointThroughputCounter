@@ -279,11 +279,7 @@ class SqlServerCommand : BaseCommand
 
             if (!db.Tables.Any())
             {
-                Console.WriteLine();
-                ConsoleHelper.WriteError($"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
-                Console.WriteLine();
-                Console.WriteLine("Exiting...");
-                Environment.Exit(1);
+                throw new HaltException(5, $"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
             }
         }
 

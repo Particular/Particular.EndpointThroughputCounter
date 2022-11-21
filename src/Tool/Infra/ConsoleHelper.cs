@@ -41,7 +41,7 @@ public static class ConsoleHelper
                 Console.WriteLine();
                 Console.WriteLine("Contact Particular Software support for assistance.");
 
-                Environment.Exit(-1);
+                Environment.Exit(-3);
             });
         };
     }
