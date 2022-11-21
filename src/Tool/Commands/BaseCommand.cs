@@ -164,12 +164,14 @@ abstract class BaseCommand
             MessageTransport = metadata.MessageTransport,
             ReportMethod = metadata.ReportMethod,
             ToolVersion = Versioning.NuGetVersion,
+            Prefix = metadata.Prefix,
             StartTime = data.StartTime,
             EndTime = data.EndTime,
             ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,
             Queues = data.Queues,
             TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
-            TotalQueues = data.Queues.Length
+            TotalQueues = data.Queues.Length,
+            IgnoredQueues = metadata.IgnoredQueues?.Select(q => MaskName(q)).ToArray()
         };
 
         var report = new SignedReport

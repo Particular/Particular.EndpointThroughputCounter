@@ -22,27 +22,32 @@ class SqsCommand : BaseCommand
             name: "--profile",
             description: "The name of the credentials profile to use when accessing AWS services. If not provided, the default profile or environment variables will be used.");
 
-        command.AddOption(profileOption);
-
         var regionOption = new Option<string>(
             name: "--region",
             description: "The AWS region to use when accessing AWS services. If not provided, the default profile or AWS_REGION environment variable will be used.");
+
+        var prefixOption = new Option<string>("--prefix", "Only collect information for SQS queues matching a prefix, such as 'prod'");
+
+        command.AddOption(profileOption);
+        command.AddOption(regionOption);
+        command.AddOption(prefixOption);
 
         command.SetHandler(async context =>
         {
             var profile = context.ParseResult.GetValueForOption(profileOption);
             var region = context.ParseResult.GetValueForOption(regionOption);
+            var prefix = context.ParseResult.GetValueForOption(prefixOption);
             var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new SqsCommand(shared, profile, region);
+            var runner = new SqsCommand(shared, profile, region, prefix);
             await runner.Run(cancellationToken);
         });
 
         return command;
     }
 
-    public SqsCommand(SharedOptions shared, string profile, string regionName)
+    public SqsCommand(SharedOptions shared, string profile, string regionName, string prefix)
     : base(shared)
     {
         if (profile is not null)
@@ -57,15 +62,17 @@ class SqsCommand : BaseCommand
             Console.WriteLine($"Specifying region {region.SystemName} ({region.DisplayName})");
             AWSConfigs.RegionEndpoint = region;
         }
+
+        this.prefix = prefix;
     }
 
-
+    string prefix;
     int metricsReceived;
+    List<string> queueNames;
+    string[] ignoredQueueNames;
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        var queueNames = await GetQueues(cancellationToken);
-
         var endTime = DateTime.UtcNow.Date.AddDays(1);
         var startTime = endTime.AddDays(-30);
 
@@ -100,7 +107,7 @@ class SqsCommand : BaseCommand
             });
 
             Interlocked.Increment(ref metricsReceived);
-            Console.Write($"\rGot data for {metricsReceived}/{queueNames.Length} SQS queues.");
+            Console.Write($"\rGot data for {metricsReceived}/{queueNames.Count} SQS queues.");
         });
 
         await Task.WhenAll(tasks);
@@ -117,7 +124,7 @@ class SqsCommand : BaseCommand
         };
     }
 
-    async Task<string[]> GetQueues(CancellationToken cancellationToken)
+    async Task GetQueues(CancellationToken cancellationToken)
     {
         var sqs = new AmazonSQSClient();
 
@@ -128,7 +135,7 @@ class SqsCommand : BaseCommand
             MaxResults = 1000
         };
 
-        var queueNames = new List<string>();
+        queueNames = new List<string>();
 
         while (true)
         {
@@ -147,18 +154,36 @@ class SqsCommand : BaseCommand
             else
             {
                 Console.WriteLine();
-                return queueNames.ToArray();
+                break;
             }
+        }
+
+        ignoredQueueNames = queueNames
+            .Where(name => prefix is not null && !name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(name => name)
+            .ToArray();
+
+        if (ignoredQueueNames.Any())
+        {
+            var hash = ignoredQueueNames.ToHashSet();
+            queueNames.RemoveAll(name => hash.Contains(name));
+
+            Console.WriteLine($"{queueNames.Count} queues match prefix '{prefix}'.");
         }
     }
 
-    protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
+    protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(new EnvironmentDetails
+        await GetQueues(cancellationToken);
+
+        return new EnvironmentDetails
         {
             MessageTransport = "AmazonSQS",
             ReportMethod = "AWS CloudWatch Metrics",
+            QueueNames = queueNames.OrderBy(q => q).ToArray(),
+            Prefix = prefix,
+            IgnoredQueues = ignoredQueueNames.Any() ? ignoredQueueNames : null,
             SkipEndpointListCheck = true
-        });
+        };
     }
 }

@@ -30,7 +30,7 @@
     },
     "ThroughputTool-SQS": {
       "commandName": "Project",
-      "commandLineArgs": "sqs --customerName \"Particular Software\" --unattended",
+      "commandLineArgs": "sqs --customerName \"Particular Software\" --unattended --prefix \"GHA-\"",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }

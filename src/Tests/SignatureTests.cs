@@ -165,7 +165,9 @@
                 ReportDuration = end - start,
                 Queues = queues,
                 TotalThroughput = queues.Sum(q => q.Throughput ?? 0),
-                TotalQueues = queues.Length
+                TotalQueues = queues.Length,
+                Prefix = "SomePrefix",
+                IgnoredQueues = new[] { "ignore1", "ignore2", "ignore3" }
             };
 
             return new SignedReport

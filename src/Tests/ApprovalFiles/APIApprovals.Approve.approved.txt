@@ -1,4 +1,4 @@
-﻿namespace Particular.EndpointThroughputCounter.Data
+namespace Particular.EndpointThroughputCounter.Data
 {
     public class QueueThroughput
     {
@@ -14,7 +14,11 @@
         public Report() { }
         public string CustomerName { get; set; }
         public System.DateTimeOffset EndTime { get; set; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string[] IgnoredQueues { get; set; }
         public string MessageTransport { get; set; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string Prefix { get; set; }
         public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; set; }
         public System.TimeSpan ReportDuration { get; set; }
         public string ReportMethod { get; set; }
