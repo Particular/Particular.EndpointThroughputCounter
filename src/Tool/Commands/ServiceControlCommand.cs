@@ -4,6 +4,8 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -344,6 +346,16 @@ partial class ServiceControlCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
+        await CheckEndpoint("--serviceControlApiUrl", "ServiceControl", primaryUrl, new Version(4, 21), content =>
+        {
+            return content.Contains("\"known_endpoints_url\"") && content.Contains("\"endpoints_messages_url\"");
+        }, cancellationToken);
+
+        await CheckEndpoint("--monitoringApiUrl", "ServiceControl Monitoring", monitoringUrl, new Version(4, 21), content =>
+        {
+            return content.Contains("\"instanceType\"") && content.Contains("\"monitoring\"");
+        }, cancellationToken);
+
         knownEndpoints = await GetKnownEndpoints(cancellationToken);
 
         if (!knownEndpoints.Any())
@@ -383,6 +395,51 @@ partial class ServiceControlCommand : BaseCommand
             ReportMethod = "ServiceControl API",
             QueueNames = knownEndpoints.OrderBy(q => q.Name).Select(q => q.Name).ToArray()
         };
+    }
+
+    async Task CheckEndpoint(string paramName, string instanceType, string url, Version minimumVersion, Func<string, bool> contentTest, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            throw new HaltException(7, $"The {paramName} option specifying the {instanceType} URL was not provided.");
+        }
+
+        var res = await http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+
+        if (!res.IsSuccessStatusCode)
+        {
+            var b = new StringBuilder($"The server at {url} returned a non-successful status code: {(int)res.StatusCode} {res.StatusCode}")
+                .AppendLine()
+                .AppendLine("Response Headers:");
+
+            foreach (var header in res.Headers)
+            {
+                b.AppendLine($"  {header.Key}: {header.Value}");
+            }
+
+            throw new HaltException(8, b.ToString());
+        }
+
+        if (!res.Headers.TryGetValues("X-Particular-Version", out var versionHeaders))
+        {
+            throw new HaltException(9, $"The server at {url} specified by parameter {paramName} does not appear to be a ServiceControl instance. Are you sure you have the right URL?");
+        }
+
+        var version = versionHeaders.Select(header => Version.TryParse(header, out var v) ? v : null).FirstOrDefault();
+        if (version < minimumVersion)
+        {
+            throw new HaltException(10, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
+        }
+
+        var content = await res.Content.ReadAsStringAsync(
+#if NET6_0_OR_GREATER // TODO: Remove with netcoreapp3.1 support
+                cancellationToken
+#endif
+        );
+        if (!contentTest(content))
+        {
+            throw new HaltException(11, $"The server at {url} specified by parameter {paramName} does not appear to be a {instanceType} instance. Are you sure you have the right URL?");
+        }
     }
 
     async Task<ServiceControlEndpoint[]> GetKnownEndpoints(CancellationToken cancellationToken)
