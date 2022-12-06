@@ -8,15 +8,38 @@ using System.Threading.Tasks;
 class AuthenticatingHttpClient : IDisposable
 {
     HttpClient http;
-    Action<HttpClient> configureNewClient;
     string currentUser;
+    Action<HttpClient> configureNewClient;
 
     public AuthenticatingHttpClient(Action<HttpClient> configureNewClient = null)
     {
-        this.configureNewClient = configureNewClient ?? (http => { });
+        this.configureNewClient = configureNewClient;
+        http = CreateHttpClient();
+    }
 
-        http = new HttpClient();
-        this.configureNewClient(http);
+    HttpClient CreateHttpClient(Action<CredentialCache> fillCredentials = null)
+    {
+        var credentials = new CredentialCache();
+        if (fillCredentials is not null)
+        {
+            fillCredentials(credentials);
+        }
+
+        var httpHandler = new HttpClientHandler
+        {
+            Credentials = fillCredentials is not null ? credentials : null,
+            UseDefaultCredentials = fillCredentials is null,
+            PreAuthenticate = true,
+            AutomaticDecompression = DecompressionMethods.All,
+            MaxConnectionsPerServer = 100
+        };
+
+        var newClient = new HttpClient(httpHandler, true);
+        if (configureNewClient is not null)
+        {
+            configureNewClient(newClient);
+        }
+        return newClient;
     }
 
     public Task<Stream> GetStreamAsync(string url, CancellationToken cancellationToken = default)
@@ -35,32 +58,38 @@ class AuthenticatingHttpClient : IDisposable
             {
                 return await getResult(cancellationToken);
             }
-            catch (HttpRequestExceptionWithStatus x) when (x.StatusCode == HttpStatusCode.Unauthorized)
+            catch (HttpResponseException x) when (x.StatusCode == HttpStatusCode.Unauthorized)
             {
                 if (--tries <= 0)
                 {
                     throw;
                 }
 
-                var uriPartial = uri.GetLeftPart(UriPartial.Authority);
+                var uriPrefix = new Uri(uri.GetLeftPart(UriPartial.Authority));
 
-                Console.WriteLine($"Unable to access {uriPartial} as {currentUser ?? "default credentials"}.");
+                Console.WriteLine($"Unable to access {uriPrefix} as {currentUser ?? "default credentials"}.");
+                Console.WriteLine("Allowed authentication methods are:");
+                foreach (var authHeader in x.Response.Headers.WwwAuthenticate)
+                {
+                    Console.WriteLine($"  * {authHeader.Scheme} ({authHeader.Parameter})");
+                }
                 Console.WriteLine();
 
-                Console.WriteLine($"Enter authentication for {uriPartial}:");
+                Console.WriteLine($"Enter authentication for {uriPrefix}:");
                 Console.Write("Username: ");
                 var user = Console.ReadLine();
                 Console.Write("Password: ");
                 var pass = ReadPassword();
                 Console.WriteLine();
 
-                var newHandler = new HttpClientHandler
+                var newHttp = CreateHttpClient(credentials =>
                 {
-                    Credentials = new NetworkCredential(user, pass)
-                };
-
-                var newHttp = new HttpClient(newHandler);
-                configureNewClient(newHttp);
+                    foreach (var authHeader in x.Response.Headers.WwwAuthenticate)
+                    {
+                        credentials.Remove(uriPrefix, authHeader.Scheme);
+                        credentials.Add(uriPrefix, authHeader.Scheme, new NetworkCredential(user, pass));
+                    }
+                });
 
                 var oldHttp = http;
                 http = newHttp;
@@ -88,21 +117,23 @@ class AuthenticatingHttpClient : IDisposable
         }
         catch (HttpRequestException x)
         {
-            throw new HttpRequestExceptionWithStatus(x, response.StatusCode);
+            throw new HttpResponseException(x, response);
         }
     }
 
-    class HttpRequestExceptionWithStatus : Exception
+    class HttpResponseException : Exception
     {
-        public HttpRequestExceptionWithStatus(HttpRequestException inner, HttpStatusCode statusCode)
+        public HttpResponseException(HttpRequestException inner, HttpResponseMessage response)
             : base(inner.Message, inner)
         {
             Exception = inner;
-            StatusCode = statusCode;
+            StatusCode = response.StatusCode;
+            Response = response;
         }
 
         public HttpRequestException Exception { get; }
         public HttpStatusCode StatusCode { get; }
+        public HttpResponseMessage Response { get; }
     }
 
     string ReadPassword()
