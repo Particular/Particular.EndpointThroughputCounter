@@ -47,6 +47,11 @@ class AuthenticatingHttpClient : IDisposable
         return RetryLoopOnUnauthorized(url, 3, token => HttpGetStreamWithUsefulException(url, token), cancellationToken);
     }
 
+    public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
+    {
+        return RetryLoopOnUnauthorized(request.RequestUri, 3, token => http.SendAsync(request, token), cancellationToken);
+    }
+
     Task<TResult> RetryLoopOnUnauthorized<TResult>(string url, int tries, Func<CancellationToken, Task<TResult>> getResult, CancellationToken cancellationToken)
         => RetryLoopOnUnauthorized(new Uri(url), tries, getResult, cancellationToken);
 

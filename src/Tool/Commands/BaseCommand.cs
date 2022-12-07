@@ -103,6 +103,13 @@ abstract class BaseCommand
             }
         }
 
+#if !DEBUG
+        if (string.Equals(shared.CustomerName, "Particular Software", StringComparison.InvariantCultureIgnoreCase))
+        {
+            throw new HaltException(12, "Customer name 'Particular Software' is not allowed.");
+        }
+#endif
+
         var outputPath = CreateReportOutputPath(shared.CustomerName);
 
         ValidateOutputPath(outputPath);
