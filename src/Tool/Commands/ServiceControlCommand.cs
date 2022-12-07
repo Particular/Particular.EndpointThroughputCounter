@@ -49,6 +49,9 @@ partial class ServiceControlCommand : BaseCommand
     readonly string monitoringUrl;
     ServiceControlEndpoint[] knownEndpoints;
 
+    static readonly Version MinServiceControlVersion = new Version(4, 21, 8);
+    static readonly Version MinSCMonitoringVersion = new Version(4, 21, 8);
+
 #if DEBUG
     // So that a run can be done in 3 minutes in debug mode
     const int SampleCount = 3;
@@ -346,12 +349,12 @@ partial class ServiceControlCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        await CheckEndpoint("--serviceControlApiUrl", "ServiceControl", primaryUrl, new Version(4, 21), content =>
+        await CheckEndpoint("--serviceControlApiUrl", "ServiceControl", primaryUrl, MinServiceControlVersion, content =>
         {
             return content.Contains("\"known_endpoints_url\"") && content.Contains("\"endpoints_messages_url\"");
         }, cancellationToken);
 
-        await CheckEndpoint("--monitoringApiUrl", "ServiceControl Monitoring", monitoringUrl, new Version(4, 21), content =>
+        await CheckEndpoint("--monitoringApiUrl", "ServiceControl Monitoring", monitoringUrl, MinSCMonitoringVersion, content =>
         {
             return content.Contains("\"instanceType\"") && content.Contains("\"monitoring\"");
         }, cancellationToken);
@@ -426,6 +429,7 @@ partial class ServiceControlCommand : BaseCommand
         }
 
         var version = versionHeaders.Select(header => Version.TryParse(header, out var v) ? v : null).FirstOrDefault();
+        Console.WriteLine($"{instanceType} instance at {url} detected running version {version.ToString(3)}");
         if (version < minimumVersion)
         {
             throw new HaltException(10, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
