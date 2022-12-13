@@ -29,7 +29,7 @@ static class Versioning
         if (match.Success)
         {
             FullSha = match.Groups["FullSha"].Value;
-            ShortSha = FullSha.Substring(0, 7);
+            ShortSha = FullSha[..7];
 
             var coreVersion = match.Groups["CoreVersion"].Value;
             PreReleaseLabel = match.Groups["PrereleaseLabel"].Value;

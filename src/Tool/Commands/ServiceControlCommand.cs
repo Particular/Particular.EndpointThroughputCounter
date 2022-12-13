@@ -435,11 +435,7 @@ partial class ServiceControlCommand : BaseCommand
             throw new HaltException(10, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
         }
 
-        var content = await res.Content.ReadAsStringAsync(
-#if NET6_0_OR_GREATER // TODO: Remove with netcoreapp3.1 support
-                cancellationToken
-#endif
-        );
+        var content = await res.Content.ReadAsStringAsync(cancellationToken);
         if (!contentTest(content))
         {
             throw new HaltException(11, $"The server at {url} specified by parameter {paramName} does not appear to be a {instanceType} instance. Are you sure you have the right URL?");

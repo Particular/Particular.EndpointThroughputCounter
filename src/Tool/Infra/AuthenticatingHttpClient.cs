@@ -114,11 +114,7 @@ class AuthenticatingHttpClient : IDisposable
         {
             response.EnsureSuccessStatusCode();
             var content = response.Content;
-#if NET6_0_OR_GREATER
             return await content.ReadAsStreamAsync(cancellationToken);
-#else
-            return await content.ReadAsStreamAsync();
-#endif
         }
         catch (HttpRequestException x)
         {
