@@ -254,37 +254,7 @@
 
         static void ImportPrivateKey(RSA rsa, string privateKeyText)
         {
-#if NET5_0_OR_GREATER
             rsa.ImportFromPem(privateKeyText);
-#else
-            var base64Builder = new StringBuilder();
-            using (var reader = new StringReader(privateKeyText))
-            {
-                while (true)
-                {
-                    var line = reader.ReadLine();
-                    if (line == null)
-                    {
-                        break;
-                    }
-                    if (line.StartsWith("---"))
-                    {
-                        continue;
-                    }
-                    base64Builder.Append(line.Trim());
-                }
-            }
-
-            var base64Key = base64Builder.ToString();
-            var bytes = Convert.FromBase64String(base64Key);
-
-            rsa.ImportRSAPrivateKey(bytes, out int bytesRead);
-
-            if (bytesRead != bytes.Length)
-            {
-                throw new Exception("Failed to read public key.");
-            }
-#endif
         }
     }
 }
