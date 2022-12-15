@@ -162,27 +162,46 @@ class SqlServerCommand : BaseCommand
         DateTimeOffset maxWaitUntil = DateTimeOffset.Now.AddMinutes(15);
 
         var allTables = databases.SelectMany(db => db.Tables).ToArray();
+        var sqlExceptions = new Queue<SqlException>(5);
+
+        foreach (var db in databases)
+        {
+            db.LogSuccessOrFailure(true, reset: true);
+        }
 
         while (sampledQueues < totalQueues && DateTimeOffset.Now < maxWaitUntil)
         {
             foreach (var db in databases)
             {
-                using (var conn = await db.OpenConnectionAsync(cancellationToken))
+                try
                 {
-                    foreach (var table in db.Tables.Where(t => t.MaxRowVersion is null))
+                    using (var conn = await db.OpenConnectionAsync(cancellationToken))
                     {
-                        using (var cmd = conn.CreateCommand())
+                        foreach (var table in db.Tables.Where(t => t.MaxRowVersion is null))
                         {
-                            cmd.CommandText = $"select max(RowVersion) from {table.FullName} with (nolock);";
-                            var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                            if (value is long rowversion)
+                            using (var cmd = conn.CreateCommand())
                             {
-                                table.MaxRowVersion = rowversion;
-                                // If Min version isn't filled in and we somehow got lucky now, mark it down
-                                table.MinRowVersion ??= rowversion;
+                                cmd.CommandText = $"select max(RowVersion) from {table.FullName} with (nolock);";
+                                var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                                if (value is long rowversion)
+                                {
+                                    table.MaxRowVersion = rowversion;
+                                    // If Min version isn't filled in and we somehow got lucky now, mark it down
+                                    table.MinRowVersion ??= rowversion;
+                                }
                             }
                         }
+                    }
+                    db.LogSuccessOrFailure(true);
+                }
+                catch (SqlException x)
+                {
+                    db.LogSuccessOrFailure(false);
+                    sqlExceptions.Enqueue(x);
+                    while (sqlExceptions.Count > 5)
+                    {
+                        _ = sqlExceptions.Dequeue();
                     }
                 }
             }
@@ -206,6 +225,11 @@ class SqlServerCommand : BaseCommand
         // Clear out from the Write('\r') pattern
         Console.WriteLine();
         Console.WriteLine();
+
+        if (databases.Any(db => db.Tables.Any(t => t.MaxRowVersion is null) && db.ErrorCount > 0))
+        {
+            throw new AggregateException("Unable to sample maximum row versions without repeated SqlExceptions. The last 5 exception instances are included.", sqlExceptions);
+        }
     }
 
     async Task GetMinimums(CancellationToken cancellationToken)
@@ -215,6 +239,7 @@ class SqlServerCommand : BaseCommand
         int totalMsWaited = 0;
 
         var allTables = databases.SelectMany(db => db.Tables).ToArray();
+        var sqlExceptions = new Queue<SqlException>();
 
         try
         {
@@ -227,20 +252,33 @@ class SqlServerCommand : BaseCommand
 
                 foreach (var db in databases)
                 {
-                    using (var conn = await db.OpenConnectionAsync(cancellationToken))
+                    try
                     {
-                        foreach (var table in db.Tables.Where(t => t.MinRowVersion is null))
+                        using (var conn = await db.OpenConnectionAsync(cancellationToken))
                         {
-                            using (var cmd = conn.CreateCommand())
+                            foreach (var table in db.Tables.Where(t => t.MinRowVersion is null))
                             {
-                                cmd.CommandText = $"select min(RowVersion) from {table.FullName} with (nolock);";
-                                var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                                if (value is long rowversion)
+                                using (var cmd = conn.CreateCommand())
                                 {
-                                    table.MinRowVersion = rowversion;
+                                    cmd.CommandText = $"select min(RowVersion) from {table.FullName} with (nolock);";
+                                    var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                                    if (value is long rowversion)
+                                    {
+                                        table.MinRowVersion = rowversion;
+                                    }
                                 }
                             }
+                        }
+                        db.LogSuccessOrFailure(true);
+                    }
+                    catch (SqlException x)
+                    {
+                        db.LogSuccessOrFailure(false);
+                        sqlExceptions.Enqueue(x);
+                        while (sqlExceptions.Count > 5)
+                        {
+                            _ = sqlExceptions.Dequeue();
                         }
                     }
                 }
@@ -258,6 +296,7 @@ class SqlServerCommand : BaseCommand
                     }
                 }
             }
+
             Console.WriteLine();
             Console.WriteLine("Sampling of minimum row versions completed for all tables successfully.");
             Console.WriteLine();
@@ -266,6 +305,13 @@ class SqlServerCommand : BaseCommand
         {
             int successCount = allTables.Count(t => t.MinRowVersion is not null);
             Console.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{allTables.Length} values.");
+        }
+        finally
+        {
+            if (databases.Any(db => db.Tables.Any(t => t.MinRowVersion is null) && db.ErrorCount > 0))
+            {
+                throw new AggregateException("Unable to sample minimum row versions without repeated SqlExceptions. The last 5 exception instances are included.", sqlExceptions);
+            }
         }
     }
 
@@ -326,9 +372,11 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
     class DatabaseDetails
     {
         readonly string connectionString;
+        int successCount;
 
         public string DatabaseName { get; }
         public List<TableDetails> Tables { get; private set; }
+        public int ErrorCount { get; private set; }
 
         public DatabaseDetails(string connectionString)
         {
@@ -350,7 +398,7 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
                 tables = (await conn.QueryAsync<TableDetails>(GetQueueListCommandText)).ToList();
             }
 
-            tables.RemoveAll(t => t.IgnoreTable());
+            _ = tables.RemoveAll(t => t.IgnoreTable());
             foreach (var table in tables)
             {
                 table.Database = this;
@@ -364,6 +412,27 @@ WHERE t.TABLE_TYPE = 'BASE TABLE'";
             var conn = new SqlConnection(connectionString);
             await conn.OpenAsync(cancellationToken);
             return conn;
+        }
+
+        public void LogSuccessOrFailure(bool success, bool reset = false)
+        {
+            if (reset)
+            {
+                ErrorCount = 0;
+                successCount = 0;
+            }
+            else if (success)
+            {
+                successCount++;
+                if (successCount > 5)
+                {
+                    ErrorCount = 0;
+                }
+            }
+            else
+            {
+                ErrorCount++;
+            }
         }
     }
 
