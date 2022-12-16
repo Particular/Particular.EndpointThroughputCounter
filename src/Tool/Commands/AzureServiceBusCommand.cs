@@ -44,35 +44,47 @@ class AzureServiceBusCommand : BaseCommand
     }
 
 #pragma warning disable CS1998 // Haven't been able to get AzCommand to work async yet, currently synchronous
+
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
         var endTime = DateTime.UtcNow.Date.AddDays(1);
         var startTime = endTime.AddDays(-30);
 
-        var command = $"az monitor metrics list --resource {resourceId} --dimension EntityName --aggregation Total --start-time {startTime:yyyy-MM-dd}T00:00:00+00:00 --end-time {endTime:yyyy-MM-dd}T00:00:00+00:00 --interval 24h --metrics CompleteMessage";
+        var queueNames = await GetQueueNames(cancellationToken);
 
-        var jsonText = AzCommand(command);
+        Console.WriteLine($"Found {queueNames.Length} queues");
 
-        var json = JsonConvert.DeserializeObject<JObject>(jsonText);
+        var data = queueNames
+            .Select((queueName, index) =>
+            {
+                Console.WriteLine($"Gathering metrics for queue {index + 1}/{queueNames.Length}: {queueName}");
+                var command = $"az monitor metrics list --resource {resourceId} --aggregation Total --start-time {startTime:yyyy-MM-dd}T00:00:00+00:00 --end-time {endTime:yyyy-MM-dd}T00:00:00+00:00 --interval 24h --metrics CompleteMessage --filter \"EntityName eq '{queueName}'\"";
 
-        // First value because we only ask for CompleteMessage metrics
-        var completeMessageStats = json["value"][0] as JObject;
-        var timeseries = completeMessageStats["timeseries"] as JArray;
+                var jsonText = AzCommand(command);
 
-        var data = timeseries.Select(queueData =>
-        {
-            var queueName = (queueData["metadatavalues"] as JArray)
-                .Where(pair => pair["name"]["value"].Value<string>() == "entityname")
-                .Select(pair => pair["value"].Value<string>())
-                .FirstOrDefault();
+                var json = JsonConvert.DeserializeObject<JObject>(jsonText);
 
-            var maxThroughput = (queueData["data"] as JArray)
-                .Select(dayData => dayData["total"].Value<int>())
-                .Max();
+                // First value because we only ask for CompleteMessage metrics
+                var completeMessageStats = json["value"][0] as JObject;
+                var timeseries = completeMessageStats["timeseries"] as JArray;
 
-            return new QueueThroughput { QueueName = queueName, Throughput = maxThroughput };
-        })
-        .ToArray();
+                return timeseries.Select(queueData =>
+                {
+                    var queueName = (queueData["metadatavalues"] as JArray)
+                        .Where(pair => pair["name"]["value"].Value<string>() == "entityname")
+                        .Select(pair => pair["value"].Value<string>())
+                        .FirstOrDefault();
+
+                    var maxThroughput = (queueData["data"] as JArray)
+                        .Select(dayData => dayData["total"].Value<int>())
+                        .Max();
+
+                    return new QueueThroughput { QueueName = queueName, Throughput = maxThroughput };
+                })
+                .SingleOrDefault();
+            })
+            .Where(d => d != null)
+            .ToArray();
 
         return new QueueDetails
         {
@@ -81,6 +93,28 @@ class AzureServiceBusCommand : BaseCommand
             Queues = data,
             TimeOfObservation = TimeSpan.FromDays(1)
         };
+    }
+
+    async Task<string[]> GetQueueNames(CancellationToken cancellationToken)
+    {
+        var parts = resourceId.Split('/');
+        if (parts.Length != 9 || parts[0] != string.Empty || parts[1] != "subscriptions" || parts[3] != "resourceGroups" || parts[5] != "providers" || parts[6] != "Microsoft.ServiceBus" || parts[7] != "namespaces")
+        {
+            throw new Exception("The provided --resourceId value does not look like an Azure Service Bus resourceId. A correct value should take the form '/subscriptions/{GUID}/resourceGroups/{NAME}/providers/Microsoft.ServiceBus/namespaces/{NAME}'.");
+        }
+
+        var rg = parts[4];
+        var name = parts[8];
+
+        var command = $"az servicebus queue list --namespace-name {name} --resource-group {rg}";
+
+        var jsonText = AzCommand(command);
+
+        var json = JsonConvert.DeserializeObject<JArray>(jsonText);
+
+        return json.Select(token => token["name"].Value<string>())
+            .OrderBy(name => name)
+            .ToArray();
     }
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
