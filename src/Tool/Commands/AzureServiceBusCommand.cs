@@ -161,7 +161,7 @@ class AzureServiceBusCommand : BaseCommand
             }
             else if (p.ExitCode != 0)
             {
-                throw new Exception("Azure CLI command completed with exit code {p.ExitCode} but no output to stderr.");
+                throw new Exception($"Azure CLI command completed with exit code {p.ExitCode} but no output to stderr.");
             }
 
             return output;
