@@ -26,3 +26,7 @@ The key pair can be trivially regenerated in case the private key is exposed, be
 4. The new private and public keys should be stored in LastPass.
 5. Any app needing to verify report files must be configured with the private key as an environment variable.
 
+## Releasing
+
+Tag the main branch with a new version number to trigger the release build.
+
