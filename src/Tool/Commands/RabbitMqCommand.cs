@@ -34,9 +34,20 @@ class RabbitMqCommand : BaseCommand
     }
 
     readonly RabbitManagement rabbit;
+    readonly TimeSpan pollingInterval;
+
+    RabbitDetails rabbitDetails;
 
     public RabbitMqCommand(SharedOptions shared, RabbitManagement rabbit)
-        : base(shared) => this.rabbit = rabbit;
+        : base(shared)
+    {
+        this.rabbit = rabbit;
+#if DEBUG
+        pollingInterval = TimeSpan.FromSeconds(10);
+#else
+        pollingInterval = TimeSpan.FromMinutes(5);
+#endif
+    }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
@@ -44,12 +55,41 @@ class RabbitMqCommand : BaseCommand
         var startData = await rabbit.GetQueueDetails(cancellationToken);
         var startTime = DateTimeOffset.Now;
 
+        if (startData.All(q => q.AckedMessages is null))
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, $"None of the queues at {rabbit.ManagementUri}/api/queues is reporting any message_stats elements. Are you sure the system is actively processing messages and is configured to track queue statistics?");
+        }
+
+        var trackers = startData
+            .Where(start => IncludeQueue(start.Name))
+            .Select(start => new QueueTracker(start))
+            .ToDictionary(start => start.Name, StringComparer.InvariantCultureIgnoreCase);
+        var nextPollTime = DateTime.UtcNow + pollingInterval;
+
+        async Task UpdateTrackers()
+        {
+            var data = await rabbit.GetQueueDetails(cancellationToken);
+            foreach (var q in data)
+            {
+                if (trackers.TryGetValue(q.Name, out var tracker))
+                {
+                    tracker.AddData(q);
+                }
+            }
+            nextPollTime = DateTime.UtcNow + pollingInterval;
+        }
+
         Console.WriteLine("Waiting until next reading...");
         var waitUntil = DateTime.UtcNow + PollingRunTime;
         while (DateTime.UtcNow < waitUntil)
         {
+            if (DateTime.UtcNow > nextPollTime)
+            {
+                await UpdateTrackers();
+            }
+
             var timeLeft = waitUntil - DateTime.UtcNow;
-            Console.Write($"\rWait Time Left: {timeLeft:hh':'mm':'ss}");
+            Console.Write($"\rData Collection Time Left: {timeLeft:hh':'mm':'ss}");
             await Task.Delay(250, cancellationToken);
         }
 
@@ -57,10 +97,15 @@ class RabbitMqCommand : BaseCommand
         Console.WriteLine();
 
         Console.WriteLine("Taking final queue statistics.");
-        var endData = await rabbit.GetQueueDetails(cancellationToken);
+        await UpdateTrackers();
         var endTime = DateTimeOffset.Now;
 
-        var queues = CalculateThroughput(startData, endData)
+        var queues = trackers.Values
+            .Select(t => new QueueThroughput
+            {
+                QueueName = t.Name,
+                Throughput = t.AckedMessages
+            })
             .OrderBy(q => q.QueueName)
             .ToArray();
 
@@ -72,24 +117,14 @@ class RabbitMqCommand : BaseCommand
         };
     }
 
-    protected IEnumerable<QueueThroughput> CalculateThroughput(List<RabbitQueueDetails> start, List<RabbitQueueDetails> end)
-    {
-        var queueThroughputs = new List<QueueThroughput>();
-        var endDict = end.ToDictionary(q => q.Name, StringComparer.OrdinalIgnoreCase);
-
-        foreach (var queue in start.Where(q => IncludeQueue(q.Name)))
-        {
-            if (endDict.TryGetValue(queue.Name, out var queueEnd))
-            {
-                queueThroughputs.Add(new QueueThroughput { QueueName = queue.Name, Throughput = queueEnd.AckedMessages - queue.AckedMessages });
-            }
-        }
-
-        return queueThroughputs;
-    }
-
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
+        rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
+
+        Console.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
+        Console.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
+        Console.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
+
         var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
             .Where(q => IncludeQueue(q.Name))
             .OrderBy(q => q.Name)
@@ -99,7 +134,7 @@ class RabbitMqCommand : BaseCommand
         return new EnvironmentDetails
         {
             MessageTransport = "RabbitMQ",
-            ReportMethod = "ThroughputTool: RabbitMQ Admin",
+            ReportMethod = rabbitDetails.ToReportMethodString(),
             QueueNames = queueNames
         };
     }
@@ -121,6 +156,33 @@ class RabbitMqCommand : BaseCommand
         }
 
         return true;
+    }
+
+    class QueueTracker
+    {
+        public QueueTracker(RabbitQueueDetails startReading)
+        {
+            Name = startReading.Name;
+            Baseline = startReading.AckedMessages ?? 0;
+            AckedMessages = 0;
+        }
+
+        public string Name { get; init; }
+        public int Baseline { get; private set; }
+        public int AckedMessages { get; private set; }
+
+        public void AddData(RabbitQueueDetails newReading)
+        {
+            if (newReading.AckedMessages is not null)
+            {
+                if (newReading.AckedMessages.Value >= Baseline)
+                {
+                    var newlyAckedMessages = newReading.AckedMessages.Value - Baseline;
+                    AckedMessages += newlyAckedMessages;
+                }
+                Baseline = newReading.AckedMessages.Value;
+            }
+        }
     }
 }
 

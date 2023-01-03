@@ -38,7 +38,7 @@ abstract class BaseCommand
     {
         if (File.Exists(outputPath) && !isDevelopment)
         {
-            throw new HaltException(1, $"ERROR: File already exists at {outputPath}, running would overwrite");
+            throw new HaltException(HaltReason.OutputFile, $"ERROR: File already exists at {outputPath}, running would overwrite");
         }
 
         try
@@ -49,7 +49,7 @@ abstract class BaseCommand
         }
         catch (Exception x)
         {
-            throw new HaltException(2, $"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
+            throw new HaltException(HaltReason.OutputFile, $"ERROR: Unable to write to output file at {outputPath}: {x.Message}");
         }
     }
 
@@ -106,7 +106,7 @@ abstract class BaseCommand
 #if !DEBUG
         if (string.Equals(shared.CustomerName, "Particular Software", StringComparison.InvariantCultureIgnoreCase))
         {
-            throw new HaltException(12, "Customer name 'Particular Software' is not allowed.");
+            throw new HaltException(HaltReason.InvalidConfig, "Customer name 'Particular Software' is not allowed.");
         }
 #endif
 
@@ -152,7 +152,7 @@ abstract class BaseCommand
             {
                 if (!Confirm("Do you wish to proceed?"))
                 {
-                    throw new HaltException(3, "Exiting at user's request");
+                    throw new HaltException(HaltReason.UserCancellation, "Exiting at user's request");
                 }
             }
         }

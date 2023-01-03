@@ -325,7 +325,7 @@ class SqlServerCommand : BaseCommand
 
             if (!db.Tables.Any())
             {
-                throw new HaltException(5, $"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
+                throw new HaltException(HaltReason.InvalidEnvironment, $"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
             }
         }
 

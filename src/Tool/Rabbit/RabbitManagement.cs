@@ -8,18 +8,19 @@ using Newtonsoft.Json.Linq;
 
 class RabbitManagement
 {
-    readonly string managementUri;
     readonly AuthenticatingHttpClient http;
     readonly JsonSerializer serializer;
 
     public RabbitManagement(string managementUri)
     {
-        this.managementUri = managementUri;
+        ManagementUri = managementUri.TrimEnd('/');
 
         http = new AuthenticatingHttpClient();
 
         serializer = new JsonSerializer();
     }
+
+    public string ManagementUri { get; }
 
     public async Task<List<RabbitQueueDetails>> GetQueueDetails(CancellationToken cancellationToken = default)
     {
@@ -51,7 +52,7 @@ class RabbitManagement
 
     async Task<(RabbitQueueDetails[], bool morePages)> GetPage(int page, CancellationToken cancellationToken)
     {
-        var url = $"{managementUri}/api/queues?page={page}&page_size=500&name=&use_regex=false&pagination=true";
+        var url = $"{ManagementUri}/api/queues?page={page}&page_size=500&name=&use_regex=false&pagination=true";
 
         using (var stream = await http.GetStreamAsync(url, cancellationToken))
         using (var reader = new StreamReader(stream))
@@ -73,4 +74,33 @@ class RabbitManagement
         }
     }
 
+    public async Task<RabbitDetails> GetRabbitDetails(CancellationToken cancellationToken = default)
+    {
+        var url = $"{ManagementUri}/api/overview";
+
+        using (var stream = await http.GetStreamAsync(url, cancellationToken))
+        using (var reader = new StreamReader(stream))
+        using (var jsonReader = new JsonTextReader(reader))
+        {
+            var obj = serializer.Deserialize<JObject>(jsonReader);
+
+            var statsDisabled = obj["disable_stats"].Value<bool>();
+
+            if (statsDisabled)
+            {
+                throw new HaltException(HaltReason.InvalidEnvironment, $"The RabbitMQ broker is configured with `management.disable_stats = true` or `management_agent.disable_metrics_collector = true` and as a result queue statistics cannot be collected using this tool. Consider changing the configuration of the RabbitMQ broker.");
+            }
+
+            var rabbitVersion = obj["rabbitmq_version"] ?? obj["product_version"];
+            var mgmtVersion = obj["management_version"];
+            var clusterName = obj["cluster_name"];
+
+            return new RabbitDetails
+            {
+                ClusterName = clusterName?.Value<string>() ?? "Unknown",
+                RabbitVersion = mgmtVersion?.Value<string>() ?? "Unknown",
+                ManagementVersion = mgmtVersion?.Value<string>() ?? "Unknown"
+            };
+        }
+    }
 }
