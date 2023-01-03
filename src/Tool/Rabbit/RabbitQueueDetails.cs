@@ -5,7 +5,7 @@ class RabbitQueueDetails
     public RabbitQueueDetails(JToken token)
     {
         Name = token["name"].Value<string>();
-        if (token["message_stats"] is JObject stats && stats["ack"] is JObject val)
+        if (token["message_stats"] is JObject stats && stats["ack"] is JValue val)
         {
             AckedMessages = val.Value<int>();
         }
