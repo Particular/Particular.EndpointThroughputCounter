@@ -106,7 +106,7 @@ abstract class BaseCommand
 #if !DEBUG
         if (string.Equals(shared.CustomerName, "Particular Software", StringComparison.InvariantCultureIgnoreCase))
         {
-            throw new HaltException(12, "Customer name 'Particular Software' is not allowed.");
+            throw new HaltException(HaltReason.InvalidConfig, "Customer name 'Particular Software' is not allowed.");
         }
 #endif
 
