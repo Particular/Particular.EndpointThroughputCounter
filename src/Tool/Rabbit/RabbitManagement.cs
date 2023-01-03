@@ -73,4 +73,28 @@ class RabbitManagement
         }
     }
 
+    public async Task<string> GetRabbitDetails(CancellationToken cancellationToken = default)
+    {
+        var url = $"{managementUri}/api/overview";
+
+        using (var stream = await http.GetStreamAsync(url, cancellationToken))
+        using (var reader = new StreamReader(stream))
+        using (var jsonReader = new JsonTextReader(reader))
+        {
+            var obj = serializer.Deserialize<JObject>(jsonReader);
+
+            var statsDisabled = obj["disable_stats"].Value<bool>();
+
+            if (statsDisabled)
+            {
+                throw new HaltException(HaltReason.InvalidEnvironment, $"The RabbitMQ broker is configured with `management.disable_stats = true` or `management_agent.disable_metrics_collector = true` and as a result queue statistics cannot be collected using this tool. Consider changing the configuration of the RabbitMQ broker.");
+            }
+
+            var rabbitVersion = (obj["rabbitmq_version"] ?? obj["product_version"])?.Value<string>() ?? "Unknown";
+            var mgmtVersion = obj["management_version"]?.Value<string>() ?? "Unknown";
+            var clusterName = obj["cluster_name"]?.Value<string>() ?? "Unknown";
+
+            return $"RabbitMQ v{rabbitVersion}, Mgmt v{mgmtVersion}, Cluster {clusterName}";
+        }
+    }
 }

@@ -90,6 +90,8 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
+        var rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
+
         var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
             .Where(q => IncludeQueue(q.Name))
             .OrderBy(q => q.Name)
@@ -99,7 +101,7 @@ class RabbitMqCommand : BaseCommand
         return new EnvironmentDetails
         {
             MessageTransport = "RabbitMQ",
-            ReportMethod = "ThroughputTool: RabbitMQ Admin",
+            ReportMethod = rabbitDetails,
             QueueNames = queueNames
         };
     }
