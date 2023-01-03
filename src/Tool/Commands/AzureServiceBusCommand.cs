@@ -123,8 +123,8 @@ class AzureServiceBusCommand : BaseCommand
         }
         catch (CredentialUnavailableException x)
         {
-            // TODO Change to HaltReason.InvalidEnvironment after merge of https://github.com/Particular/Particular.EndpointThroughputCounter/pull/147
-            throw new HaltException(9999, x.Message);
+            // Azure gives a good error message as part of the exception
+            throw new HaltException(HaltReason.InvalidEnvironment, x.Message);
         }
     }
 
