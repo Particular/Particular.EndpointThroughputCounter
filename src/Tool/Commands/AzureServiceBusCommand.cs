@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
 using System.IO;
@@ -6,6 +7,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Identity;
+using Azure.Monitor.Query;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
@@ -36,14 +39,14 @@ class AzureServiceBusCommand : BaseCommand
     }
 
     readonly string resourceId;
+    readonly MetricsQueryClient metrics;
 
     public AzureServiceBusCommand(SharedOptions shared, string resourceId)
     : base(shared)
     {
         this.resourceId = resourceId;
+        metrics = new MetricsQueryClient(new DefaultAzureCredential());
     }
-
-#pragma warning disable CS1998 // Haven't been able to get AzCommand to work async yet, currently synchronous
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
@@ -54,46 +57,44 @@ class AzureServiceBusCommand : BaseCommand
 
         Console.WriteLine($"Found {queueNames.Length} queues");
 
-        var data = queueNames
-            .Select((queueName, index) =>
-            {
-                Console.WriteLine($"Gathering metrics for queue {index + 1}/{queueNames.Length}: {queueName}");
-                var command = $"az monitor metrics list --resource {resourceId} --aggregation Total --start-time {startTime:yyyy-MM-dd}T00:00:00+00:00 --end-time {endTime:yyyy-MM-dd}T00:00:00+00:00 --interval 24h --metrics CompleteMessage --filter \"EntityName eq '{queueName}'\"";
+        var results = new List<QueueThroughput>();
 
-                var jsonText = AzCommand(command);
+        for (var i = 0; i < queueNames.Length; i++)
+        {
+            var queueName = queueNames[i];
 
-                var json = JsonConvert.DeserializeObject<JObject>(jsonText);
+            Console.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
 
-                // First value because we only ask for CompleteMessage metrics
-                var completeMessageStats = json["value"][0] as JObject;
-                var timeseries = completeMessageStats["timeseries"] as JArray;
-
-                return timeseries.Select(queueData =>
+            var response = await metrics.QueryResourceAsync(resourceId,
+                new[] { "CompleteMessage" },
+                new MetricsQueryOptions
                 {
-                    var queueName = (queueData["metadatavalues"] as JArray)
-                        .Where(pair => pair["name"]["value"].Value<string>() == "entityname")
-                        .Select(pair => pair["value"].Value<string>())
-                        .FirstOrDefault();
+                    Filter = $"EntityName eq '{queueName}'",
+                    TimeRange = new QueryTimeRange(startTime, endTime),
+                    Granularity = TimeSpan.FromDays(1)
+                },
+                cancellationToken);
 
-                    var maxThroughput = (queueData["data"] as JArray)
-                        .Select(dayData => dayData["total"].Value<int>())
-                        .Max();
+            // Yeah, it's buried deep
+            var metricValues = response.Value.Metrics.FirstOrDefault()?.TimeSeries.FirstOrDefault()?.Values;
 
-                    return new QueueThroughput { QueueName = queueName, Throughput = maxThroughput };
-                })
-                .SingleOrDefault();
-            })
-            .Where(d => d != null)
-            .ToArray();
+            if (metricValues is not null)
+            {
+                var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
+                results.Add(new QueueThroughput { QueueName = queueName, Throughput = (int?)maxThroughput });
+            }
+        }
 
         return new QueueDetails
         {
             StartTime = new DateTimeOffset(startTime, TimeSpan.Zero),
             EndTime = new DateTimeOffset(endTime, TimeSpan.Zero),
-            Queues = data,
+            Queues = results.OrderBy(q => q.QueueName).ToArray(),
             TimeOfObservation = TimeSpan.FromDays(1)
         };
     }
+
+#pragma warning disable CS1998 // Haven't been able to get AzCommand to work async yet, currently synchronous
 
     async Task<string[]> GetQueueNames(CancellationToken cancellationToken)
     {
