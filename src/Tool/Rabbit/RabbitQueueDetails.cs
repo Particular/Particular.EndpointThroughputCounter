@@ -11,5 +11,5 @@ class RabbitQueueDetails
         }
     }
     public string Name { get; }
-    public int AckedMessages { get; }
+    public int? AckedMessages { get; }
 }

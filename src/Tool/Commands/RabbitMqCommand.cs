@@ -35,6 +35,8 @@ class RabbitMqCommand : BaseCommand
 
     readonly RabbitManagement rabbit;
 
+    RabbitDetails rabbitDetails;
+
     public RabbitMqCommand(SharedOptions shared, RabbitManagement rabbit)
         : base(shared) => this.rabbit = rabbit;
 
@@ -43,6 +45,11 @@ class RabbitMqCommand : BaseCommand
         Console.WriteLine("Taking initial queue statistics.");
         var startData = await rabbit.GetQueueDetails(cancellationToken);
         var startTime = DateTimeOffset.Now;
+
+        if (startData.All(q => q.AckedMessages is null))
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, $"None of the queues at {rabbit.ManagementUri}/api/queues is reporting any message_stats elements. Are you sure the system is actively processing messages and is configured to track queue statistics?");
+        }
 
         Console.WriteLine("Waiting until next reading...");
         var waitUntil = DateTime.UtcNow + PollingRunTime;
@@ -90,7 +97,11 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        var rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
+        rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
+
+        Console.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
+        Console.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
+        Console.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
 
         var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
             .Where(q => IncludeQueue(q.Name))
@@ -101,7 +112,7 @@ class RabbitMqCommand : BaseCommand
         return new EnvironmentDetails
         {
             MessageTransport = "RabbitMQ",
-            ReportMethod = rabbitDetails,
+            ReportMethod = rabbitDetails.ToReportMethodString(),
             QueueNames = queueNames
         };
     }
