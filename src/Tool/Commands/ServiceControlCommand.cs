@@ -363,7 +363,7 @@ partial class ServiceControlCommand : BaseCommand
 
         if (!knownEndpoints.Any())
         {
-            throw new HaltException(6, "Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
+            throw new HaltException(HaltReason.InvalidEnvironment, "Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
         }
 
         var configUrl = $"{primaryUrl}/configuration";
@@ -374,7 +374,7 @@ partial class ServiceControlCommand : BaseCommand
         var transportTypeToken = obj["transport"]["transport_customization_type"];
         if (transportTypeToken is null)
         {
-            throw new HaltException(4, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
+            throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
         }
 
         var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
@@ -404,7 +404,7 @@ partial class ServiceControlCommand : BaseCommand
     {
         if (string.IsNullOrWhiteSpace(url))
         {
-            throw new HaltException(7, $"The {paramName} option specifying the {instanceType} URL was not provided.");
+            throw new HaltException(HaltReason.InvalidConfig, $"The {paramName} option specifying the {instanceType} URL was not provided.");
         }
 
         var res = await http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
@@ -420,25 +420,25 @@ partial class ServiceControlCommand : BaseCommand
                 b.AppendLine($"  {header.Key}: {header.Value}");
             }
 
-            throw new HaltException(8, b.ToString());
+            throw new HaltException(HaltReason.RuntimeError, b.ToString());
         }
 
         if (!res.Headers.TryGetValues("X-Particular-Version", out var versionHeaders))
         {
-            throw new HaltException(9, $"The server at {url} specified by parameter {paramName} does not appear to be a ServiceControl instance. Are you sure you have the right URL?");
+            throw new HaltException(HaltReason.InvalidConfig, $"The server at {url} specified by parameter {paramName} does not appear to be a ServiceControl instance. Are you sure you have the right URL?");
         }
 
         var version = versionHeaders.Select(header => Version.TryParse(header, out var v) ? v : null).FirstOrDefault();
         Console.WriteLine($"{instanceType} instance at {url} detected running version {version.ToString(3)}");
         if (version < minimumVersion)
         {
-            throw new HaltException(10, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
+            throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
         }
 
         var content = await res.Content.ReadAsStringAsync(cancellationToken);
         if (!contentTest(content))
         {
-            throw new HaltException(11, $"The server at {url} specified by parameter {paramName} does not appear to be a {instanceType} instance. Are you sure you have the right URL?");
+            throw new HaltException(HaltReason.InvalidConfig, $"The server at {url} specified by parameter {paramName} does not appear to be a {instanceType} instance. Are you sure you have the right URL?");
         }
     }
 
