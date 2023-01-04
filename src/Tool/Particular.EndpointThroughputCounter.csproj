@@ -26,6 +26,10 @@
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
+  <ItemGroup Label="Required for AWS to use AssumeRoleAWSCredentials but not directly referenced">
+    <PackageReference Include="AWSSDK.SecurityToken" Version="3.7.100.48" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Particular.Packaging" Version="2.2.0" PrivateAssets="All" />
   </ItemGroup>
