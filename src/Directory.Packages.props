@@ -35,6 +35,4 @@
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.100.47" />
   </ItemGroup>
   
-
-  
 </Project>
