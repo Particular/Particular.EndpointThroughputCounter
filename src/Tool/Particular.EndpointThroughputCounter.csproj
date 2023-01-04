@@ -15,27 +15,26 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.CloudWatch" Version="3.7.102.12" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.11.1" />
-    <PackageReference Include="Azure.Monitor.Query" Version="1.1.0" />
-    <PackageReference Include="Dapper" Version="2.0.123" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
-    <PackageReference Include="NuGet.Protocol" Version="6.4.0" />
-    <PackageReference Include="RabbitMQ.Client" Version="6.4.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="AWSSDK.CloudWatch" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="Azure.Monitor.Query" />
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="NuGet.Protocol" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
   <ItemGroup Label="Required for AWS to use AssumeRoleAWSCredentials but not directly referenced">
-    <PackageReference Include="AWSSDK.SecurityToken" Version="3.7.100.48" />
+    <PackageReference Include="AWSSDK.SecurityToken" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="Particular.Packaging" Version="2.2.0" PrivateAssets="All" />
+    <PackageReference Include="Particular.Packaging" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageReference Include="AWSSDK.SQS" Version="3.7.100.47" />
+    <PackageReference Include="AWSSDK.SQS" />
   </ItemGroup>
 
   <ItemGroup>
