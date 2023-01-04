@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.CloudWatch" />
+    <PackageReference Include="AWSSDK.SecurityToken" />
+    <PackageReference Include="AWSSDK.SQS" />
     <PackageReference Include="Azure.Messaging.ServiceBus" />
     <PackageReference Include="Azure.Monitor.Query"/>
     <PackageReference Include="Dapper" />
@@ -32,16 +34,8 @@
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
-  <ItemGroup Label="Required for AWS to use AssumeRoleAWSCredentials but not directly referenced">
-    <PackageReference Include="AWSSDK.SecurityToken" />
-  </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Particular.Packaging" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageReference Include="AWSSDK.SQS" />
   </ItemGroup>
 
   <ItemGroup>
