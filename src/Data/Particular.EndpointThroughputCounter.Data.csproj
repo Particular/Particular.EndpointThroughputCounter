@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFrameworks>net6.0</TargetFrameworks>
     <DebugType>Embedded</DebugType>
-    <LangVersion>10</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
