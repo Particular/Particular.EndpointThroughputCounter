@@ -20,7 +20,7 @@
     <PackageVersion Include="PublicApiGenerator" Version="10.3.0" />
     <PackageVersion Include="RabbitMQ.Client" Version="6.4.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-    <PackageVersion Include="Particular.Packaging" Version="2.2.0" />
+    <PackageVersion Include="Particular.Packaging" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
