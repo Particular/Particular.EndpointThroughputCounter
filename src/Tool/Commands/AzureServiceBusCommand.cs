@@ -20,6 +20,8 @@ class AzureServiceBusCommand : BaseCommand
             name: "--resourceId",
             description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.");
 
+        var authTypeArg = new Option<string>("--authType", "Specify the Azure authentication type.");
+
         var serviceBusDomainArg = new Option<string>("--serviceBusDomain",
             description: "The Service Bus domain. Defaults to 'servicebus.windows.net' and only must be specified for Azure customers using non-standard domains like government cloud customers.")
         {
@@ -36,9 +38,10 @@ class AzureServiceBusCommand : BaseCommand
             var shared = SharedOptions.Parse(context);
             var resourceId = context.ParseResult.GetValueForOption(resourceIdArg);
             var serviceBusDomain = context.ParseResult.GetValueForOption(serviceBusDomainArg);
+            var authType = context.ParseResult.GetValueForOption(authTypeArg);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain);
+            var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain, authType);
             await runner.Run(cancellationToken);
         });
 
@@ -51,7 +54,7 @@ class AzureServiceBusCommand : BaseCommand
     readonly MetricsQueryClient metrics;
     readonly ServiceBusAdministrationClient serviceBusClient;
 
-    public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain)
+    public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain, string authType)
     : base(shared)
     {
         this.resourceId = resourceId;
@@ -68,7 +71,18 @@ class AzureServiceBusCommand : BaseCommand
 
         fullyQualifiedNamespace = $"{name}.{serviceBusDomain}";
 
-        credentials = new DefaultAzureCredential();
+        credentials = authType switch
+        {
+            nameof(EnvironmentCredential) => new EnvironmentCredential(),
+            nameof(ManagedIdentityCredential) => new ManagedIdentityCredential(),
+            nameof(SharedTokenCacheCredential) => new SharedTokenCacheCredential(),
+            nameof(VisualStudioCredential) => new VisualStudioCredential(),
+            nameof(VisualStudioCodeCredential) => new VisualStudioCodeCredential(),
+            nameof(AzureCliCredential) => new AzureCliCredential(),
+            nameof(AzurePowerShellCredential) => new AzurePowerShellCredential(),
+            nameof(InteractiveBrowserCredential) => new InteractiveBrowserCredential(),
+            _ => new DefaultAzureCredential()
+        };
         metrics = new MetricsQueryClient(credentials);
         serviceBusClient = new ServiceBusAdministrationClient(fullyQualifiedNamespace, credentials);
     }
@@ -130,6 +144,8 @@ class AzureServiceBusCommand : BaseCommand
 
     async Task<string[]> GetQueueNames(CancellationToken cancellationToken)
     {
+        Console.WriteLine($"Authenticating using {credentials.GetType().Name}");
+
         var queueList = new List<string>();
 
         await foreach (var queue in serviceBusClient.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
