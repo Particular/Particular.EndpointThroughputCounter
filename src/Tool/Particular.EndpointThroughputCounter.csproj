@@ -7,7 +7,6 @@
     <PackAsTool>True</PackAsTool>
     <Description>A tool to measure per-endpoint throughput of an NServiceBus system.</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <LangVersion>10</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
