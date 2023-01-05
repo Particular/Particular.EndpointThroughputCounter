@@ -20,7 +20,10 @@ class AzureServiceBusCommand : BaseCommand
             name: "--resourceId",
             description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.");
 
-        var authTypeArg = new Option<string>("--authType", "Specify the Azure authentication type.");
+        var authTypeArg = new Option<string>("--authType", "Specify the Azure authentication type.")
+        {
+            IsRequired = false
+        };
 
         var serviceBusDomainArg = new Option<string>("--serviceBusDomain",
             description: "The Service Bus domain. Defaults to 'servicebus.windows.net' and only must be specified for Azure customers using non-standard domains like government cloud customers.")
@@ -31,6 +34,7 @@ class AzureServiceBusCommand : BaseCommand
         serviceBusDomainArg.SetDefaultValue("servicebus.windows.net");
 
         command.AddOption(resourceIdArg);
+        command.AddOption(authTypeArg);
         command.AddOption(serviceBusDomainArg);
 
         command.SetHandler(async context =>
