@@ -84,8 +84,8 @@ class AzureServiceBusCommand : BaseCommand
             nameof(VisualStudioCodeCredential) => new VisualStudioCodeCredential(),
             nameof(AzureCliCredential) => new AzureCliCredential(),
             nameof(AzurePowerShellCredential) => new AzurePowerShellCredential(),
-            nameof(InteractiveBrowserCredential) => new InteractiveBrowserCredential(),
-            _ => new DefaultAzureCredential()
+            //nameof(InteractiveBrowserCredential) => new InteractiveBrowserCredential(),
+            _ => new AzureCliCredential()
         };
         metrics = new MetricsQueryClient(credentials);
         serviceBusClient = new ServiceBusAdministrationClient(fullyQualifiedNamespace, credentials);
