@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.102.13" />
+    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.102.14" />
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
