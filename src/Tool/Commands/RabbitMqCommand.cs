@@ -62,9 +62,9 @@ class RabbitMqCommand : BaseCommand
 
         var trackers = startData
             .Where(start => IncludeQueue(start.Name))
-            .Select(start => new QueueTracker(start))
-            // RabbitMQ queue names are case sensitive
-            .ToDictionary(start => start.Name, StringComparer.InvariantCulture);
+            // RabbitMQ queue names are case sensitive and SOMEHOW sometimes we see duplicates anyway
+            .GroupBy(start => start.Name, StringComparer.InvariantCulture)
+            .ToDictionary(g => g.Key, g => new QueueTracker(g.First()), StringComparer.InvariantCulture);
         var nextPollTime = DateTime.UtcNow + pollingInterval;
 
         async Task UpdateTrackers()
