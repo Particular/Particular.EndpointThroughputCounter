@@ -121,6 +121,11 @@ abstract class BaseCommand
 
         if (!metadata.SkipEndpointListCheck)
         {
+            if (!metadata.QueueNames.Any())
+            {
+                throw new HaltException(HaltReason.InvalidEnvironment, "No queues or endpoints could be discovered. Please check to make sure your configuration is correct.");
+            }
+
             var mappedQueueNames = metadata.QueueNames
                 .Select(name => new { Name = name, Masked = MaskName(name) })
                 .ToArray();
