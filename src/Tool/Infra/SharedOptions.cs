@@ -21,15 +21,30 @@ class SharedOptions
         Arity = ArgumentArity.ZeroOrOne
     };
 
+    public static readonly Option<int> runtimeInHours =
+        new(name: "--runtime", getDefaultValue: () => 24) { IsHidden = true };
+
     public string[] MaskNames { get; private set; }
     public string CustomerName { get; set; }
     public bool RunUnattended { get; private set; }
+    public int RuntimeInHours { get; private set; }
 
     public static void Register(Command command)
     {
+        runtimeInHours.AddValidator(result =>
+        {
+            var runtime = result.GetValueForOption(runtimeInHours);
+
+            if (runtime is < 12 or > 24)
+            {
+                result.ErrorMessage = "runtime must be between 12 and 24 hours.";
+            }
+        });
+
         command.AddGlobalOption(maskNames);
         command.AddGlobalOption(customerName);
         command.AddGlobalOption(runUnattended);
+        command.AddGlobalOption(runtimeInHours);
     }
 
     public static SharedOptions Parse(InvocationContext context)
@@ -40,7 +55,8 @@ class SharedOptions
         {
             MaskNames = parse.GetValueForOption(maskNames),
             CustomerName = parse.GetValueForOption(customerName),
-            RunUnattended = parse.GetValueForOption(runUnattended)
+            RunUnattended = parse.GetValueForOption(runUnattended),
+            RuntimeInHours = parse.GetValueForOption(runtimeInHours)
         };
     }
 }
