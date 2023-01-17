@@ -16,7 +16,11 @@ abstract class BaseCommand
     public BaseCommand(SharedOptions shared)
     {
         this.shared = shared;
-
+#if DEBUG 
+        this.PollingRunTime = TimeSpan.FromMinutes(1);
+#else
+        this.PollingRunTime = TimeSpan.FromHours(shared.RuntimeInHours);
+#endif
         var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
 
         if (!bool.TryParse(Environment.GetEnvironmentVariable("IS_DEVELOPMENT"), out isDevelopment))
@@ -241,10 +245,5 @@ abstract class BaseCommand
 
     protected abstract Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default);
 
-#if DEBUG
-    protected TimeSpan PollingRunTime = TimeSpan.FromMinutes(1);
-#else
-    protected TimeSpan PollingRunTime = TimeSpan.FromDays(1);
-#endif
-
+    protected TimeSpan PollingRunTime;
 }
