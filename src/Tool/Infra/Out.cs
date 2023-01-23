@@ -144,4 +144,9 @@ public static class Out
         Console.WriteLine();
         lastProgressMessage = null;
     }
+
+    public static string GetToolOutput()
+    {
+        return output.ToString();
+    }
 }

@@ -75,7 +75,7 @@ abstract class BaseCommand
             Out.WriteLine();
             Out.WriteLine();
             Out.WriteError("Exiting because cancellation was requested.");
-            Environment.ExitCode = -1;
+            Environment.ExitCode = (int)HaltReason.UserCancellation;
         }
         catch (Exception x)
         {
@@ -86,7 +86,9 @@ abstract class BaseCommand
                 w.WriteLine("Unable to run tool, please contact Particular Software support.");
             });
 
-            Environment.ExitCode = -2;
+            Exceptions.ReportError(x);
+
+            Environment.ExitCode = (int)HaltReason.RuntimeError;
         }
     }
 

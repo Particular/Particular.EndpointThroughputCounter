@@ -20,7 +20,7 @@
             var decompiler = new CSharpDecompiler(assembly.Location, new DecompilerSettings());
 
             var types = assembly.GetTypes()
-                .Where(t => t != typeof(Out))
+                .Where(t => t != typeof(Out) && t != typeof(Exceptions)) // Only these 2 classes allowed to use Console.WriteLine directly
                 .Where(t => t.DeclaringType is null)
                 .Where(t => t.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                 .ToArray();

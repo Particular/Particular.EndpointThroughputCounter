@@ -32,5 +32,5 @@ catch (Exception x)
         w.WriteLine("Unable to execute command, please contact Particular Software support.");
     });
 
-    return -1;
+    return (int)HaltReason.RuntimeError;
 }

@@ -28,6 +28,7 @@
     <PackageReference Include="Azure.Monitor.Query"/>
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
     <PackageReference Include="Newtonsoft.Json"  />
     <PackageReference Include="NuGet.Protocol"  />
     <PackageReference Include="RabbitMQ.Client" />
