@@ -79,25 +79,21 @@ partial class ServiceControlCommand : BaseCommand
 
         var start = DateTimeOffset.Now.AddMinutes(-MinutesPerSample);
 
-        Console.WriteLine($"The tool will sample ServiceControl data {SampleCount} times at {MinutesPerSample}-minute intervals.");
+        Out.WriteLine($"The tool will sample ServiceControl data {SampleCount} times at {MinutesPerSample}-minute intervals.");
 
-        Console.WriteLine("Performing initial data sampling...");
+        Out.WriteLine("Performing initial data sampling...");
         allData.AddRange(await SampleData(MinutesPerSample, cancellationToken));
 
         for (var i = 1; i < SampleCount; i++)
         {
-            Console.WriteLine($"{i}/{SampleCount} samplings complete");
-            DateTime waitUntil = DateTime.Now.AddMinutes(MinutesPerSample);
-            while (DateTime.Now < waitUntil)
-            {
-                var timeLeft = waitUntil - DateTime.Now;
-                Console.Write($"\rTime until next sampling: {timeLeft:mm':'ss}");
-                await Task.Delay(250, cancellationToken);
-            }
-            Console.WriteLine();
+            Out.WriteLine($"{i}/{SampleCount} samplings complete");
+            DateTime waitUntilUtc = DateTime.UtcNow.AddMinutes(MinutesPerSample);
+
+            await Out.CountdownTimer("Time until next sampling", waitUntilUtc, cancellationToken: cancellationToken);
+
             allData.AddRange(await SampleData(MinutesPerSample, cancellationToken));
         }
-        Console.WriteLine("Sampling complete");
+        Out.WriteLine("Sampling complete");
 
         var queues = allData.GroupBy(q => q.QueueName)
             .Select(g => new QueueThroughput { QueueName = g.Key, Throughput = g.Sum(q => q.Throughput) })
@@ -163,7 +159,7 @@ partial class ServiceControlCommand : BaseCommand
 
     async Task<QueueThroughput> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Getting throughput from {endpointName} using audit data.");
+        Out.WriteLine($"Getting throughput from {endpointName} using audit data.");
 
         try
         {
@@ -171,7 +167,7 @@ partial class ServiceControlCommand : BaseCommand
         }
         catch (ServiceControlDataException x)
         {
-            ConsoleHelper.WriteError($"Warning: Unable to read ServiceControl data from {x.Url} after {x.Attempts} attempts: {x.Message}");
+            Out.WriteError($"Warning: Unable to read ServiceControl data from {x.Url} after {x.Attempts} attempts: {x.Message}");
             return null;
         }
     }
@@ -429,7 +425,7 @@ partial class ServiceControlCommand : BaseCommand
         }
 
         var version = versionHeaders.Select(header => Version.TryParse(header, out var v) ? v : null).FirstOrDefault();
-        Console.WriteLine($"{instanceType} instance at {url} detected running version {version.ToString(3)}");
+        Out.WriteLine($"{instanceType} instance at {url} detected running version {version.ToString(3)}");
         if (version < minimumVersion)
         {
             throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
@@ -508,7 +504,7 @@ partial class ServiceControlCommand : BaseCommand
     [Conditional("DEBUG")]
     void Debug(string message)
     {
-        Console.WriteLine(message);
+        Out.WriteLine(message);
     }
 
     class ServiceControlEndpoint

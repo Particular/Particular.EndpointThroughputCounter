@@ -49,7 +49,7 @@ static class Versioning
 
     public static async Task<bool> CheckForCurrentVersion(CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"Particular.EndpointThroughputCounter {NuGetVersion} (Sha:{ShortSha})");
+        Out.WriteLine($"Particular.EndpointThroughputCounter {NuGetVersion} (Sha:{ShortSha})");
 
         var logger = NullLogger.Instance;
         var cache = new SourceCacheContext();
@@ -58,7 +58,7 @@ static class Versioning
 
         try
         {
-            Console.WriteLine("Checking for latest version...");
+            Out.WriteLine("Checking for latest version...");
             var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
 
             NuGetVersion[] versions = null;
@@ -71,7 +71,7 @@ static class Versioning
                 }
                 catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
                 {
-                    ConsoleHelper.WriteError("WARNING: Unable to connect to MyGet within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
+                    Out.WriteError("WARNING: Unable to connect to MyGet within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
                     return true;
                 }
             }
@@ -81,21 +81,21 @@ static class Versioning
 
             if (latest != null && latest > current)
             {
-                Console.WriteLine();
-                Console.WriteLine($"** New version detected: {latest.ToNormalizedString()}");
+                Out.WriteLine();
+                Out.WriteLine($"** New version detected: {latest.ToNormalizedString()}");
 #if EXE
-                Console.WriteLine("** Download the latest version here: https://s3.amazonaws.com/particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip");
+                Out.WriteLine("** Download the latest version here: https://s3.amazonaws.com/particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip");
 #else
-                Console.WriteLine("** To install, execute the following command:");
-                Console.WriteLine(" > dotnet tool update -g Particular.EndpointThroughputCounter --add-source=https://www.myget.org/F/particular/api/v3/index.json");
+                Out.WriteLine("** To install, execute the following command:");
+                Out.WriteLine(" > dotnet tool update -g Particular.EndpointThroughputCounter --add-source=https://www.myget.org/F/particular/api/v3/index.json");
 #endif
-                Console.WriteLine();
+                Out.WriteLine();
                 return false;
             }
         }
         catch (NuGetProtocolException)
         {
-            ConsoleHelper.WriteError("WARNING: Unable to connect to www.myget.org to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
+            Out.WriteError("WARNING: Unable to connect to www.myget.org to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
         }
 
         return true;

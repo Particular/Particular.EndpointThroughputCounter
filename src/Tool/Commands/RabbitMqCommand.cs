@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.Linq;
 using System.Threading;
@@ -51,7 +50,7 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("Taking initial queue statistics.");
+        Out.WriteLine("Taking initial queue statistics.");
         var startData = await rabbit.GetQueueDetails(cancellationToken);
         var startTime = DateTimeOffset.Now;
 
@@ -80,24 +79,19 @@ class RabbitMqCommand : BaseCommand
             nextPollTime = DateTime.UtcNow + pollingInterval;
         }
 
-        Console.WriteLine("Waiting until next reading...");
+        Out.WriteLine("Waiting until next reading...");
         var waitUntil = DateTime.UtcNow + PollingRunTime;
-        while (DateTime.UtcNow < waitUntil)
+
+        await Out.CountdownTimer("Data Collection Time Left", waitUntil, cancellationToken: cancellationToken, onLoopAction: async () =>
         {
             if (DateTime.UtcNow > nextPollTime)
             {
                 await UpdateTrackers();
             }
+        });
 
-            var timeLeft = waitUntil - DateTime.UtcNow;
-            Console.Write($"\rData Collection Time Left: {timeLeft:hh':'mm':'ss}");
-            await Task.Delay(250, cancellationToken);
-        }
-
-        Console.WriteLine();
-        Console.WriteLine();
-
-        Console.WriteLine("Taking final queue statistics.");
+        Out.WriteLine();
+        Out.WriteLine("Taking final queue statistics.");
         await UpdateTrackers();
         var endTime = DateTimeOffset.Now;
 
@@ -122,9 +116,9 @@ class RabbitMqCommand : BaseCommand
     {
         rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
 
-        Console.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
-        Console.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
-        Console.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
+        Out.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
+        Out.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
+        Out.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
 
         var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
             .Where(q => IncludeQueue(q.Name))

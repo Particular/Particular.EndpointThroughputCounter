@@ -6,7 +6,7 @@ if (!await Versioning.CheckForCurrentVersion())
     return -1;
 }
 
-ConsoleHelper.SetupUnhandledExceptionHandling();
+Exceptions.SetupUnhandledExceptionHandling();
 
 try
 {
@@ -25,7 +25,7 @@ try
 }
 catch (Exception x)
 {
-    ConsoleHelper.WriteError(w =>
+    Out.WriteError(w =>
     {
         w.WriteLine(x);
         w.WriteLine();

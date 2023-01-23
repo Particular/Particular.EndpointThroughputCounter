@@ -52,14 +52,14 @@ class SqsCommand : BaseCommand
     {
         if (profile is not null)
         {
-            Console.WriteLine($"Specifying credentials profile '{profile}'");
+            Out.WriteLine($"Specifying credentials profile '{profile}'");
             AWSConfigs.AWSProfileName = profile;
         }
 
         if (regionName is not null)
         {
             var region = RegionEndpoint.GetBySystemName(regionName);
-            Console.WriteLine($"Specifying region {region.SystemName} ({region.DisplayName})");
+            Out.WriteLine($"Specifying region {region.SystemName} ({region.DisplayName})");
             AWSConfigs.RegionEndpoint = region;
         }
 
@@ -77,7 +77,7 @@ class SqsCommand : BaseCommand
         var startTime = endTime.AddDays(-30);
 
         var cloudWatch = new AmazonCloudWatchClient();
-        Console.WriteLine($"Loading CloudWatch metrics from {cloudWatch.Config.RegionEndpoint.SystemName}.");
+        Out.WriteLine($"Loading CloudWatch metrics from {cloudWatch.Config.RegionEndpoint.SystemName}.");
 
         var data = new ConcurrentBag<QueueThroughput>();
 
@@ -107,13 +107,12 @@ class SqsCommand : BaseCommand
             });
 
             Interlocked.Increment(ref metricsReceived);
-            Console.Write($"\rGot data for {metricsReceived}/{queueNames.Count} SQS queues.");
+            Out.Progress($"Got data for {metricsReceived}/{queueNames.Count} SQS queues.");
         });
 
         await Task.WhenAll(tasks);
 
-        // Clear out the last write of \r
-        Console.WriteLine();
+        Out.EndProgress();
 
         return new QueueDetails
         {
@@ -128,7 +127,7 @@ class SqsCommand : BaseCommand
     {
         var sqs = new AmazonSQSClient();
 
-        Console.WriteLine($"Loading SQS queue names from {sqs.Config.RegionEndpoint.SystemName}.");
+        Out.WriteLine($"Loading SQS queue names from {sqs.Config.RegionEndpoint.SystemName}.");
 
         var request = new ListQueuesRequest
         {
@@ -145,7 +144,7 @@ class SqsCommand : BaseCommand
 
             queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
 
-            Console.Write($"\rFound {queueNames.Count} SQS queues.");
+            Out.Progress($"Found {queueNames.Count} SQS queues.");
 
             if (response.NextToken is not null)
             {
@@ -153,10 +152,11 @@ class SqsCommand : BaseCommand
             }
             else
             {
-                Console.WriteLine();
+                Out.WriteLine();
                 break;
             }
         }
+        Out.EndProgress();
 
         ignoredQueueNames = queueNames
             .Where(name => prefix is not null && !name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
@@ -168,7 +168,7 @@ class SqsCommand : BaseCommand
             var hash = ignoredQueueNames.ToHashSet();
             queueNames.RemoveAll(name => hash.Contains(name));
 
-            Console.WriteLine($"{queueNames.Count} queues match prefix '{prefix}'.");
+            Out.WriteLine($"{queueNames.Count} queues match prefix '{prefix}'.");
         }
     }
 

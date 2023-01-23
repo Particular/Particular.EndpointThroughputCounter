@@ -93,7 +93,7 @@ class AzureServiceBusCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"Getting data from {fullyQualifiedNamespace}...");
+        Out.WriteLine($"Getting data from {fullyQualifiedNamespace}...");
         var endTime = DateTime.UtcNow.Date.AddDays(1);
         var startTime = endTime.AddDays(-30);
 
@@ -101,7 +101,7 @@ class AzureServiceBusCommand : BaseCommand
         {
             var queueNames = await GetQueueNames(cancellationToken);
 
-            Console.WriteLine($"Found {queueNames.Length} queues");
+            Out.WriteLine($"Found {queueNames.Length} queues");
 
             var results = new List<QueueThroughput>();
 
@@ -109,7 +109,7 @@ class AzureServiceBusCommand : BaseCommand
             {
                 var queueName = queueNames[i];
 
-                Console.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
+                Out.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
 
                 var response = await metrics.QueryResourceAsync(resourceId,
                     new[] { "CompleteMessage" },
@@ -148,7 +148,7 @@ class AzureServiceBusCommand : BaseCommand
 
     async Task<string[]> GetQueueNames(CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Authenticating using {credentials.GetType().Name}");
+        Out.WriteLine($"Authenticating using {credentials.GetType().Name}");
 
         var queueList = new List<string>();
 
