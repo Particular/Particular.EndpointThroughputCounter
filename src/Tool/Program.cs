@@ -6,7 +6,7 @@ if (!await Versioning.CheckForCurrentVersion())
     return -1;
 }
 
-ConsoleHelper.SetupUnhandledExceptionHandling();
+Exceptions.SetupUnhandledExceptionHandling();
 
 try
 {
@@ -25,12 +25,12 @@ try
 }
 catch (Exception x)
 {
-    ConsoleHelper.WriteError(w =>
+    Out.WriteError(w =>
     {
         w.WriteLine(x);
         w.WriteLine();
         w.WriteLine("Unable to execute command, please contact Particular Software support.");
     });
 
-    return -1;
+    return (int)HaltReason.RuntimeError;
 }

@@ -72,20 +72,20 @@ class AuthenticatingHttpClient : IDisposable
 
                 var uriPrefix = new Uri(uri.GetLeftPart(UriPartial.Authority));
 
-                Console.WriteLine($"Unable to access {uriPrefix} as {currentUser ?? "default credentials"}.");
-                Console.WriteLine("Allowed authentication methods are:");
+                Out.WriteLine($"Unable to access {uriPrefix} as {currentUser ?? "default credentials"}.");
+                Out.WriteLine("Allowed authentication methods are:");
                 foreach (var authHeader in x.Response.Headers.WwwAuthenticate)
                 {
-                    Console.WriteLine($"  * {authHeader.Scheme} ({authHeader.Parameter})");
+                    Out.WriteLine($"  * {authHeader.Scheme} ({authHeader.Parameter})");
                 }
-                Console.WriteLine();
+                Out.WriteLine();
 
-                Console.WriteLine($"Enter authentication for {uriPrefix}:");
-                Console.Write("Username: ");
-                var user = Console.ReadLine();
-                Console.Write("Password: ");
-                var pass = ReadPassword();
-                Console.WriteLine();
+                Out.WriteLine($"Enter authentication for {uriPrefix}:");
+                Out.Write("Username: ");
+                var user = Out.ReadLine();
+                Out.Write("Password: ");
+                var pass = Out.ReadPassword();
+                Out.WriteLine();
 
                 var newHttp = CreateHttpClient(credentials =>
                 {
@@ -135,31 +135,6 @@ class AuthenticatingHttpClient : IDisposable
         public HttpRequestException Exception { get; }
         public HttpStatusCode StatusCode { get; }
         public HttpResponseMessage Response { get; }
-    }
-
-    string ReadPassword()
-    {
-        var pass = string.Empty;
-        ConsoleKey key;
-        do
-        {
-            var keyInfo = Console.ReadKey(intercept: true);
-            key = keyInfo.Key;
-
-            if (key == ConsoleKey.Backspace && pass.Length > 0)
-            {
-                Console.Write("\b \b");
-                pass = pass[0..^1];
-            }
-            else if (!char.IsControl(keyInfo.KeyChar))
-            {
-                Console.Write("*");
-                pass += keyInfo.KeyChar;
-            }
-        } while (key != ConsoleKey.Enter);
-
-        Console.WriteLine();
-        return pass;
     }
 
     public void Dispose()

@@ -16,10 +16,10 @@ abstract class BaseCommand
     public BaseCommand(SharedOptions shared)
     {
         this.shared = shared;
-#if DEBUG 
-        this.PollingRunTime = TimeSpan.FromMinutes(1);
+#if DEBUG
+        PollingRunTime = TimeSpan.FromMinutes(1);
 #else
-        this.PollingRunTime = TimeSpan.FromHours(shared.RuntimeInHours);
+        PollingRunTime = TimeSpan.FromHours(shared.RuntimeInHours);
 #endif
         var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
 
@@ -65,45 +65,47 @@ abstract class BaseCommand
         }
         catch (HaltException halt)
         {
-            Console.WriteLine();
-            Console.WriteLine();
-            ConsoleHelper.WriteError(halt.Message);
+            Out.WriteLine();
+            Out.WriteLine();
+            Out.WriteError(halt.Message);
             Environment.ExitCode = halt.ExitCode;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Console.WriteLine();
-            Console.WriteLine();
-            ConsoleHelper.WriteError("Exiting because cancellation was requested.");
-            Environment.ExitCode = -1;
+            Out.WriteLine();
+            Out.WriteLine();
+            Out.WriteError("Exiting because cancellation was requested.");
+            Environment.ExitCode = (int)HaltReason.UserCancellation;
         }
         catch (Exception x)
         {
-            ConsoleHelper.WriteError(w =>
+            Out.WriteError(w =>
             {
                 w.WriteLine(x);
                 w.WriteLine();
                 w.WriteLine("Unable to run tool, please contact Particular Software support.");
             });
 
-            Environment.ExitCode = -2;
+            Exceptions.ReportError(x);
+
+            Environment.ExitCode = (int)HaltReason.RuntimeError;
         }
     }
 
     async Task RunInternal(CancellationToken cancellationToken)
     {
-        Console.WriteLine();
+        Out.WriteLine();
         if (!string.IsNullOrEmpty(shared.CustomerName))
         {
-            Console.WriteLine($"Customer name is '{shared.CustomerName}'.");
+            Out.WriteLine($"Customer name is '{shared.CustomerName}'.");
         }
         else
         {
             while (string.IsNullOrEmpty(shared.CustomerName))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                Console.Write("Enter customer name: ");
-                shared.CustomerName = Console.ReadLine();
+                Out.Write("Enter customer name: ");
+                shared.CustomerName = Out.ReadLine();
             }
         }
 
@@ -118,9 +120,9 @@ abstract class BaseCommand
 
         ValidateOutputPath(outputPath);
 
-        Console.WriteLine();
+        Out.WriteLine();
 
-        Console.WriteLine("Collecting environment info...");
+        Out.WriteLine("Collecting environment info...");
         var metadata = await GetEnvironment(cancellationToken);
 
         if (!metadata.SkipEndpointListCheck)
@@ -134,9 +136,9 @@ abstract class BaseCommand
                 .Select(name => new { Name = name, Masked = MaskName(name) })
                 .ToArray();
 
-            Console.WriteLine();
-            Console.WriteLine("Writing endpoint/queue names discovered:");
-            Console.WriteLine();
+            Out.WriteLine();
+            Out.WriteLine("Writing endpoint/queue names discovered:");
+            Out.WriteLine();
 
             const string leftLabel = "Queue/Endpoint Name";
             const string rightLabel = "Will be reported as";
@@ -145,27 +147,27 @@ abstract class BaseCommand
 
             var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
 
-            Console.WriteLine(lineFormat, leftLabel, rightLabel);
-            Console.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
+            Out.WriteLine(lineFormat, leftLabel, rightLabel);
+            Out.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
             foreach (var set in mappedQueueNames)
             {
-                Console.WriteLine(lineFormat, set.Name, set.Masked);
+                Out.WriteLine(lineFormat, set.Name, set.Masked);
             }
-            Console.WriteLine();
+            Out.WriteLine();
 
-            Console.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
-            Console.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
-            Console.WriteLine();
+            Out.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
+            Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
+            Out.WriteLine();
 
             if (!shared.RunUnattended)
             {
-                if (!Confirm("Do you wish to proceed?"))
+                if (!Out.Confirm("Do you wish to proceed?"))
                 {
                     throw new HaltException(HaltReason.UserCancellation, "Exiting at user's request");
                 }
             }
         }
-        Console.WriteLine();
+        Out.WriteLine();
 
         var data = await GetData(cancellationToken);
 
@@ -198,37 +200,15 @@ abstract class BaseCommand
 
         var ser = new JsonSerializer();
 
-        Console.WriteLine();
-        Console.WriteLine($"Writing report to {outputPath}");
+        Out.WriteLine();
+        Out.WriteLine($"Writing report to {outputPath}");
         using (var writer = new StreamWriter(outputPath, false))
         using (var jsonWriter = new JsonTextWriter(writer))
         {
             jsonWriter.Formatting = Formatting.Indented;
             ser.Serialize(jsonWriter, report, typeof(SignedReport));
         }
-        Console.WriteLine("EndpointThroughputTool complete.");
-    }
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0010:Add missing cases", Justification = "Don't need every key")]
-    bool Confirm(string prompt)
-    {
-        Console.Write(prompt);
-        Console.Write(" (Y/N): ");
-        while (true)
-        {
-            var key = Console.ReadKey(true);
-            switch (key.Key)
-            {
-                case ConsoleKey.Y:
-                    Console.WriteLine("Yes");
-                    return true;
-                case ConsoleKey.N:
-                    Console.WriteLine("No");
-                    return false;
-                default:
-                    continue;
-            }
-        }
+        Out.WriteLine("EndpointThroughputTool complete.");
     }
 
     string MaskName(string queueName)

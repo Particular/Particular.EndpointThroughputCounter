@@ -21,16 +21,17 @@
     <PackageReference Include="Azure.Monitor.Query" />
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="NuGet.Protocol" />
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Particular.Packaging" PrivateAssets="All" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Remove="public-key.pem" />
     <EmbeddedResource Include="public-key.pem" />

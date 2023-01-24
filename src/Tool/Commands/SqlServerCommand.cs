@@ -124,16 +124,16 @@ class SqlServerCommand : BaseCommand
         var tokenSource = new CancellationTokenSource();
         var getMinimumsTask = GetMinimums(tokenSource.Token);
 
-        Console.WriteLine("Waiting to collect maximum row versions...");
+        Out.WriteLine("Waiting to collect maximum row versions...");
         while (DateTimeOffset.Now < targetEnd)
         {
             var timeLeft = targetEnd - DateTimeOffset.Now;
-            Console.Write($"\rWait Time Left: {timeLeft:hh':'mm':'ss} - {sampledQueues}/{totalQueues} sampled");
+            Out.Progress($"Wait Time Left: {timeLeft:hh':'mm':'ss} - {sampledQueues}/{totalQueues} sampled");
             await Task.Delay(250, cancellationToken);
         }
 
-        Console.WriteLine();
-        Console.WriteLine();
+        Out.EndProgress();
+        Out.WriteLine();
 
         tokenSource.Cancel();
         await getMinimumsTask;
@@ -153,8 +153,8 @@ class SqlServerCommand : BaseCommand
 
     async Task GetMaximums(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Sampling started for maximum row versions...");
-        Console.WriteLine("(This may still take up to 15 minutes depending on queue traffic.)");
+        Out.WriteLine("Sampling started for maximum row versions...");
+        Out.WriteLine("(This may still take up to 15 minutes depending on queue traffic.)");
         int counter = 0;
         int totalMsWaited = 0;
         sampledQueues = 0;
@@ -207,7 +207,7 @@ class SqlServerCommand : BaseCommand
             }
 
             sampledQueues = allTables.Count(t => t.MaxRowVersion is not null);
-            Console.Write($"\r{sampledQueues}/{totalQueues} sampled");
+            Out.Progress($"{sampledQueues}/{totalQueues} sampled");
             if (sampledQueues < totalQueues)
             {
                 await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
@@ -222,9 +222,8 @@ class SqlServerCommand : BaseCommand
             }
         }
 
-        // Clear out from the Write('\r') pattern
-        Console.WriteLine();
-        Console.WriteLine();
+        Out.EndProgress();
+        Out.WriteLine();
 
         if (databases.Any(db => db.Tables.Any(t => t.MaxRowVersion is null) && db.ErrorCount > 0))
         {
@@ -234,7 +233,7 @@ class SqlServerCommand : BaseCommand
 
     async Task GetMinimums(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Sampling started for minimum row versions...");
+        Out.WriteLine("Sampling started for minimum row versions...");
         int counter = 0;
         int totalMsWaited = 0;
 
@@ -297,14 +296,14 @@ class SqlServerCommand : BaseCommand
                 }
             }
 
-            Console.WriteLine();
-            Console.WriteLine("Sampling of minimum row versions completed for all tables successfully.");
-            Console.WriteLine();
+            Out.WriteLine();
+            Out.WriteLine("Sampling of minimum row versions completed for all tables successfully.");
+            Out.WriteLine();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             int successCount = allTables.Count(t => t.MinRowVersion is not null);
-            Console.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{allTables.Length} values.");
+            Out.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{allTables.Length} values.");
         }
         finally
         {
