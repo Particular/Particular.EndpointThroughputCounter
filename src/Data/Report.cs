@@ -47,7 +47,7 @@
         public string QueueName { get; set; }
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public int? Throughput { get; init; }
+        public int? Throughput { get; set; }
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool NoDataOrSendOnly { get; init; }

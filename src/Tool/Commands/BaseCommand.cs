@@ -174,6 +174,10 @@ abstract class BaseCommand
         foreach (var q in data.Queues)
         {
             q.QueueName = MaskName(q.QueueName);
+            if (q.Throughput.HasValue)
+            {
+                q.Throughput = Math.Abs(q.Throughput.Value);
+            }
         }
 
         var reportData = new Report
