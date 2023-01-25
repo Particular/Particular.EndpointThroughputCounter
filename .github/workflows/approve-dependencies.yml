@@ -14,16 +14,9 @@ jobs:
       - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v1.3.6
-      - name: Checkout
-        uses: actions/checkout@v3.3.0
-      - name: Approve PR if not already approved
+      - name: Approve PR
         if: ${{contains(steps.metadata.outputs.dependency-names, 'AWSSDK.SQS') || contains(steps.metadata.outputs.dependency-names, 'AWSSDK.CloudWatch') || contains(steps.metadata.outputs.dependency-names, 'AWSSDK.SecurityToken')}}
-        run: |
-          gh pr checkout "$PR_URL" # sets the upstream metadata for `gh pr status`
-          if [ "$(gh pr status --json reviewDecision -q .currentBranch.reviewDecision)" != "APPROVED" ];
-          then gh pr review --approve "$PR_URL"
-          else echo "PR already approved, skipping additional approvals to minimize emails/notification noise.";
-          fi
+        run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
