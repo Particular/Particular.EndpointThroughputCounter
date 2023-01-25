@@ -403,7 +403,15 @@ partial class ServiceControlCommand : BaseCommand
             throw new HaltException(HaltReason.InvalidConfig, $"The {paramName} option specifying the {instanceType} URL was not provided.");
         }
 
-        var res = await http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        HttpResponseMessage res = null;
+        try
+        {
+            res = await http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
+        }
+        catch (HttpRequestException hx)
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, $"The server at {url} did not respond. The exception message was: {hx.Message}");
+        }
 
         if (!res.IsSuccessStatusCode)
         {
@@ -413,7 +421,7 @@ partial class ServiceControlCommand : BaseCommand
 
             foreach (var header in res.Headers)
             {
-                b.AppendLine($"  {header.Key}: {header.Value}");
+                _ = b.AppendLine($"  {header.Key}: {header.Value}");
             }
 
             throw new HaltException(HaltReason.RuntimeError, b.ToString());
@@ -488,6 +496,7 @@ partial class ServiceControlCommand : BaseCommand
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                throw;
             }
             catch (Exception x)
             {
