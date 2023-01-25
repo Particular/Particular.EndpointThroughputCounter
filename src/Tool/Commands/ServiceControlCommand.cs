@@ -488,6 +488,7 @@ partial class ServiceControlCommand : BaseCommand
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                throw;
             }
             catch (Exception x)
             {
