@@ -18,7 +18,10 @@ class AzureServiceBusCommand : BaseCommand
 
         var resourceIdArg = new Option<string>(
             name: "--resourceId",
-            description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.");
+            description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.")
+        {
+            IsRequired = true
+        };
 
         var authTypeArg = new Option<string>("--authType", "Specify the Azure authentication type.")
         {
