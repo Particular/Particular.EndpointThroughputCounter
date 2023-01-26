@@ -13,7 +13,10 @@ class RabbitMqCommand : BaseCommand
 
         var urlArg = new Option<string>(
             name: "--apiUrl",
-            description: "The RabbitMQ Management API URL");
+            description: "The RabbitMQ Management API URL")
+        {
+            IsRequired = true
+        };
 
         command.AddOption(urlArg);
 

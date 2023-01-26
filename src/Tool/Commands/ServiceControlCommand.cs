@@ -20,11 +20,17 @@ partial class ServiceControlCommand : BaseCommand
 
         var scUrlArg = new Option<string>(
             name: "--serviceControlApiUrl",
-            description: "The URL for the primary ServiceControl instance API, http://localhost:33333/api by default");
+            description: "The URL for the primary ServiceControl instance API, http://localhost:33333/api by default")
+        {
+            IsRequired = true
+        };
 
         var monitoringUrlArg = new Option<string>(
             name: "--monitoringApiUrl",
-            description: "The URL for the ServiceControl Monitoring instance API, http://localhost:33633/ by default");
+            description: "The URL for the ServiceControl Monitoring instance API, http://localhost:33633/ by default")
+        {
+            IsRequired = true
+        };
 
         command.AddOption(scUrlArg);
         command.AddOption(monitoringUrlArg);
