@@ -320,6 +320,11 @@ class SqlServerCommand : BaseCommand
 
         foreach (var db in databases)
         {
+            await db.TestConnection(cancellationToken);
+        }
+
+        foreach (var db in databases)
+        {
             await db.GetTables(cancellationToken);
 
             if (!db.Tables.Any())
@@ -379,7 +384,7 @@ HAVING COUNT(*) = 8";
 
     class DatabaseDetails
     {
-        readonly string connectionString;
+        string connectionString;
         int successCount;
 
         public string DatabaseName { get; }
@@ -396,6 +401,32 @@ HAVING COUNT(*) = 8";
 
         public int TableCount => Tables.Count;
         public void RemoveIgnored() => Tables.RemoveAll(t => t.IgnoreTable());
+
+        public async Task TestConnection(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using (var conn = await OpenConnectionAsync(cancellationToken))
+                {
+                    _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
+                }
+            }
+            catch (SqlException x) when (x.Number == -2146893019)
+            {
+                var builder = new SqlConnectionStringBuilder(connectionString);
+                if (builder.TrustServerCertificate)
+                {
+                    throw;
+                }
+
+                builder.TrustServerCertificate = true;
+                connectionString = builder.ToString();
+                using (var conn = await OpenConnectionAsync(cancellationToken))
+                {
+                    _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
+                }
+            }
+        }
 
         public async Task GetTables(CancellationToken cancellationToken = default)
         {
