@@ -179,17 +179,12 @@ class SqlServerCommand : BaseCommand
                     {
                         foreach (var table in db.Tables.Where(t => t.MaxRowVersion is null))
                         {
-                            using (var cmd = conn.CreateCommand())
+                            var rowversion = await table.GetMaxRowVersion(conn, cancellationToken);
+                            if (rowversion != null)
                             {
-                                cmd.CommandText = $"select max(RowVersion) from {table.FullName} with (nolock);";
-                                var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                                if (value is long rowversion)
-                                {
-                                    table.MaxRowVersion = rowversion;
-                                    // If Min version isn't filled in and we somehow got lucky now, mark it down
-                                    table.MinRowVersion ??= rowversion;
-                                }
+                                table.MaxRowVersion = rowversion;
+                                // If Min version isn't filled in and we somehow got lucky now, mark it down, though this will result in 0 throughput anyway
+                                table.MinRowVersion ??= rowversion;
                             }
                         }
                     }
@@ -257,16 +252,7 @@ class SqlServerCommand : BaseCommand
                         {
                             foreach (var table in db.Tables.Where(t => t.MinRowVersion is null))
                             {
-                                using (var cmd = conn.CreateCommand())
-                                {
-                                    cmd.CommandText = $"select min(RowVersion) from {table.FullName} with (nolock);";
-                                    var value = await cmd.ExecuteScalarAsync(cancellationToken);
-
-                                    if (value is long rowversion)
-                                    {
-                                        table.MinRowVersion = rowversion;
-                                    }
-                                }
+                                table.MinRowVersion = await table.GetMaxRowVersion(conn, cancellationToken);
                             }
                         }
                         db.LogSuccessOrFailure(true);
@@ -456,6 +442,22 @@ HAVING COUNT(*) = 8";
         public string FullName => $"[{TableSchema}].[{TableName}]";
 
         public string DisplayName => Database is null ? FullName : $"[{Database.DatabaseName}].{FullName}";
+
+        public async Task<long?> GetMaxRowVersion(SqlConnection conn, CancellationToken cancellationToken = default)
+        {
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $"select max(RowVersion) from {FullName} with (nolock);";
+                var value = await cmd.ExecuteScalarAsync(cancellationToken);
+
+                if (value is long rowversion)
+                {
+                    return rowversion;
+                }
+            }
+
+            return null;
+        }
 
         public bool IgnoreTable()
         {
