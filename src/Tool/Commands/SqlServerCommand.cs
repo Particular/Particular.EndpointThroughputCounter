@@ -183,7 +183,7 @@ class SqlServerCommand : BaseCommand
                             if (rowversion != null)
                             {
                                 table.EndRowVersion = rowversion;
-                                // If Min version isn't filled in and we somehow got lucky now, mark it down, though this will result in 0 throughput anyway
+                                // If start value isn't filled in and we somehow got lucky now, mark it down, though this will result in 0 throughput anyway
                                 table.StartRowVersion ??= rowversion;
                             }
                         }
