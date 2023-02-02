@@ -22,7 +22,7 @@ jobs:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       - name: Enable auto-merge
         if: ${{contains(steps.metadata.outputs.dependency-names, 'AWSSDK.SQS') || contains(steps.metadata.outputs.dependency-names, 'AWSSDK.CloudWatch') || contains(steps.metadata.outputs.dependency-names, 'AWSSDK.SecurityToken')}}
-        run: gh pr merge --auto --merge "$PR_URL"
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
