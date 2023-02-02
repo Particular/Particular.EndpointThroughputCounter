@@ -177,14 +177,14 @@ class SqlServerCommand : BaseCommand
                 {
                     using (var conn = await db.OpenConnectionAsync(cancellationToken))
                     {
-                        foreach (var table in db.Tables.Where(t => t.MaxRowVersion is null))
+                        foreach (var table in db.Tables.Where(t => t.EndRowVersion is null))
                         {
                             var rowversion = await table.GetMaxRowVersion(conn, cancellationToken);
                             if (rowversion != null)
                             {
-                                table.MaxRowVersion = rowversion;
+                                table.EndRowVersion = rowversion;
                                 // If Min version isn't filled in and we somehow got lucky now, mark it down, though this will result in 0 throughput anyway
-                                table.MinRowVersion ??= rowversion;
+                                table.StartRowVersion ??= rowversion;
                             }
                         }
                     }
@@ -201,7 +201,7 @@ class SqlServerCommand : BaseCommand
                 }
             }
 
-            sampledQueues = allTables.Count(t => t.MaxRowVersion is not null);
+            sampledQueues = allTables.Count(t => t.EndRowVersion is not null);
             Out.Progress($"{sampledQueues}/{totalQueues} sampled");
             if (sampledQueues < totalQueues)
             {
@@ -220,7 +220,7 @@ class SqlServerCommand : BaseCommand
         Out.EndProgress();
         Out.WriteLine();
 
-        if (databases.Any(db => db.Tables.Any(t => t.MaxRowVersion is null) && db.ErrorCount > 0))
+        if (databases.Any(db => db.Tables.Any(t => t.EndRowVersion is null) && db.ErrorCount > 0))
         {
             throw new AggregateException("Unable to sample maximum row versions without repeated SqlExceptions. The last 5 exception instances are included.", sqlExceptions);
         }
@@ -250,9 +250,9 @@ class SqlServerCommand : BaseCommand
                     {
                         using (var conn = await db.OpenConnectionAsync(cancellationToken))
                         {
-                            foreach (var table in db.Tables.Where(t => t.MinRowVersion is null))
+                            foreach (var table in db.Tables.Where(t => t.StartRowVersion is null))
                             {
-                                table.MinRowVersion = await table.GetMaxRowVersion(conn, cancellationToken);
+                                table.StartRowVersion = await table.GetMaxRowVersion(conn, cancellationToken);
                             }
                         }
                         db.LogSuccessOrFailure(true);
@@ -268,7 +268,7 @@ class SqlServerCommand : BaseCommand
                     }
                 }
 
-                sampledQueues = allTables.Count(t => t.MinRowVersion is not null);
+                sampledQueues = allTables.Count(t => t.StartRowVersion is not null);
                 if (sampledQueues < totalQueues)
                 {
                     await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
@@ -288,12 +288,12 @@ class SqlServerCommand : BaseCommand
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            int successCount = allTables.Count(t => t.MinRowVersion is not null);
+            int successCount = allTables.Count(t => t.StartRowVersion is not null);
             Out.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{allTables.Length} values.");
         }
         finally
         {
-            if (databases.Any(db => db.Tables.Any(t => t.MinRowVersion is null) && db.ErrorCount > 0))
+            if (databases.Any(db => db.Tables.Any(t => t.StartRowVersion is null) && db.ErrorCount > 0))
             {
                 throw new AggregateException("Unable to sample minimum row versions without repeated SqlExceptions. The last 5 exception instances are included.", sqlExceptions);
             }
@@ -435,8 +435,8 @@ HAVING COUNT(*) = 8";
     {
         public string TableSchema { get; init; }
         public string TableName { get; init; }
-        public long? MinRowVersion { get; set; }
-        public long? MaxRowVersion { get; set; }
+        public long? StartRowVersion { get; set; }
+        public long? EndRowVersion { get; set; }
         public DatabaseDetails Database { get; set; }
 
         public string FullName => $"[{TableSchema}].[{TableName}]";
@@ -476,9 +476,9 @@ HAVING COUNT(*) = 8";
 
         public QueueThroughput ToQueueThroughput()
         {
-            if (MinRowVersion is not null && MaxRowVersion is not null)
+            if (StartRowVersion is not null && EndRowVersion is not null)
             {
-                var throughput = (int)(MaxRowVersion.Value - MinRowVersion.Value);
+                var throughput = (int)(EndRowVersion.Value - StartRowVersion.Value);
                 return new QueueThroughput { QueueName = DisplayName, Throughput = throughput };
             }
 
