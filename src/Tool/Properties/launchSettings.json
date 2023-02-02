@@ -16,7 +16,7 @@
     },
     "ThroughputTool-SqlServer": {
       "commandName": "Project",
-      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;TrustServerCertificate=true;\" --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
+      "commandLineArgs": "sqlserver --connectionString \"Server=mssql;Database=nservicebus;User=sa;Password=NServiceBus!;\" --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
