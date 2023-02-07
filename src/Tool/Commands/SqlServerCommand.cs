@@ -381,13 +381,26 @@ HAVING COUNT(*) = 8";
         {
             this.connectionString = connectionString;
 
-            var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString };
-            DatabaseName = (builder["Initial Catalog"] as string) ?? (builder["Database"] as string);
+            try
+            {
+                var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString };
+                DatabaseName = (builder["Initial Catalog"] as string) ?? (builder["Database"] as string);
+            }
+            catch (FormatException x)
+            {
+                throw new HaltException(HaltReason.InvalidEnvironment, "There's something wrong with the SQL connection string and it could not be parsed. Details: " + x.Message);
+            }
         }
 
         public int TableCount => Tables.Count;
         public void RemoveIgnored() => Tables.RemoveAll(t => t.IgnoreTable());
 
+        /// <remarks>
+        /// Error numbers caught here:
+        /// -2146893019: When you don't add TrustServerCertificate=true to your connection string. We fix this and retry.
+        /// 233: Named pipes: No process is on the other end of the pipe
+        /// 18456: Login failed
+        /// </remarks>
         public async Task TestConnection(CancellationToken cancellationToken = default)
         {
             try
@@ -411,6 +424,10 @@ HAVING COUNT(*) = 8";
                 {
                     _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
                 }
+            }
+            catch (SqlException x) when (x.Number is 233 or 18456)
+            {
+                throw new HaltException(HaltReason.InvalidEnvironment, "Could not access SQL database because something is wrong with the connection string. The SqlException message text follows: " + x.Message);
             }
         }
 
