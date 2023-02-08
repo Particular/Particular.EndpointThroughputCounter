@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Data.SqlClient;
 using Mindscape.Raygun4Net;
 using Mindscape.Raygun4Net.AspNetCore;
 
@@ -47,6 +48,20 @@ public static class Exceptions
             { "TicketId", ticketId },
             { "ToolOutput", Out.GetToolOutput() }
         };
+
+        if (x is SqlException sqlX)
+        {
+            customData.Add("SqlException.Number", sqlX.Number.ToString());
+            if (sqlX.Errors is not null)
+            {
+                for (var i = 0; i < sqlX.Errors.Count; i++)
+                {
+                    var err = sqlX.Errors[i];
+                    customData.Add($"SqlException.Errors${i}.Number", err.Number.ToString());
+                    customData.Add($"SqlException.Errors${i}.Error", err.ToString());
+                }
+            }
+        }
 
         var message = RaygunMessageBuilder.New(settings)
             .SetExceptionDetails(x)
