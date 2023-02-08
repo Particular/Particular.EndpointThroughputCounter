@@ -155,14 +155,25 @@ class AzureServiceBusCommand : BaseCommand
 
         var queueList = new List<string>();
 
-        await foreach (var queue in serviceBusClient.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
+        try
         {
-            queueList.Add(queue.Name);
-        }
+            await foreach (var queue in serviceBusClient.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
+            {
+                queueList.Add(queue.Name);
+            }
 
-        return queueList
-            .OrderBy(name => name)
-            .ToArray();
+            return queueList
+                .OrderBy(name => name)
+                .ToArray();
+        }
+        catch (AuthenticationFailedException afx)
+        {
+            throw new HaltException(HaltReason.Auth, "Unable to get queue information because authentication failed.", afx);
+        }
+        catch (UnauthorizedAccessException uax)
+        {
+            throw new HaltException(HaltReason.Auth, "Unable to get queue information because the authenticated user is not authorized.", uax);
+        }
     }
 
     protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)

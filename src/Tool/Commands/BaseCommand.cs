@@ -68,6 +68,11 @@ abstract class BaseCommand
             Out.WriteLine();
             Out.WriteLine();
             Out.WriteError(halt.Message);
+            if (halt.InnerException != null)
+            {
+                Out.WriteLine();
+                Out.WriteLine("Original exception message: " + halt.InnerException.Message);
+            }
             Environment.ExitCode = halt.ExitCode;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
