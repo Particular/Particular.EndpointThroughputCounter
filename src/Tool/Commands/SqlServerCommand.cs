@@ -357,14 +357,14 @@ class SqlServerCommand : BaseCommand
 SELECT C.TABLE_SCHEMA as TableSchema, C.TABLE_NAME as TableName
 FROM [INFORMATION_SCHEMA].[COLUMNS] C
 WHERE
-	(C.COLUMN_NAME = 'Id' AND C.DATA_TYPE = 'uniqueidentifier') OR
-	(C.COLUMN_NAME = 'CorrelationId' AND C.DATA_TYPE = 'varchar') OR
-	(C.COLUMN_NAME = 'ReplyToAddress' AND C.DATA_TYPE = 'varchar') OR
-	(C.COLUMN_NAME = 'Recoverable' AND C.DATA_TYPE = 'bit') OR
-	(C.COLUMN_NAME = 'Expires' AND C.DATA_TYPE = 'datetime') OR
-	(C.COLUMN_NAME = 'Headers') OR
-	(C.COLUMN_NAME = 'Body' AND C.DATA_TYPE = 'varbinary') OR
-	(C.COLUMN_NAME = 'RowVersion' AND C.DATA_TYPE = 'bigint')
+    (C.COLUMN_NAME = 'Id' AND C.DATA_TYPE = 'uniqueidentifier') OR
+    (C.COLUMN_NAME = 'CorrelationId' AND C.DATA_TYPE = 'varchar') OR
+    (C.COLUMN_NAME = 'ReplyToAddress' AND C.DATA_TYPE = 'varchar') OR
+    (C.COLUMN_NAME = 'Recoverable' AND C.DATA_TYPE = 'bit') OR
+    (C.COLUMN_NAME = 'Expires' AND C.DATA_TYPE = 'datetime') OR
+    (C.COLUMN_NAME = 'Headers') OR
+    (C.COLUMN_NAME = 'Body' AND C.DATA_TYPE = 'varbinary') OR
+    (C.COLUMN_NAME = 'RowVersion' AND C.DATA_TYPE = 'bigint')
 GROUP BY C.TABLE_SCHEMA, C.TABLE_NAME
 HAVING COUNT(*) = 8";
 
@@ -388,7 +388,7 @@ HAVING COUNT(*) = 8";
             }
             catch (FormatException x)
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, "There's something wrong with the SQL connection string and it could not be parsed. Details: " + x.Message);
+                throw new HaltException(HaltReason.InvalidEnvironment, "There's something wrong with the SQL connection string and it could not be parsed.", x);
             }
         }
 
@@ -427,7 +427,7 @@ HAVING COUNT(*) = 8";
             }
             catch (SqlException x) when (x.Number is 233 or 18456)
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, "Could not access SQL database because something is wrong with the connection string. The SqlException message text follows: " + x.Message);
+                throw new HaltException(HaltReason.Auth, "Could not access SQL database because something is wrong with the connection string.", x);
             }
         }
 

@@ -4,7 +4,7 @@ class HaltException : ApplicationException
 {
     public int ExitCode { get; set; }
 
-    public HaltException(HaltReason reason, string message) : base(message)
+    public HaltException(HaltReason reason, string message, Exception innerException = null) : base(message, innerException)
     {
         ExitCode = (int)reason;
     }
@@ -18,4 +18,5 @@ enum HaltReason
     InvalidConfig = 4,
     InvalidEnvironment = 5,
     RuntimeError = 6,
+    Auth = 7,
 }
