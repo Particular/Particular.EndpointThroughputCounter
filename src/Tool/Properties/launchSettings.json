@@ -23,7 +23,7 @@
     },
     "ThroughputTool-ASB": {
       "commandName": "Project",
-      "commandLineArgs": "azureservicebus --resourceId {resourceId} --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
+      "commandLineArgs": "azureservicebus --resourceId LOAD_FROM_CONFIG --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }

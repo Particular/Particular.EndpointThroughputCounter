@@ -35,6 +35,7 @@
   <ItemGroup>
     <None Remove="public-key.pem" />
     <EmbeddedResource Include="public-key.pem" />
+    <None Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
