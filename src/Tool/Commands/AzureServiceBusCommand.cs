@@ -9,6 +9,7 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus.Administration;
 using Azure.Monitor.Query;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.EndpointThroughputCounter.Infra;
 
 class AzureServiceBusCommand : BaseCommand
 {
@@ -47,6 +48,15 @@ class AzureServiceBusCommand : BaseCommand
             var serviceBusDomain = context.ParseResult.GetValueForOption(serviceBusDomainArg);
             var authType = context.ParseResult.GetValueForOption(authTypeArg);
             var cancellationToken = context.GetCancellationToken();
+
+#if DEBUG
+            if (resourceId == "LOAD_FROM_CONFIG")
+            {
+                // So we don't have to keep an Azure Service Bus resource id in launchSettings.json
+                // Create a local.settings.json file with the key below.
+                resourceId = AppConfig.Get<string>("AZURESERVICEBUS_RESOURCE_ID");
+            }
+#endif
 
             var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain, authType);
             await runner.Run(cancellationToken);
