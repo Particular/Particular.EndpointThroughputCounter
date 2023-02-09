@@ -4,6 +4,20 @@ A tool to measure per-endpoint throughput of an NServiceBus system.
 
 More documentation is [on our website](https://docs.particular.net/nservicebus/throughput-tool/).
 
+## Testing locally
+
+Testing locally requires some configuration that cannot be check in security reasons.
+
+Create a `src/Tool/local.settings.json` file (this is included in .gitignore and will not be checked in) containing the following:
+
+```json
+{
+  "AZURESERVICEBUS_RESOURCE_ID": "Your own Azure Service Bus Resource Id"
+}
+```
+
+* `AZURESERVICEBUS_RESOURCE_ID`: For testing with Azure Service Bus. See the [tool documentation](https://docs.particular.net/nservicebus/throughput-tool/azure-service-bus#running-the-tool) for instructions on how to locate this id.
+
 ## RSA key pair
 
 The app uses a public/private key pair to prevent tampering with the reports returned from end users. The body of the report is serialized with JSON.NET as unindented, then hashed, and then the hash is encrypted with the private key. The `SignedReport` type then contains the report data along with the Base64-encoded signature, which is JSON-serialized (with indenting for readability) to a file.
