@@ -69,6 +69,34 @@ public static class Out
         }
     }
 
+    public static void WriteWarn(string message)
+    {
+        WriteWarn(writer =>
+        {
+            writer.WriteLine(message);
+        });
+    }
+
+    public static void WriteWarn(Action<TextWriter> writeAsWarning)
+    {
+        lock (writePadlock)
+        {
+            var current = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Yellow;
+
+            using (var writer = new StringWriter())
+            {
+                writeAsWarning(writer);
+                var written = writer.ToString();
+
+                Console.Write(written);
+                output.Append(written);
+            }
+
+            Console.ForegroundColor = current;
+        }
+    }
+
     public static string ReadPassword()
     {
         var pass = string.Empty;

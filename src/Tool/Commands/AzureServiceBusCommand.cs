@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,9 @@ using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus.Administration;
 using Azure.Monitor.Query;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 
@@ -66,6 +70,7 @@ class AzureServiceBusCommand : BaseCommand
     }
 
     readonly string resourceId;
+    readonly string subscriptionId;
     readonly string fullyQualifiedNamespace;
     readonly TokenCredential credentials;
     readonly MetricsQueryClient metrics;
@@ -84,6 +89,7 @@ class AzureServiceBusCommand : BaseCommand
 
         // May be useful in the future
         // var resourceGroup = parts[4];
+        subscriptionId = parts[2];
         var name = parts[8];
 
         fullyQualifiedNamespace = $"{name}.{serviceBusDomain}";
@@ -188,11 +194,102 @@ class AzureServiceBusCommand : BaseCommand
 
     protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
+        if (credentials is AzureCliCredential)
+        {
+            OutputCliCredentialsDiagnostics();
+        }
+
         return Task.FromResult(new EnvironmentDetails
         {
             MessageTransport = "AzureServiceBus",
             ReportMethod = $"AzureServiceBus Metrics: {fullyQualifiedNamespace}",
             SkipEndpointListCheck = true
         });
+    }
+
+    void OutputCliCredentialsDiagnostics()
+    {
+        const string endMsg = " It's possible that authentication will not work. If not, try re-authenticating with the Azure CLI as described in https://docs.particular.net/nservicebus/throughput-tool/azure-service-bus#prerequisites";
+
+        try
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var settingsPath = Path.Combine(home, ".azure");
+
+            if (!Directory.Exists(settingsPath))
+            {
+                Out.WriteWarn("Could not locate $HOME/.azure directory, it's possible that authentication will not work.");
+                return;
+            }
+
+            var configPath = Path.Combine(settingsPath, "config");
+            var cloudConfigPath = Path.Combine(settingsPath, "clouds.config");
+            var profilePath = Path.Combine(settingsPath, "azureProfile.json");
+
+            if (!File.Exists(cloudConfigPath) || !File.Exists(profilePath) || !File.Exists(configPath))
+            {
+                Out.WriteWarn("Could not locate configuration files in $HOME/.azure directory." + endMsg);
+                return;
+            }
+
+            var cloudName = new ConfigurationBuilder()
+                .SetBasePath(settingsPath)
+                .AddIniFile("config")
+                .Build()
+                .GetValue<string>("cloud:name");
+
+            if (string.IsNullOrEmpty(cloudName))
+            {
+                Out.WriteWarn("Could not determine Azure cloud name." + endMsg);
+                return;
+            }
+
+            var currentSubscriptionId = new ConfigurationBuilder()
+                .SetBasePath(settingsPath)
+                .AddIniFile("clouds.config")
+                .Build()
+                .GetValue<string>($"{cloudName}:subscription");
+
+            if (string.IsNullOrEmpty(currentSubscriptionId))
+            {
+                Out.WriteWarn("Could not determine current subscription." + endMsg);
+                return;
+            }
+
+            var profileDoc = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(profilePath));
+            if (profileDoc is null)
+            {
+                Out.WriteWarn("Could not read Azure CLI profile information." + endMsg);
+                return;
+            }
+
+            if (profileDoc.SelectToken($"$.subscriptions[?(@.id == '{currentSubscriptionId}')]") is not JObject currentSubscription)
+            {
+                Out.WriteWarn("Could not find current subscription in Azure CLI profile." + endMsg);
+                return;
+            }
+
+            var subName = currentSubscription.Value<string>("name");
+            var user = currentSubscription["user"].Value<string>("name");
+
+            if (subName is null && user is not null)
+            {
+                Out.WriteLine($"Using Azure CLI credentials to authenticate to {cloudName} subscription '{subName}' as user '{user}'");
+            }
+            else
+            {
+                Out.WriteWarn("Could not determine Azure subscription name or login user." + endMsg);
+                return;
+            }
+
+            if (currentSubscriptionId != subscriptionId)
+            {
+                Out.WriteWarn("The current subscriptionId does not appear to match the subsciptionId in provided Azure Service Bus Resource ID." + endMsg);
+            }
+        }
+        catch (Exception x)
+        {
+            Out.WriteWarn($"An error occurred trying to validate Azure Service Bus login information.{endMsg}{Environment.NewLine}Original exception message: {x.Message}");
+        }
     }
 }
