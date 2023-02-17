@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.EndpointThroughputCounter.Infra;
 
 partial class ServiceControlCommand : BaseCommand
 {
@@ -41,6 +42,9 @@ partial class ServiceControlCommand : BaseCommand
             var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
             var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
             var cancellationToken = context.GetCancellationToken();
+
+            RunInfo.Add("ServiceControlUrl", scUrl);
+            RunInfo.Add("MonitoringUrl", monUrl);
 
             var runner = new ServiceControlCommand(shared, scUrl, monUrl);
             await runner.Run(cancellationToken);

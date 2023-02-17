@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.EndpointThroughputCounter.Infra;
 
 class RabbitMqCommand : BaseCommand
 {
@@ -25,6 +26,8 @@ class RabbitMqCommand : BaseCommand
             var url = context.ParseResult.GetValueForOption(urlArg);
             var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
+
+            RunInfo.Add("RabbitUrl", url);
 
             var rabbitManagement = new RabbitManagement(url);
             var runner = new RabbitMqCommand(shared, rabbitManagement);

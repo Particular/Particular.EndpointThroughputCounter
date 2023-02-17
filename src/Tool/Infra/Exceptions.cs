@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using Microsoft.Data.SqlClient;
 using Mindscape.Raygun4Net;
 using Mindscape.Raygun4Net.AspNetCore;
+using Particular.EndpointThroughputCounter.Infra;
 
 public static class Exceptions
 {
@@ -41,24 +41,18 @@ public static class Exceptions
             ApplicationVersion = Versioning.NuGetVersion
         };
 
-        var ticketId = Guid.NewGuid().ToString()[..8];
-
-        var customData = new Dictionary<string, string>()
-        {
-            { "TicketId", ticketId },
-            { "ToolOutput", Out.GetToolOutput() }
-        };
+        RunInfo.Add("ToolOutput", Out.GetToolOutput());
 
         if (x is SqlException sqlX)
         {
-            customData.Add("SqlException.Number", sqlX.Number.ToString());
+            RunInfo.Add("SqlException.Number", sqlX.Number.ToString());
             if (sqlX.Errors is not null)
             {
                 for (var i = 0; i < sqlX.Errors.Count; i++)
                 {
                     var err = sqlX.Errors[i];
-                    customData.Add($"SqlException.Errors${i}.Number", err.Number.ToString());
-                    customData.Add($"SqlException.Errors${i}.Error", err.ToString());
+                    RunInfo.Add($"SqlException.Errors${i}.Number", err.Number.ToString());
+                    RunInfo.Add($"SqlException.Errors${i}.Error", err.ToString());
                 }
             }
         }
@@ -67,7 +61,7 @@ public static class Exceptions
             .SetExceptionDetails(x)
             .SetEnvironmentDetails()
             .SetMachineName(Environment.MachineName)
-            .SetUserCustomData(customData)
+            .AddCurrentRunInfo()
             .SetVersion($"{Versioning.NuGetVersion} Sha:{Versioning.FullSha}")
             .Build();
 
@@ -78,7 +72,7 @@ public static class Exceptions
 #else
             raygun.Send(message).GetAwaiter().GetResult();
 #endif
-            Console.WriteLine($"When contacting support, you may reference TicketId: {ticketId}");
+            Console.WriteLine($"When contacting support, you may reference TicketId: {RunInfo.TicketId}");
         }
         catch (Exception)
         {
