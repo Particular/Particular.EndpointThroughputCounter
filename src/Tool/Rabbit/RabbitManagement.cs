@@ -84,7 +84,7 @@ class RabbitManagement
         {
             var obj = serializer.Deserialize<JObject>(jsonReader);
 
-            var statsDisabled = obj["disable_stats"].Value<bool>();
+            var statsDisabled = obj["disable_stats"]?.Value<bool>() ?? false;
 
             if (statsDisabled)
             {
