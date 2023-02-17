@@ -93,6 +93,7 @@ class AzureServiceBusCommand : BaseCommand
         var name = parts[8];
 
         fullyQualifiedNamespace = $"{name}.{serviceBusDomain}";
+        RunInfo.Add("AzureServiceBusNamespace", fullyQualifiedNamespace);
 
         credentials = authType switch
         {

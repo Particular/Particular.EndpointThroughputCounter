@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.EndpointThroughputCounter.Infra;
 
 abstract class BaseCommand
 {
@@ -15,6 +16,7 @@ abstract class BaseCommand
 
     public BaseCommand(SharedOptions shared)
     {
+        RunInfo.Add("Command", GetType().Name);
         this.shared = shared;
 #if DEBUG
         PollingRunTime = TimeSpan.FromMinutes(1);
