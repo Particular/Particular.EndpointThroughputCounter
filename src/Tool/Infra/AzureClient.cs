@@ -19,14 +19,15 @@
     {
         readonly string resourceId;
         readonly string subscriptionId;
+        readonly ConnectionSet[] connections;
+        readonly List<string> loginExceptions = new();
 
-        TokenCredential credentials;
-        MetricsQueryClient metrics;
-        ServiceBusAdministrationClient serviceBusClient;
+        Queue<ConnectionSet> connectionQueue;
+        ConnectionSet current;
 
         public string FullyQualifiedNamespace { get; }
 
-        public AzureClient(string resourceId, string serviceBusDomain, string authType)
+        public AzureClient(string resourceId, string serviceBusDomain)
         {
             this.resourceId = resourceId;
 
@@ -44,27 +45,86 @@
             FullyQualifiedNamespace = $"{name}.{serviceBusDomain}";
             RunInfo.Add("AzureServiceBusNamespace", FullyQualifiedNamespace);
 
-            credentials = authType switch
-            {
-                nameof(EnvironmentCredential) => new EnvironmentCredential(),
-                nameof(ManagedIdentityCredential) => new ManagedIdentityCredential(),
-                nameof(SharedTokenCacheCredential) => new SharedTokenCacheCredential(),
-                nameof(VisualStudioCredential) => new VisualStudioCredential(),
-                nameof(VisualStudioCodeCredential) => new VisualStudioCodeCredential(),
-                nameof(AzureCliCredential) => new AzureCliCredential(),
-                nameof(AzurePowerShellCredential) => new AzurePowerShellCredential(),
-                //nameof(InteractiveBrowserCredential) => new InteractiveBrowserCredential(),
-                _ => new AzureCliCredential()
-            };
-            metrics = new MetricsQueryClient(credentials);
-            serviceBusClient = new ServiceBusAdministrationClient(FullyQualifiedNamespace, credentials);
+            connections = CreateCredentials()
+                .Select(c => new ConnectionSet(c, FullyQualifiedNamespace))
+                .ToArray();
+
+            ResetConnectionQueue();
         }
 
-        public async Task<IReadOnlyList<MetricValue>> GetMetrics(string queueName, DateTime startTime, DateTime endTime, CancellationToken cancellationToken = default)
+        IEnumerable<TokenCredential> CreateCredentials()
         {
-            try
+            yield return new AzureCliCredential();
+            yield return new AzurePowerShellCredential();
+            yield return new EnvironmentCredential();
+            yield return new SharedTokenCacheCredential();
+            yield return new VisualStudioCredential();
+            yield return new VisualStudioCodeCredential();
+
+            // Don't really need this one to take 100s * 4 tries to finally time out
+            var opts = new TokenCredentialOptions();
+            opts.Retry.MaxRetries = 1;
+            opts.Retry.NetworkTimeout = TimeSpan.FromSeconds(10);
+            yield return new ManagedIdentityCredential(FullyQualifiedNamespace, opts);
+        }
+
+        /// <summary>
+        /// Doesn't change the last successful `current` method but restores all options as possibilities if it doesn't work
+        /// </summary>
+        public void ResetConnectionQueue()
+        {
+            connectionQueue = new Queue<ConnectionSet>(connections);
+        }
+
+        async Task<T> GetDataWithCurrentCredentials<T>(GetDataDelegate<T> getData, CancellationToken cancellationToken)
+        {
+            if (current is null)
             {
-                var response = await metrics.QueryResourceAsync(resourceId,
+                _ = NextConnection();
+            }
+
+            while (true)
+            {
+                try
+                {
+                    var result = await getData(cancellationToken);
+                    return result;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception x) when (IsAuthenticationException(x))
+                {
+                    loginExceptions.Add($"{Environment.NewLine} * {current.Name}: {x.Message}");
+                    if (!NextConnection())
+                    {
+                        var allExceptionMessages = string.Join(string.Empty, loginExceptions);
+                        var msg = "Unable to log in to Azure service using multiple credential types. The exception messages for each credential type (including help links) are provided below:"
+                            + Environment.NewLine + allExceptionMessages;
+                        throw new HaltException(HaltReason.Auth, msg);
+                    }
+                }
+            }
+        }
+
+        bool NextConnection()
+        {
+            if (connectionQueue.TryDequeue(out current))
+            {
+                Out.WriteLine($" - Attempting login with {current.Name}");
+                return true;
+            }
+
+            current = null;
+            return false;
+        }
+
+        public Task<IReadOnlyList<MetricValue>> GetMetrics(string queueName, DateTime startTime, DateTime endTime, CancellationToken cancellationToken = default)
+        {
+            return GetDataWithCurrentCredentials(async token =>
+            {
+                var response = await current.Metrics.QueryResourceAsync(resourceId,
                     new[] { "CompleteMessage" },
                     new MetricsQueryOptions
                     {
@@ -72,29 +132,22 @@
                         TimeRange = new QueryTimeRange(startTime, endTime),
                         Granularity = TimeSpan.FromDays(1)
                     },
-                    cancellationToken);
+                    token);
 
                 // Yeah, it's buried deep
                 var metricValues = response.Value.Metrics.FirstOrDefault()?.TimeSeries.FirstOrDefault()?.Values;
-
                 return metricValues;
-            }
-            catch (CredentialUnavailableException x)
-            {
-                // Azure gives a good error message as part of the exception
-                throw new HaltException(HaltReason.InvalidEnvironment, x.Message);
-            }
+            }, cancellationToken);
         }
 
-        public async Task<string[]> GetQueueNames(CancellationToken cancellationToken = default)
+        public Task<string[]> GetQueueNames(CancellationToken cancellationToken = default)
         {
-            Out.WriteLine($"Authenticating using {credentials.GetType().Name}");
+            Out.WriteLine("Connecting to ServiceBusAdministration to discover queue names...");
 
-            var queueList = new List<string>();
-
-            try
+            return GetDataWithCurrentCredentials(async token =>
             {
-                await foreach (var queue in serviceBusClient.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
+                var queueList = new List<string>();
+                await foreach (var queue in current.ServiceBus.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
                 {
                     queueList.Add(queue.Name);
                 }
@@ -102,25 +155,10 @@
                 return queueList
                     .OrderBy(name => name)
                     .ToArray();
-            }
-            catch (AuthenticationFailedException afx)
-            {
-                throw new HaltException(HaltReason.Auth, "Unable to get queue information because authentication failed.", afx);
-            }
-            catch (UnauthorizedAccessException uax)
-            {
-                throw new HaltException(HaltReason.Auth, "Unable to get queue information because the authenticated user is not authorized.", uax);
-            }
+            }, cancellationToken);
         }
 
-        public void OutputCredentialDiagnostics()
-        {
-            if (credentials is AzureCliCredential)
-            {
-                OutputCliCredentialsDiagnostics();
-            }
-        }
-
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "Shouldn't need this, but don't want to delete just yet")]
         void OutputCliCredentialsDiagnostics()
         {
             const string endMsg = " It's possible that authentication will not work. If not, try re-authenticating with the Azure CLI as described in https://docs.particular.net/nservicebus/throughput-tool/azure-service-bus#prerequisites";
@@ -204,6 +242,27 @@
             catch (Exception x)
             {
                 Out.WriteWarn($"An error occurred trying to validate Azure Service Bus login information.{endMsg}{Environment.NewLine}Original exception message: {x.Message}");
+            }
+        }
+
+        static bool IsAuthenticationException(Exception x)
+        {
+            return x is CredentialUnavailableException or AuthenticationFailedException or UnauthorizedAccessException;
+        }
+
+        delegate Task<T> GetDataDelegate<T>(CancellationToken cancellationToken);
+
+        class ConnectionSet
+        {
+            public string Name { get; }
+            public MetricsQueryClient Metrics { get; }
+            public ServiceBusAdministrationClient ServiceBus { get; }
+
+            public ConnectionSet(TokenCredential credentials, string fullyQualifiedNamespace)
+            {
+                Name = credentials.GetType().Name;
+                Metrics = new MetricsQueryClient(credentials);
+                ServiceBus = new ServiceBusAdministrationClient(fullyQualifiedNamespace, credentials);
             }
         }
     }

@@ -20,11 +20,6 @@ class AzureServiceBusCommand : BaseCommand
             IsRequired = true
         };
 
-        var authTypeArg = new Option<string>("--authType", "Specify the Azure authentication type.")
-        {
-            IsRequired = false
-        };
-
         var serviceBusDomainArg = new Option<string>("--serviceBusDomain",
             description: "The Service Bus domain. Defaults to 'servicebus.windows.net' and only must be specified for Azure customers using non-standard domains like government cloud customers.")
         {
@@ -34,7 +29,6 @@ class AzureServiceBusCommand : BaseCommand
         serviceBusDomainArg.SetDefaultValue("servicebus.windows.net");
 
         command.AddOption(resourceIdArg);
-        command.AddOption(authTypeArg);
         command.AddOption(serviceBusDomainArg);
 
         command.SetHandler(async context =>
@@ -42,7 +36,6 @@ class AzureServiceBusCommand : BaseCommand
             var shared = SharedOptions.Parse(context);
             var resourceId = context.ParseResult.GetValueForOption(resourceIdArg);
             var serviceBusDomain = context.ParseResult.GetValueForOption(serviceBusDomainArg);
-            var authType = context.ParseResult.GetValueForOption(authTypeArg);
             var cancellationToken = context.GetCancellationToken();
 
 #if DEBUG
@@ -54,7 +47,7 @@ class AzureServiceBusCommand : BaseCommand
             }
 #endif
 
-            var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain, authType);
+            var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain);
             await runner.Run(cancellationToken);
         });
 
@@ -64,10 +57,10 @@ class AzureServiceBusCommand : BaseCommand
     readonly AzureClient azure;
 
 
-    public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain, string authType)
+    public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain)
     : base(shared)
     {
-        azure = new AzureClient(resourceId, serviceBusDomain, authType);
+        azure = new AzureClient(resourceId, serviceBusDomain);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
@@ -81,6 +74,9 @@ class AzureServiceBusCommand : BaseCommand
         Out.WriteLine($"Found {queueNames.Length} queues");
 
         var results = new List<QueueThroughput>();
+
+        azure.ResetConnectionQueue();
+        Out.WriteLine("Connecting to Azure Metrics to get throughput data...");
 
         for (var i = 0; i < queueNames.Length; i++)
         {
@@ -108,8 +104,6 @@ class AzureServiceBusCommand : BaseCommand
 
     protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        azure.OutputCredentialDiagnostics();
-
         return Task.FromResult(new EnvironmentDetails
         {
             MessageTransport = "AzureServiceBus",
