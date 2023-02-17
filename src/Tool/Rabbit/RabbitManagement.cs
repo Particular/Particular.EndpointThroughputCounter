@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -78,29 +79,36 @@ class RabbitManagement
     {
         var url = $"{ManagementUri}/api/overview";
 
-        using (var stream = await http.GetStreamAsync(url, cancellationToken))
-        using (var reader = new StreamReader(stream))
-        using (var jsonReader = new JsonTextReader(reader))
+        try
         {
-            var obj = serializer.Deserialize<JObject>(jsonReader);
-
-            var statsDisabled = obj["disable_stats"]?.Value<bool>() ?? false;
-
-            if (statsDisabled)
+            using (var stream = await http.GetStreamAsync(url, cancellationToken))
+            using (var reader = new StreamReader(stream))
+            using (var jsonReader = new JsonTextReader(reader))
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, $"The RabbitMQ broker is configured with `management.disable_stats = true` or `management_agent.disable_metrics_collector = true` and as a result queue statistics cannot be collected using this tool. Consider changing the configuration of the RabbitMQ broker.");
+                var obj = serializer.Deserialize<JObject>(jsonReader);
+
+                var statsDisabled = obj["disable_stats"]?.Value<bool>() ?? false;
+
+                if (statsDisabled)
+                {
+                    throw new HaltException(HaltReason.InvalidEnvironment, $"The RabbitMQ broker is configured with `management.disable_stats = true` or `management_agent.disable_metrics_collector = true` and as a result queue statistics cannot be collected using this tool. Consider changing the configuration of the RabbitMQ broker.");
+                }
+
+                var rabbitVersion = obj["rabbitmq_version"] ?? obj["product_version"];
+                var mgmtVersion = obj["management_version"];
+                var clusterName = obj["cluster_name"];
+
+                return new RabbitDetails
+                {
+                    ClusterName = clusterName?.Value<string>() ?? "Unknown",
+                    RabbitVersion = mgmtVersion?.Value<string>() ?? "Unknown",
+                    ManagementVersion = mgmtVersion?.Value<string>() ?? "Unknown"
+                };
             }
-
-            var rabbitVersion = obj["rabbitmq_version"] ?? obj["product_version"];
-            var mgmtVersion = obj["management_version"];
-            var clusterName = obj["cluster_name"];
-
-            return new RabbitDetails
-            {
-                ClusterName = clusterName?.Value<string>() ?? "Unknown",
-                RabbitVersion = mgmtVersion?.Value<string>() ?? "Unknown",
-                ManagementVersion = mgmtVersion?.Value<string>() ?? "Unknown"
-            };
+        }
+        catch (HttpRequestException hx)
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, $"The server at {url} did not respond. The exception message was: {hx.Message}");
         }
     }
 }
