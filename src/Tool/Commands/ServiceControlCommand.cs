@@ -2,16 +2,13 @@
 using System.Collections.Generic;
 using System.CommandLine;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.EndpointThroughputCounter.ServiceControl;
 
 partial class ServiceControlCommand : BaseCommand
 {
@@ -20,14 +17,14 @@ partial class ServiceControlCommand : BaseCommand
         var command = new Command("servicecontrol", "Measure endpoints and throughput using the ServiceControl API");
 
         var scUrlArg = new Option<string>(
-            name: "--serviceControlApiUrl",
+            name: PrimaryUrlArgName,
             description: "The URL for the primary ServiceControl instance API, http://localhost:33333/api by default")
         {
             IsRequired = true
         };
 
         var monitoringUrlArg = new Option<string>(
-            name: "--monitoringApiUrl",
+            name: MonitoringUrlArgName,
             description: "The URL for the ServiceControl Monitoring instance API, http://localhost:33633/ by default")
         {
             IsRequired = true
@@ -53,14 +50,12 @@ partial class ServiceControlCommand : BaseCommand
         return command;
     }
 
-    readonly AuthenticatingHttpClient http;
-    readonly JsonSerializer serializer;
-    readonly string primaryUrl;
-    readonly string monitoringUrl;
-    ServiceControlEndpoint[] knownEndpoints;
+    const string PrimaryUrlArgName = "--serviceControlApiUrl";
+    const string MonitoringUrlArgName = "--monitoringApiUrl";
 
-    static readonly Version MinServiceControlVersion = new Version(4, 21, 8);
-    static readonly Version MinSCMonitoringVersion = new Version(4, 21, 8);
+    readonly ServiceControlClient primary;
+    readonly ServiceControlClient monitoring;
+    ServiceControlEndpoint[] knownEndpoints;
 
 #if DEBUG
     // So that a run can be done in 3 minutes in debug mode
@@ -76,11 +71,8 @@ partial class ServiceControlCommand : BaseCommand
     public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl)
         : base(shared)
     {
-        this.primaryUrl = primaryUrl.TrimEnd('/');
-        this.monitoringUrl = monitoringUrl.TrimEnd('/');
-
-        http = new AuthenticatingHttpClient(client => client.Timeout = TimeSpan.FromSeconds(10));
-        serializer = new JsonSerializer();
+        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl);
+        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
@@ -135,10 +127,8 @@ partial class ServiceControlCommand : BaseCommand
 
     async Task<QueueThroughput[]> SampleData(int minutes, CancellationToken cancellationToken)
     {
-        var monitoringDataUrl = $"{monitoringUrl}/monitored-endpoints?history={minutes}";
-
         // Lots of retries here because we get multiple queues in one go
-        var arr = await GetServiceControlData<JArray>(monitoringDataUrl, cancellationToken, 5);
+        var arr = await monitoring.GetData<JArray>($"/monitored-endpoints?history={minutes}", 5, cancellationToken);
 
         var queueResults = arr.Select(token =>
         {
@@ -294,9 +284,9 @@ partial class ServiceControlCommand : BaseCommand
 
     async Task<AuditBatch> GetAuditBatch(string endpointName, int page, int pageSize, CancellationToken cancellationToken)
     {
-        var url = $"{primaryUrl}/endpoints/{endpointName}/messages/?page={page}&per_page={pageSize}&sort=processed_at&direction=desc";
+        var pathAndQuery = $"/endpoints/{endpointName}/messages/?page={page}&per_page={pageSize}&sort=processed_at&direction=desc";
 
-        var arr = await GetServiceControlData<JArray>(url, cancellationToken);
+        var arr = await primary.GetData<JArray>(pathAndQuery, cancellationToken);
 
         var processedAtValues = arr.Select(token => token["processed_at"].Value<DateTime>()).ToArray();
 
@@ -355,15 +345,8 @@ partial class ServiceControlCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        await CheckEndpoint("--serviceControlApiUrl", "ServiceControl", primaryUrl, MinServiceControlVersion, content =>
-        {
-            return content.Contains("\"known_endpoints_url\"") && content.Contains("\"endpoints_messages_url\"");
-        }, cancellationToken);
-
-        await CheckEndpoint("--monitoringApiUrl", "ServiceControl Monitoring", monitoringUrl, MinSCMonitoringVersion, content =>
-        {
-            return content.Contains("\"instanceType\"") && content.Contains("\"monitoring\"");
-        }, cancellationToken);
+        await primary.CheckEndpoint(content => content.Contains("\"known_endpoints_url\"") && content.Contains("\"endpoints_messages_url\""), cancellationToken);
+        await monitoring.CheckEndpoint(content => content.Contains("\"instanceType\"") && content.Contains("\"monitoring\""), cancellationToken);
 
         knownEndpoints = await GetKnownEndpoints(cancellationToken);
 
@@ -372,10 +355,8 @@ partial class ServiceControlCommand : BaseCommand
             throw new HaltException(HaltReason.InvalidEnvironment, "Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
         }
 
-        var configUrl = $"{primaryUrl}/configuration";
-
         // Tool can't proceed without this data, try 5 times
-        var obj = await GetServiceControlData<JObject>(configUrl, cancellationToken, 5);
+        var obj = await primary.GetData<JObject>("/configuration", 5, cancellationToken);
 
         var transportTypeToken = obj["transport"]["transport_customization_type"]
             ?? throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
@@ -403,62 +384,10 @@ partial class ServiceControlCommand : BaseCommand
         };
     }
 
-    async Task CheckEndpoint(string paramName, string instanceType, string url, Version minimumVersion, Func<string, bool> contentTest, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            throw new HaltException(HaltReason.InvalidConfig, $"The {paramName} option specifying the {instanceType} URL was not provided.");
-        }
-
-        HttpResponseMessage res = null;
-        try
-        {
-            res = await http.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), cancellationToken);
-        }
-        catch (HttpRequestException hx)
-        {
-            throw new HaltException(HaltReason.InvalidEnvironment, $"The server at {url} did not respond. The exception message was: {hx.Message}");
-        }
-
-        if (!res.IsSuccessStatusCode)
-        {
-            var b = new StringBuilder($"The server at {url} returned a non-successful status code: {(int)res.StatusCode} {res.StatusCode}")
-                .AppendLine()
-                .AppendLine("Response Headers:");
-
-            foreach (var header in res.Headers)
-            {
-                _ = b.AppendLine($"  {header.Key}: {header.Value}");
-            }
-
-            throw new HaltException(HaltReason.RuntimeError, b.ToString());
-        }
-
-        if (!res.Headers.TryGetValues("X-Particular-Version", out var versionHeaders))
-        {
-            throw new HaltException(HaltReason.InvalidConfig, $"The server at {url} specified by parameter {paramName} does not appear to be a ServiceControl instance. Are you sure you have the right URL?");
-        }
-
-        var version = versionHeaders.Select(header => Version.TryParse(header, out var v) ? v : null).FirstOrDefault();
-        Out.WriteLine($"{instanceType} instance at {url} detected running version {version.ToString(3)}");
-        if (version < minimumVersion)
-        {
-            throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {url} is running version {version.ToString(3)}. The minimum supported version is {minimumVersion.ToString(3)}.");
-        }
-
-        var content = await res.Content.ReadAsStringAsync(cancellationToken);
-        if (!contentTest(content))
-        {
-            throw new HaltException(HaltReason.InvalidConfig, $"The server at {url} specified by parameter {paramName} does not appear to be a {instanceType} instance. Are you sure you have the right URL?");
-        }
-    }
-
     async Task<ServiceControlEndpoint[]> GetKnownEndpoints(CancellationToken cancellationToken)
     {
-        var endpointsUrl = $"{primaryUrl}/endpoints";
-
         // Tool can't proceed without this data, try 5 times
-        var arr = await GetServiceControlData<JArray>(endpointsUrl, cancellationToken, 5);
+        var arr = await primary.GetData<JArray>("/endpoints", 5, cancellationToken);
 
         var endpoints = arr.Select(endpointToken => new
         {
@@ -477,44 +406,14 @@ partial class ServiceControlCommand : BaseCommand
 
         foreach (var endpoint in endpoints)
         {
-            var messagesUrl = $"{primaryUrl}/endpoints/{endpoint.Name}/messages/?per_page=1";
+            var messagesPath = $"/endpoints/{endpoint.Name}/messages/?per_page=1";
 
-            var recentMessages = await GetServiceControlData<JArray>(messagesUrl, cancellationToken, 2);
+            var recentMessages = await primary.GetData<JArray>(messagesPath, 2, cancellationToken);
 
             endpoint.AuditedMessages = recentMessages.Any();
         }
 
         return endpoints;
-    }
-
-    async Task<TJsonType> GetServiceControlData<TJsonType>(string url, CancellationToken cancellationToken, int tryCount = 1)
-        where TJsonType : JToken
-    {
-        for (int i = 0; i < tryCount; i++)
-        {
-            try
-            {
-                using (var stream = await http.GetStreamAsync(url, cancellationToken))
-                using (var reader = new StreamReader(stream))
-                using (var jsonReader = new JsonTextReader(reader))
-                {
-                    return serializer.Deserialize<TJsonType>(jsonReader);
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception x)
-            {
-                if (i + 1 >= tryCount)
-                {
-                    throw new ServiceControlDataException(url, tryCount, x);
-                }
-            }
-        }
-
-        throw new InvalidOperationException("Retry loop ended without returning or throwing. This should not happen.");
     }
 
     [Conditional("DEBUG")]
