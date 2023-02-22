@@ -1,7 +1,7 @@
-﻿using System;
-
-partial class ServiceControlCommand
+﻿namespace Particular.EndpointThroughputCounter.ServiceControl
 {
+    using System;
+
     class ServiceControlDataException : Exception
     {
         public string Url { get; }

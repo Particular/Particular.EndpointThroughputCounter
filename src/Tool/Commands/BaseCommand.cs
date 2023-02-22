@@ -52,6 +52,7 @@ abstract class BaseCommand
             using (new StreamWriter(outputPath, false))
             {
             }
+            File.Delete(outputPath);
         }
         catch (Exception x)
         {
