@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.100.77" />
+    <PackageVersion Include="AWSSDK.SQS" Version="3.7.100.78" />
   </ItemGroup>
 
 </Project>
