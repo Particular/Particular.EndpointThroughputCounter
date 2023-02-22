@@ -9,6 +9,7 @@
     using System.Threading.Tasks;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
+    using Particular.EndpointThroughputCounter.Infra;
 
     class ServiceControlClient
     {
@@ -106,11 +107,11 @@
                 throw new HaltException(HaltReason.InvalidConfig, $"The server at {rootUrl} specified by parameter {paramName} does not appear to be a ServiceControl instance. Are you sure you have the right URL?");
             }
 
-            var version = versionHeaders.Select(header => TryGetVersion(header, out var v) ? v : null).FirstOrDefault();
-            Out.WriteLine($"{instanceType} instance at {rootUrl} detected running version {version.ToString(3)}");
-            if (version < MinServiceControlVersion)
+            var version = versionHeaders.Select(header => SemVerVersion.TryParse(header, out var v) ? v : null).FirstOrDefault();
+            Out.WriteLine($"{instanceType} instance at {rootUrl} detected running version {version}");
+            if (version.Version < MinServiceControlVersion)
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {rootUrl} is running version {version.ToString(3)}. The minimum supported version is {MinServiceControlVersion.ToString(3)}.");
+                throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {rootUrl} is running version {version}. The minimum supported version is {MinServiceControlVersion.ToString(3)}.");
             }
 
             var content = await res.Content.ReadAsStringAsync(cancellationToken);
@@ -119,19 +120,5 @@
                 throw new HaltException(HaltReason.InvalidConfig, $"The server at {rootUrl} specified by parameter {paramName} does not appear to be a {instanceType} instance. Are you sure you have the right URL?");
             }
         }
-
-        bool TryGetVersion(string versionString, out Version version)
-        {
-            if (Version.TryParse(versionString, out version))
-            {
-                return true;
-            }
-
-            var firstDash = versionString.IndexOf('-');
-            var mainPartIfPrerelease = firstDash >= 0 ? versionString[..firstDash] : null;
-
-            return Version.TryParse(mainPartIfPrerelease, out version);
-        }
-
     }
 }
