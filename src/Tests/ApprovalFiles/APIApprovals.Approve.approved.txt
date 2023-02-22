@@ -7,7 +7,7 @@ namespace Particular.EndpointThroughputCounter.Data
         public bool NoDataOrSendOnly { get; set; }
         public string QueueName { get; set; }
         [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
-        public int? Throughput { get; set; }
+        public long? Throughput { get; set; }
     }
     public class Report
     {
@@ -25,7 +25,7 @@ namespace Particular.EndpointThroughputCounter.Data
         public System.DateTimeOffset StartTime { get; set; }
         public string ToolVersion { get; set; }
         public int TotalQueues { get; set; }
-        public int TotalThroughput { get; set; }
+        public long TotalThroughput { get; set; }
     }
     public class SignedReport
     {

@@ -34,7 +34,7 @@
 
         public QueueThroughput[] Queues { get; init; }
 
-        public int TotalThroughput { get; init; }
+        public long TotalThroughput { get; init; }
 
         public int TotalQueues { get; init; }
 
@@ -47,7 +47,7 @@
         public string QueueName { get; set; }
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public int? Throughput { get; set; }
+        public long? Throughput { get; set; }
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool NoDataOrSendOnly { get; init; }

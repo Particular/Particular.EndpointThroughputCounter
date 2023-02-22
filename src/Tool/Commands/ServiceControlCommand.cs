@@ -4,6 +4,7 @@ using System.CommandLine;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
@@ -52,6 +53,8 @@ partial class ServiceControlCommand : BaseCommand
     const string PrimaryUrlArgName = "--serviceControlApiUrl";
     const string MonitoringUrlArgName = "--monitoringApiUrl";
 
+    static readonly Version MinAuditCountsVersion = new Version(4, 29);
+
     readonly ServiceControlClient primary;
     readonly ServiceControlClient monitoring;
     ServiceControlEndpoint[] knownEndpoints;
@@ -98,11 +101,24 @@ partial class ServiceControlCommand : BaseCommand
             .Select(g => new QueueThroughput { QueueName = g.Key, Throughput = g.Sum(q => q.Throughput) })
             .ToList();
 
-        var recordedEndpoints = queues.Select(q => q.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var recordedEndpoints = queues.ToDictionary(q => q.QueueName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var knownEndpoint in knownEndpoints)
         {
-            if (!recordedEndpoints.Contains(knownEndpoint.Name))
+            var recordedByMetrics = recordedEndpoints.GetOrDefault(knownEndpoint.Name);
+            if (knownEndpoint.AuditCounts.Any())
+            {
+                var highestAuditCount = knownEndpoint.AuditCounts.Max(ac => ac.Count);
+                if (recordedByMetrics is not null)
+                {
+                    recordedByMetrics.Throughput = Math.Max(recordedByMetrics.Throughput ?? 0, highestAuditCount);
+                }
+                else
+                {
+                    queues.Add(new QueueThroughput { QueueName = knownEndpoint.Name, Throughput = highestAuditCount });
+                }
+            }
+            else if (recordedByMetrics is null)
             {
                 queues.Add(new QueueThroughput
                 {
@@ -142,12 +158,12 @@ partial class ServiceControlCommand : BaseCommand
 
         var monitoredNames = queueResults.Select(ep => ep.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var endpointsWithoutMonitoring = knownEndpoints.Where(ep => !monitoredNames.Contains(ep.Name) && ep.AuditedMessages).ToArray();
-        if (endpointsWithoutMonitoring.Any())
+        var endpointsToCheckForHourlyAuditData = knownEndpoints.Where(ep => !monitoredNames.Contains(ep.Name) && ep.CheckHourlyAuditDataIfNoMonitoringData).ToArray();
+        if (endpointsToCheckForHourlyAuditData.Any())
         {
             var auditsFromBinarySearch = new ServiceControlAuditsByBinarySearch(primary, MinutesPerSample);
 
-            foreach (var endpoint in endpointsWithoutMonitoring)
+            foreach (var endpoint in endpointsToCheckForHourlyAuditData)
             {
                 var fromAuditing = await auditsFromBinarySearch.GetThroughputFromAudits(endpoint.Name, cancellationToken);
                 if (fromAuditing is not null)
@@ -221,13 +237,43 @@ partial class ServiceControlCommand : BaseCommand
         })
         .ToArray();
 
+        var useAuditCounts = false;
+
+        if (primary.Version.Version >= MinAuditCountsVersion)
+        {
+            // Verify audit instances also have audit counts
+            var remotesInfoJson = await primary.GetData<JArray>("/configuration/remotes", cancellationToken);
+            var remoteInfo = remotesInfoJson.Select(remote =>
+            {
+                var versionString = remote["version"]?.Value<string>();
+                var retentionString = remote["configuration"]?["data_retention"]?["audit_retention_period"]?.Value<string>();
+
+                return new
+                {
+                    Version = SemVerVersion.TryParse(versionString, out var v) ? v : null,
+                    Retention = TimeSpan.TryParse(retentionString, out var ts) ? ts : TimeSpan.Zero
+                };
+            })
+            .ToArray();
+
+            // Want 2d audit retention so we get one complete UTC day no matter what time it is
+            useAuditCounts = remoteInfo.All(r => r.Version.Version >= MinAuditCountsVersion && r.Retention > TimeSpan.FromDays(2));
+        }
+
         foreach (var endpoint in endpoints)
         {
-            var messagesPath = $"/endpoints/{endpoint.Name}/messages/?per_page=1";
-
-            var recentMessages = await primary.GetData<JArray>(messagesPath, 2, cancellationToken);
-
-            endpoint.AuditedMessages = recentMessages.Any();
+            if (useAuditCounts)
+            {
+                var path = $"/endpoints/{endpoint.Name}/audit-count";
+                endpoint.AuditCounts = await primary.GetData<AuditCount[]>(path, 2, cancellationToken);
+                endpoint.CheckHourlyAuditDataIfNoMonitoringData = false;
+            }
+            else
+            {
+                var path = $"/endpoints/{endpoint.Name}/messages/?per_page=1";
+                var recentMessages = await primary.GetData<JArray>(path, 2, cancellationToken);
+                endpoint.CheckHourlyAuditDataIfNoMonitoringData = recentMessages.Any();
+            }
         }
 
         return endpoints;
@@ -238,6 +284,15 @@ partial class ServiceControlCommand : BaseCommand
         public string Name { get; set; }
         public bool HeartbeatsEnabled { get; set; }
         public bool ReceivingHeartbeats { get; set; }
-        public bool AuditedMessages { get; set; }
+        public bool CheckHourlyAuditDataIfNoMonitoringData { get; set; }
+        public AuditCount[] AuditCounts { get; set; }
+    }
+
+    class AuditCount
+    {
+        [JsonProperty("utc_date")]
+        public DateTime UtcDate { get; set; }
+        [JsonProperty("count")]
+        public long Count { get; set; }
     }
 }

@@ -8,7 +8,6 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
     using Particular.EndpointThroughputCounter.Infra;
 
     class ServiceControlClient
@@ -20,6 +19,8 @@
         readonly string rootUrl;
         readonly string paramName;
         readonly string instanceType;
+
+        public SemVerVersion Version { get; private set; }
 
         public ServiceControlClient(string paramName, string instanceType, string rootUrl)
         {
@@ -34,13 +35,11 @@
         }
 
         public Task<TJsonType> GetData<TJsonType>(string pathAndQuery, CancellationToken cancellationToken = default)
-            where TJsonType : JToken
         {
             return GetData<TJsonType>(pathAndQuery, 1, cancellationToken);
         }
 
         public async Task<TJsonType> GetData<TJsonType>(string pathAndQuery, int tryCount, CancellationToken cancellationToken = default)
-            where TJsonType : JToken
         {
             if (pathAndQuery is null || !pathAndQuery.StartsWith('/'))
             {
@@ -107,11 +106,12 @@
                 throw new HaltException(HaltReason.InvalidConfig, $"The server at {rootUrl} specified by parameter {paramName} does not appear to be a ServiceControl instance. Are you sure you have the right URL?");
             }
 
-            var version = versionHeaders.Select(header => SemVerVersion.TryParse(header, out var v) ? v : null).FirstOrDefault();
-            Out.WriteLine($"{instanceType} instance at {rootUrl} detected running version {version}");
-            if (version.Version < MinServiceControlVersion)
+            Version = versionHeaders.Select(header => SemVerVersion.ParseOrDefault(header)).FirstOrDefault();
+            Out.WriteLine($"{instanceType} instance at {rootUrl} detected running version {Version}");
+
+            if (Version.Version < MinServiceControlVersion)
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {rootUrl} is running version {version}. The minimum supported version is {MinServiceControlVersion.ToString(3)}.");
+                throw new HaltException(HaltReason.InvalidEnvironment, $"The {instanceType} instance at {rootUrl} is running version {Version}. The minimum supported version is {MinServiceControlVersion.ToString(3)}.");
             }
 
             var content = await res.Content.ReadAsStringAsync(cancellationToken);

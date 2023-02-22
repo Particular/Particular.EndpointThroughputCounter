@@ -38,6 +38,16 @@
             return true;
         }
 
+        public static SemVerVersion ParseOrDefault(string value)
+        {
+            if (TryParse(value, out var version))
+            {
+                return version;
+            }
+
+            return null;
+        }
+
         public override string ToString()
         {
             if (PrereleaseLabel is null)
