@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.ThroughputQuery;
 
 class AzureServiceBusCommand : BaseCommand
 {
@@ -60,7 +61,8 @@ class AzureServiceBusCommand : BaseCommand
     public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain)
     : base(shared)
     {
-        azure = new AzureClient(resourceId, serviceBusDomain);
+        azure = new AzureClient(resourceId, serviceBusDomain, Out.WriteLine);
+        RunInfo.Add("AzureServiceBusNamespace", azure.FullyQualifiedNamespace);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)

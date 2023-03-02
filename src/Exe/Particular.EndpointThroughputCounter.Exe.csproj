@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Data\Particular.EndpointThroughputCounter.Data.csproj" />
+    <ProjectReference Include="..\Query\Particular.ThroughputQuery.csproj" />
   </ItemGroup>
 
   <ItemGroup>
