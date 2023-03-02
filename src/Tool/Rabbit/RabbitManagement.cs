@@ -9,14 +9,13 @@ using Newtonsoft.Json.Linq;
 
 class RabbitManagement
 {
-    readonly AuthenticatingHttpClient http;
+    readonly HttpClient http;
     readonly JsonSerializer serializer;
 
-    public RabbitManagement(string managementUri)
+    public RabbitManagement(HttpClient http, string managementUri)
     {
+        this.http = http;
         ManagementUri = managementUri.TrimEnd('/');
-
-        http = new AuthenticatingHttpClient();
 
         serializer = new JsonSerializer();
     }

@@ -64,8 +64,8 @@ class SqsCommand : BaseCommand
         aws = new AwsQuery();
     }
 
-    AwsQuery aws;
-    string prefix;
+    readonly AwsQuery aws;
+    readonly string prefix;
     int metricsReceived;
     List<string> queueNames;
     string[] ignoredQueueNames;
@@ -87,7 +87,7 @@ class SqsCommand : BaseCommand
                 Throughput = maxThroughput
             });
 
-            Interlocked.Increment(ref metricsReceived);
+            _ = Interlocked.Increment(ref metricsReceived);
             Out.Progress($"Got data for {metricsReceived}/{queueNames.Count} SQS queues.");
         });
 
@@ -119,7 +119,7 @@ class SqsCommand : BaseCommand
         if (ignoredQueueNames.Any())
         {
             var hash = ignoredQueueNames.ToHashSet();
-            queueNames.RemoveAll(name => hash.Contains(name));
+            _ = queueNames.RemoveAll(name => hash.Contains(name));
 
             Out.WriteLine($"{queueNames.Count} queues match prefix '{prefix}'.");
         }

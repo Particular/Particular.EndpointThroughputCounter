@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.CommandLine;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -43,7 +44,9 @@ partial class ServiceControlCommand : BaseCommand
             RunInfo.Add("ServiceControlUrl", scUrl);
             RunInfo.Add("MonitoringUrl", monUrl);
 
-            var runner = new ServiceControlCommand(shared, scUrl, monUrl);
+            var http = await InteractiveHttpAuth.CreateHttpClient(scUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(15), cancellationToken: cancellationToken);
+
+            var runner = new ServiceControlCommand(shared, http, scUrl, monUrl);
             await runner.Run(cancellationToken);
         });
 
@@ -68,11 +71,11 @@ partial class ServiceControlCommand : BaseCommand
     const int MinutesPerSample = 60;
 #endif
 
-    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl)
+    public ServiceControlCommand(SharedOptions shared, HttpClient http, string primaryUrl, string monitoringUrl)
         : base(shared)
     {
-        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl);
-        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl);
+        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, http);
+        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, http);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
