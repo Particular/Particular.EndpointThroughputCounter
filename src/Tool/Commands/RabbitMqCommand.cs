@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.ThroughputQuery;
 
 class RabbitMqCommand : BaseCommand
 {
@@ -122,24 +123,31 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
-
-        Out.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
-        Out.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
-        Out.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
-
-        var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
-            .Where(q => IncludeQueue(q.Name))
-            .OrderBy(q => q.Name)
-            .Select(q => q.Name)
-            .ToArray();
-
-        return new EnvironmentDetails
+        try
         {
-            MessageTransport = "RabbitMQ",
-            ReportMethod = rabbitDetails.ToReportMethodString(),
-            QueueNames = queueNames
-        };
+            rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
+
+            Out.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
+            Out.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
+            Out.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
+
+            var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
+                .Where(q => IncludeQueue(q.Name))
+                .OrderBy(q => q.Name)
+                .Select(q => q.Name)
+                .ToArray();
+
+            return new EnvironmentDetails
+            {
+                MessageTransport = "RabbitMQ",
+                ReportMethod = rabbitDetails.ToReportMethodString(),
+                QueueNames = queueNames
+            };
+        }
+        catch (QueryException x)
+        {
+            throw new HaltException(x);
+        }
     }
 
     static bool IncludeQueue(string name)

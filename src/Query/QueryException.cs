@@ -14,6 +14,7 @@
 
     public enum QueryFailureReason
     {
-        Auth
+        Auth,
+        InvalidEnvironment
     }
 }

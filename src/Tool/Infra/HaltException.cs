@@ -19,6 +19,7 @@ class HaltException : ApplicationException
     static HaltReason GetHaltReason(QueryFailureReason reason) => reason switch
     {
         QueryFailureReason.Auth => HaltReason.Auth,
+        QueryFailureReason.InvalidEnvironment => HaltReason.InvalidEnvironment,
         _ => HaltReason.RuntimeError
     };
 }
