@@ -6,11 +6,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon;
-using Amazon.CloudWatch;
-using Amazon.CloudWatch.Model;
-using Amazon.SQS;
-using Amazon.SQS.Model;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.ThroughputQuery;
 
 class SqsCommand : BaseCommand
 {
@@ -64,49 +61,33 @@ class SqsCommand : BaseCommand
         }
 
         this.prefix = prefix;
+        aws = new AwsQuery();
     }
 
-    string prefix;
+    readonly AwsQuery aws;
+    readonly string prefix;
     int metricsReceived;
     List<string> queueNames;
     string[] ignoredQueueNames;
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        var endTime = DateTime.UtcNow.Date.AddDays(1);
-        var startTime = endTime.AddDays(-30);
-
-        var cloudWatch = new AmazonCloudWatchClient();
-        Out.WriteLine($"Loading CloudWatch metrics from {cloudWatch.Config.RegionEndpoint.SystemName}.");
+        var aws = new AwsQuery();
+        Out.WriteLine($"Loading CloudWatch metrics from {aws.CloudWatchRegion}.");
 
         var data = new ConcurrentBag<QueueThroughput>();
 
         var tasks = queueNames.Select(async queueName =>
         {
-            var req = new GetMetricStatisticsRequest
-            {
-                Namespace = "AWS/SQS",
-                MetricName = "NumberOfMessagesDeleted",
-                StartTimeUtc = startTime,
-                EndTimeUtc = endTime,
-                Period = 86400, // 1 day
-                Statistics = new List<string> { "Sum" },
-                Dimensions = new List<Dimension> {
-                    new Dimension { Name = "QueueName", Value = queueName }
-                }
-            };
-
-            var resp = await cloudWatch.GetMetricStatisticsAsync(req, cancellationToken);
-
-            var maxThroughput = resp.Datapoints.OrderByDescending(d => d.Sum).FirstOrDefault()?.Sum ?? 0;
+            var maxThroughput = await aws.GetMaxThroughput(queueName, cancellationToken).ConfigureAwait(false);
 
             data.Add(new QueueThroughput
             {
                 QueueName = queueName,
-                Throughput = (int)maxThroughput
+                Throughput = maxThroughput
             });
 
-            Interlocked.Increment(ref metricsReceived);
+            _ = Interlocked.Increment(ref metricsReceived);
             Out.Progress($"Got data for {metricsReceived}/{queueNames.Count} SQS queues.");
         });
 
@@ -116,8 +97,8 @@ class SqsCommand : BaseCommand
 
         return new QueueDetails
         {
-            StartTime = new DateTimeOffset(startTime, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(endTime, TimeSpan.Zero),
+            StartTime = new DateTimeOffset(aws.StartTimeUtc, TimeSpan.Zero),
+            EndTime = new DateTimeOffset(aws.EndTimeUtc, TimeSpan.Zero),
             Queues = data.OrderBy(q => q.QueueName).ToArray(),
             TimeOfObservation = TimeSpan.FromDays(1)
         };
@@ -125,37 +106,9 @@ class SqsCommand : BaseCommand
 
     async Task GetQueues(CancellationToken cancellationToken)
     {
-        var sqs = new AmazonSQSClient();
+        Out.WriteLine($"Loading SQS queue names from {aws.SQSRegion}.");
 
-        Out.WriteLine($"Loading SQS queue names from {sqs.Config.RegionEndpoint.SystemName}.");
-
-        var request = new ListQueuesRequest
-        {
-            MaxResults = 1000
-        };
-
-        queueNames = new List<string>();
-
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var response = await sqs.ListQueuesAsync(request, cancellationToken);
-
-            queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
-
-            Out.Progress($"Found {queueNames.Count} SQS queues.");
-
-            if (response.NextToken is not null)
-            {
-                request.NextToken = response.NextToken;
-            }
-            else
-            {
-                Out.WriteLine();
-                break;
-            }
-        }
+        queueNames = await aws.GetQueueNames(found => Out.Progress($"Found {found} SQS queues."), cancellationToken);
         Out.EndProgress();
 
         ignoredQueueNames = queueNames
@@ -166,7 +119,7 @@ class SqsCommand : BaseCommand
         if (ignoredQueueNames.Any())
         {
             var hash = ignoredQueueNames.ToHashSet();
-            queueNames.RemoveAll(name => hash.Contains(name));
+            _ = queueNames.RemoveAll(name => hash.Contains(name));
 
             Out.WriteLine($"{queueNames.Count} queues match prefix '{prefix}'.");
         }

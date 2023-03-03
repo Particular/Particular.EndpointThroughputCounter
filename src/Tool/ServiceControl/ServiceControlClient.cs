@@ -14,15 +14,15 @@
     {
         static readonly Version MinServiceControlVersion = new Version(4, 21, 8);
         static readonly JsonSerializer serializer = new JsonSerializer();
-        static readonly AuthenticatingHttpClient http = new AuthenticatingHttpClient(client => client.Timeout = TimeSpan.FromSeconds(10));
 
+        readonly HttpClient http;
         readonly string rootUrl;
         readonly string paramName;
         readonly string instanceType;
 
         public SemVerVersion Version { get; private set; }
 
-        public ServiceControlClient(string paramName, string instanceType, string rootUrl)
+        public ServiceControlClient(string paramName, string instanceType, string rootUrl, HttpClient http)
         {
             if (string.IsNullOrWhiteSpace(rootUrl))
             {
@@ -32,6 +32,7 @@
             this.paramName = paramName;
             this.instanceType = instanceType;
             this.rootUrl = rootUrl.TrimEnd('/');
+            this.http = http;
         }
 
         public Task<TJsonType> GetData<TJsonType>(string pathAndQuery, CancellationToken cancellationToken = default)

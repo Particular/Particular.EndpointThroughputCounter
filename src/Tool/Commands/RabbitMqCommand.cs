@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.ThroughputQuery;
 
 class RabbitMqCommand : BaseCommand
 {
@@ -27,10 +28,12 @@ class RabbitMqCommand : BaseCommand
             var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
 
-            RunInfo.Add("RabbitUrl", url);
+            RunInfo.Add("RabbitMQUrl", url);
 
-            var rabbitManagement = new RabbitManagement(url);
-            var runner = new RabbitMqCommand(shared, rabbitManagement);
+            var http = await InteractiveHttpAuth.CreateHttpClient(url.TrimEnd('/') + "/api/overview");
+
+            var rabbitMQManagement = new RabbitMQManagementClient(http, url);
+            var runner = new RabbitMqCommand(shared, rabbitMQManagement);
 
             await runner.Run(cancellationToken);
         });
@@ -38,15 +41,15 @@ class RabbitMqCommand : BaseCommand
         return command;
     }
 
-    readonly RabbitManagement rabbit;
+    readonly RabbitMQManagementClient _rabbitMQ;
     readonly TimeSpan pollingInterval;
 
-    RabbitDetails rabbitDetails;
+    RabbitMQDetails _rabbitMQDetails;
 
-    public RabbitMqCommand(SharedOptions shared, RabbitManagement rabbit)
+    public RabbitMqCommand(SharedOptions shared, RabbitMQManagementClient rabbitMq)
         : base(shared)
     {
-        this.rabbit = rabbit;
+        _rabbitMQ = rabbitMq;
 #if DEBUG
         pollingInterval = TimeSpan.FromSeconds(10);
 #else
@@ -57,12 +60,12 @@ class RabbitMqCommand : BaseCommand
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
         Out.WriteLine("Taking initial queue statistics.");
-        var startData = await rabbit.GetQueueDetails(cancellationToken);
+        var startData = await _rabbitMQ.GetQueueDetails(cancellationToken);
         var startTime = DateTimeOffset.Now;
 
         if (startData.All(q => q.AckedMessages is null))
         {
-            throw new HaltException(HaltReason.InvalidEnvironment, $"None of the queues at {rabbit.ManagementUri}/api/queues is reporting any message_stats elements. Are you sure the system is actively processing messages and is configured to track queue statistics?");
+            throw new HaltException(HaltReason.InvalidEnvironment, $"None of the queues at {_rabbitMQ.ManagementUri}/api/queues is reporting any message_stats elements. Are you sure the system is actively processing messages and is configured to track queue statistics?");
         }
 
         var trackers = startData
@@ -74,7 +77,7 @@ class RabbitMqCommand : BaseCommand
 
         async Task UpdateTrackers()
         {
-            var data = await rabbit.GetQueueDetails(cancellationToken);
+            var data = await _rabbitMQ.GetQueueDetails(cancellationToken);
             foreach (var q in data)
             {
                 if (trackers.TryGetValue(q.Name, out var tracker))
@@ -120,24 +123,31 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        rabbitDetails = await rabbit.GetRabbitDetails(cancellationToken);
-
-        Out.WriteLine($"Connected to cluster {rabbitDetails.ClusterName}");
-        Out.WriteLine($"  - RabbitMQ Version: {rabbitDetails.RabbitVersion}");
-        Out.WriteLine($"  - Management Plugin Version: {rabbitDetails.ManagementVersion}");
-
-        var queueNames = (await rabbit.GetQueueDetails(cancellationToken))
-            .Where(q => IncludeQueue(q.Name))
-            .OrderBy(q => q.Name)
-            .Select(q => q.Name)
-            .ToArray();
-
-        return new EnvironmentDetails
+        try
         {
-            MessageTransport = "RabbitMQ",
-            ReportMethod = rabbitDetails.ToReportMethodString(),
-            QueueNames = queueNames
-        };
+            _rabbitMQDetails = await _rabbitMQ.GetRabbitDetails(cancellationToken);
+
+            Out.WriteLine($"Connected to cluster {_rabbitMQDetails.ClusterName}");
+            Out.WriteLine($"  - RabbitMQ Version: {_rabbitMQDetails.RabbitMQVersion}");
+            Out.WriteLine($"  - Management Plugin Version: {_rabbitMQDetails.ManagementVersion}");
+
+            var queueNames = (await _rabbitMQ.GetQueueDetails(cancellationToken))
+                .Where(q => IncludeQueue(q.Name))
+                .OrderBy(q => q.Name)
+                .Select(q => q.Name)
+                .ToArray();
+
+            return new EnvironmentDetails
+            {
+                MessageTransport = "RabbitMQ",
+                ReportMethod = _rabbitMQDetails.ToReportMethodString(),
+                QueueNames = queueNames
+            };
+        }
+        catch (QueryException x)
+        {
+            throw new HaltException(x);
+        }
     }
 
     static bool IncludeQueue(string name)
@@ -161,7 +171,7 @@ class RabbitMqCommand : BaseCommand
 
     class QueueTracker
     {
-        public QueueTracker(RabbitQueueDetails startReading)
+        public QueueTracker(RabbitMQQueueDetails startReading)
         {
             Name = startReading.Name;
             Baseline = startReading.AckedMessages ?? 0;
@@ -172,7 +182,7 @@ class RabbitMqCommand : BaseCommand
         public int Baseline { get; private set; }
         public int AckedMessages { get; private set; }
 
-        public void AddData(RabbitQueueDetails newReading)
+        public void AddData(RabbitMQQueueDetails newReading)
         {
             if (newReading.AckedMessages is not null)
             {

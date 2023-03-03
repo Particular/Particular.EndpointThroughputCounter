@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageVersion Include="Azure.Identity" Version="1.8.2" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.12.0" />
     <PackageVersion Include="Azure.Monitor.Query" Version="1.1.0" />
     <PackageVersion Include="Dapper" Version="2.0.123" />
@@ -20,7 +21,6 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="4.4.2" />
     <PackageVersion Include="Particular.Approvals" Version="0.3.0" />
     <PackageVersion Include="PublicApiGenerator" Version="10.3.0" />
-    <PackageVersion Include="RabbitMQ.Client" Version="6.4.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageVersion Include="Particular.Packaging" Version="2.3.0" />
   </ItemGroup>

@@ -18,20 +18,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Data\Particular.EndpointThroughputCounter.Data.csproj" />
+    <ProjectReference Include="..\Query\Particular.ThroughputQuery.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.CloudWatch" />
-    <PackageReference Include="AWSSDK.SecurityToken" />
-    <PackageReference Include="AWSSDK.SQS" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" />
-    <PackageReference Include="Azure.Monitor.Query"/>
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
     <PackageReference Include="Newtonsoft.Json"  />
     <PackageReference Include="NuGet.Protocol"  />
-    <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 

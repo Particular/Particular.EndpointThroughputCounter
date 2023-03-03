@@ -34,7 +34,13 @@
                 return false;
             }
 
-            version = new SemVerVersion(stdVersion, match.Groups["PrereleaseLabel"]?.Value);
+            var prereleaseLabel = match.Groups["PrereleaseLabel"]?.Value;
+            if (string.IsNullOrWhiteSpace(prereleaseLabel))
+            {
+                prereleaseLabel = null;
+            }
+
+            version = new SemVerVersion(stdVersion, prereleaseLabel);
             return true;
         }
 
@@ -50,7 +56,7 @@
 
         public override string ToString()
         {
-            if (PrereleaseLabel is null)
+            if (string.IsNullOrWhiteSpace(PrereleaseLabel))
             {
                 return Version.ToString();
             }

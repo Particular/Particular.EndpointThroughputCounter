@@ -1,4 +1,5 @@
 ﻿using System;
+using Particular.ThroughputQuery;
 
 class HaltException : ApplicationException
 {
@@ -8,6 +9,19 @@ class HaltException : ApplicationException
     {
         ExitCode = (int)reason;
     }
+
+    public HaltException(QueryException queryException)
+        : this(GetHaltReason(queryException.Reason), queryException.Message, queryException)
+    {
+
+    }
+
+    static HaltReason GetHaltReason(QueryFailureReason reason) => reason switch
+    {
+        QueryFailureReason.Auth => HaltReason.Auth,
+        QueryFailureReason.InvalidEnvironment => HaltReason.InvalidEnvironment,
+        _ => HaltReason.RuntimeError
+    };
 }
 
 enum HaltReason
