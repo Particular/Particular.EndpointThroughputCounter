@@ -2,9 +2,9 @@
 {
     using Newtonsoft.Json.Linq;
 
-    public class RabbitQueueDetails
+    public class RabbitMQQueueDetails
     {
-        public RabbitQueueDetails(JToken token)
+        public RabbitMQQueueDetails(JToken token)
         {
             Name = token["name"].Value<string>();
             if (token["message_stats"] is JObject stats && stats["ack"] is JValue val)

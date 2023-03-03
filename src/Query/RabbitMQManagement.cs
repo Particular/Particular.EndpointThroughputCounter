@@ -9,12 +9,12 @@
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
 
-    public class RabbitManagement
+    public class RabbitMQManagement
     {
         readonly HttpClient http;
         readonly JsonSerializer serializer;
 
-        public RabbitManagement(HttpClient http, string managementUri)
+        public RabbitMQManagement(HttpClient http, string managementUri)
         {
             this.http = http;
             ManagementUri = managementUri.TrimEnd('/');
@@ -24,11 +24,11 @@
 
         public string ManagementUri { get; }
 
-        public async Task<List<RabbitQueueDetails>> GetQueueDetails(CancellationToken cancellationToken = default)
+        public async Task<List<RabbitMQQueueDetails>> GetQueueDetails(CancellationToken cancellationToken = default)
         {
             int page = 1;
 
-            var results = new List<RabbitQueueDetails>();
+            var results = new List<RabbitMQQueueDetails>();
 
             while (true)
             {
@@ -52,7 +52,7 @@
             return results;
         }
 
-        async Task<(RabbitQueueDetails[], bool morePages)> GetPage(int page, CancellationToken cancellationToken)
+        async Task<(RabbitMQQueueDetails[], bool morePages)> GetPage(int page, CancellationToken cancellationToken)
         {
             var url = $"{ManagementUri}/api/queues?page={page}&page_size=500&name=&use_regex=false&pagination=true";
 
@@ -70,13 +70,13 @@
                     return (null, false);
                 }
 
-                var queues = items.Select(item => new RabbitQueueDetails(item)).ToArray();
+                var queues = items.Select(item => new RabbitMQQueueDetails(item)).ToArray();
 
                 return (queues, pageCount > pageReturned);
             }
         }
 
-        public async Task<RabbitDetails> GetRabbitDetails(CancellationToken cancellationToken = default)
+        public async Task<RabbitMQDetails> GetRabbitDetails(CancellationToken cancellationToken = default)
         {
             var url = $"{ManagementUri}/api/overview";
 
@@ -99,10 +99,10 @@
                     var mgmtVersion = obj["management_version"];
                     var clusterName = obj["cluster_name"];
 
-                    return new RabbitDetails
+                    return new RabbitMQDetails
                     {
                         ClusterName = clusterName?.Value<string>() ?? "Unknown",
-                        RabbitVersion = mgmtVersion?.Value<string>() ?? "Unknown",
+                        RabbitMQVersion = mgmtVersion?.Value<string>() ?? "Unknown",
                         ManagementVersion = mgmtVersion?.Value<string>() ?? "Unknown"
                     };
                 }
