@@ -20,7 +20,6 @@
     <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="NuGet.Protocol" />
-    <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
