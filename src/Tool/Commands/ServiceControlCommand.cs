@@ -109,7 +109,7 @@ partial class ServiceControlCommand : BaseCommand
         foreach (var knownEndpoint in knownEndpoints)
         {
             var recordedByMetrics = recordedEndpoints.GetOrDefault(knownEndpoint.Name);
-            if (knownEndpoint.AuditCounts.Any())
+            if (knownEndpoint.AuditCounts?.Any() ?? false)
             {
                 var highestAuditCount = knownEndpoint.AuditCounts.Max(ac => ac.Count);
                 if (recordedByMetrics is not null)
@@ -288,7 +288,7 @@ partial class ServiceControlCommand : BaseCommand
         public bool HeartbeatsEnabled { get; set; }
         public bool ReceivingHeartbeats { get; set; }
         public bool CheckHourlyAuditDataIfNoMonitoringData { get; set; }
-        public AuditCount[] AuditCounts { get; set; }
+        public AuditCount[] AuditCounts { get; set; } = Array.Empty<AuditCount>();
     }
 
     class AuditCount
