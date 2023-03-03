@@ -32,7 +32,7 @@ class RabbitMqCommand : BaseCommand
 
             var http = await InteractiveHttpAuth.CreateHttpClient(url.TrimEnd('/') + "/api/overview");
 
-            var rabbitMQManagement = new RabbitMQManagement(http, url);
+            var rabbitMQManagement = new RabbitMQManagementClient(http, url);
             var runner = new RabbitMqCommand(shared, rabbitMQManagement);
 
             await runner.Run(cancellationToken);
@@ -41,15 +41,15 @@ class RabbitMqCommand : BaseCommand
         return command;
     }
 
-    readonly RabbitMQManagement _rabbitMQ;
+    readonly RabbitMQManagementClient _rabbitMQ;
     readonly TimeSpan pollingInterval;
 
     RabbitMQDetails _rabbitMQDetails;
 
-    public RabbitMqCommand(SharedOptions shared, RabbitMQManagement rabbitMq)
+    public RabbitMqCommand(SharedOptions shared, RabbitMQManagementClient rabbitMq)
         : base(shared)
     {
-        this._rabbitMQ = rabbitMq;
+        _rabbitMQ = rabbitMq;
 #if DEBUG
         pollingInterval = TimeSpan.FromSeconds(10);
 #else

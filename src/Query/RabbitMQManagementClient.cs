@@ -9,12 +9,13 @@
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
 
-    public class RabbitMQManagement
+    public class RabbitMQManagementClient
+
     {
         readonly HttpClient http;
         readonly JsonSerializer serializer;
 
-        public RabbitMQManagement(HttpClient http, string managementUri)
+        public RabbitMQManagementClient(HttpClient http, string managementUri)
         {
             this.http = http;
             ManagementUri = managementUri.TrimEnd('/');
