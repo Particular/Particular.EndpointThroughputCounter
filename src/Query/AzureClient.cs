@@ -14,12 +14,12 @@
     public class AzureClient
     {
         readonly string resourceId;
-        readonly ConnectionSet[] connections;
+        readonly AuthenticatedClientSet[] connections;
         readonly List<string> loginExceptions = new();
         readonly Action<string> log;
 
-        Queue<ConnectionSet> connectionQueue;
-        ConnectionSet current;
+        Queue<AuthenticatedClientSet> connectionQueue;
+        AuthenticatedClientSet currentClients;
 
         public string FullyQualifiedNamespace { get; }
         public string SubscriptionId { get; }
@@ -43,7 +43,7 @@
             FullyQualifiedNamespace = $"{name}.{serviceBusDomain}";
 
             connections = CreateCredentials()
-                .Select(c => new ConnectionSet(c, FullyQualifiedNamespace))
+                .Select(c => new AuthenticatedClientSet(c, FullyQualifiedNamespace))
                 .ToArray();
 
             ResetConnectionQueue();
@@ -70,14 +70,14 @@
         /// </summary>
         public void ResetConnectionQueue()
         {
-            connectionQueue = new Queue<ConnectionSet>(connections);
+            connectionQueue = new Queue<AuthenticatedClientSet>(connections);
         }
 
         async Task<T> GetDataWithCurrentCredentials<T>(GetDataDelegate<T> getData, CancellationToken cancellationToken)
         {
-            if (current is null)
+            if (currentClients is null)
             {
-                _ = NextConnection();
+                _ = NextCredentials();
             }
 
             while (true)
@@ -93,8 +93,8 @@
                 }
                 catch (Exception x) when (IsAuthenticationException(x))
                 {
-                    loginExceptions.Add($"{Environment.NewLine} * {current.Name}: {x.Message}");
-                    if (!NextConnection())
+                    loginExceptions.Add($"{Environment.NewLine} * {currentClients.Name}: {x.Message}");
+                    if (!NextCredentials())
                     {
                         var allExceptionMessages = string.Join(string.Empty, loginExceptions);
                         var msg = "Unable to log in to Azure service using multiple credential types. The exception messages for each credential type (including help links) are provided below:"
@@ -105,17 +105,17 @@
             }
         }
 
-        bool NextConnection()
+        bool NextCredentials()
         {
             try
             {
-                current = connectionQueue.Dequeue();
-                log($" - Attempting login with {current.Name}");
+                currentClients = connectionQueue.Dequeue();
+                log($" - Attempting login with {currentClients.Name}");
                 return true;
             }
             catch (InvalidOperationException)
             {
-                current = null;
+                currentClients = null;
                 return false;
             }
         }
@@ -124,7 +124,7 @@
         {
             return GetDataWithCurrentCredentials(async token =>
             {
-                var response = await current.Metrics.QueryResourceAsync(resourceId,
+                var response = await currentClients.Metrics.QueryResourceAsync(resourceId,
                     new[] { "CompleteMessage" },
                     new MetricsQueryOptions
                     {
@@ -147,7 +147,7 @@
             return GetDataWithCurrentCredentials(async token =>
             {
                 var queueList = new List<string>();
-                await foreach (var queue in current.ServiceBus.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
+                await foreach (var queue in currentClients.ServiceBus.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
                 {
                     queueList.Add(queue.Name);
                 }
@@ -165,13 +165,13 @@
 
         delegate Task<T> GetDataDelegate<T>(CancellationToken cancellationToken);
 
-        class ConnectionSet
+        class AuthenticatedClientSet
         {
             public string Name { get; }
             public MetricsQueryClient Metrics { get; }
             public ServiceBusAdministrationClient ServiceBus { get; }
 
-            public ConnectionSet(TokenCredential credentials, string fullyQualifiedNamespace)
+            public AuthenticatedClientSet(TokenCredential credentials, string fullyQualifiedNamespace)
             {
                 Name = credentials.GetType().Name;
                 Metrics = new MetricsQueryClient(credentials);
