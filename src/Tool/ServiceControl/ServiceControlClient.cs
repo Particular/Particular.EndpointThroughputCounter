@@ -42,11 +42,6 @@
 
         public async Task<TJsonType> GetData<TJsonType>(string pathAndQuery, int tryCount, CancellationToken cancellationToken = default)
         {
-            if (http is null)
-            {
-                throw new InvalidOperationException("Must call Authenticate() first.");
-            }
-
             if (pathAndQuery is null || !pathAndQuery.StartsWith('/'))
             {
                 throw new ArgumentException("pathAndQuery must start with a forward slash.");
@@ -83,11 +78,6 @@
 
         public async Task CheckEndpoint(Func<string, bool> contentTest, CancellationToken cancellationToken = default)
         {
-            if (http is null)
-            {
-                throw new InvalidOperationException("Must call Authenticate() first.");
-            }
-
             HttpResponseMessage res = null;
             try
             {
