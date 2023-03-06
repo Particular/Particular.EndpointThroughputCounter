@@ -400,6 +400,7 @@ HAVING COUNT(*) = 8";
         /// -2146893019: When you don't add TrustServerCertificate=true to your connection string. We fix this and retry.
         /// 233: Named pipes: No process is on the other end of the pipe
         /// 18456: Login failed
+        /// 53: A network-related or instance-specific error occurred while establishing a connection to SQL Server
         /// </remarks>
         public async Task TestConnection(CancellationToken cancellationToken = default)
         {
@@ -425,9 +426,9 @@ HAVING COUNT(*) = 8";
                     _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
                 }
             }
-            catch (SqlException x) when (x.Number is 233 or 18456)
+            catch (SqlException x) when (x.Number is 233 or 18456 or 53)
             {
-                throw new HaltException(HaltReason.Auth, "Could not access SQL database because something is wrong with the connection string.", x);
+                throw new HaltException(HaltReason.Auth, "Could not access SQL database. Is the connection string correct?", x);
             }
         }
 
