@@ -54,12 +54,12 @@
                     _ = response.EnsureSuccessStatusCode();
                     return http;
                 }
-                catch (HttpRequestException) when (response.StatusCode == HttpStatusCode.Unauthorized)
+                catch (HttpRequestException x) when (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     http.Dispose();
                     if (--maxTries <= 0)
                     {
-                        throw;
+                        throw new HaltException(HaltReason.Auth, "Unable to authenticate to " + uriPrefix, x);
                     }
 
                     Out.WriteLine();
