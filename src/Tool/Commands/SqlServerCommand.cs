@@ -386,7 +386,7 @@ HAVING COUNT(*) = 8";
                 var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString };
                 DatabaseName = (builder["Initial Catalog"] as string) ?? (builder["Database"] as string);
             }
-            catch (FormatException x)
+            catch (Exception x) when (x is FormatException or ArgumentException)
             {
                 throw new HaltException(HaltReason.InvalidEnvironment, "There's something wrong with the SQL connection string and it could not be parsed.", x);
             }
