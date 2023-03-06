@@ -67,41 +67,48 @@ class AzureServiceBusCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        Out.WriteLine($"Getting data from {azure.FullyQualifiedNamespace}...");
-        var endTime = DateTime.UtcNow.Date.AddDays(1);
-        var startTime = endTime.AddDays(-30);
-
-        var queueNames = await azure.GetQueueNames(cancellationToken);
-
-        Out.WriteLine($"Found {queueNames.Length} queues");
-
-        var results = new List<QueueThroughput>();
-
-        azure.ResetConnectionQueue();
-        Out.WriteLine("Connecting to Azure Metrics to get throughput data...");
-
-        for (var i = 0; i < queueNames.Length; i++)
+        try
         {
-            var queueName = queueNames[i];
+            Out.WriteLine($"Getting data from {azure.FullyQualifiedNamespace}...");
+            var endTime = DateTime.UtcNow.Date.AddDays(1);
+            var startTime = endTime.AddDays(-30);
 
-            Out.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
+            var queueNames = await azure.GetQueueNames(cancellationToken);
 
-            var metricValues = await azure.GetMetrics(queueName, startTime, endTime, cancellationToken);
+            Out.WriteLine($"Found {queueNames.Length} queues");
 
-            if (metricValues is not null)
+            var results = new List<QueueThroughput>();
+
+            azure.ResetConnectionQueue();
+            Out.WriteLine("Connecting to Azure Metrics to get throughput data...");
+
+            for (var i = 0; i < queueNames.Length; i++)
             {
-                var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
-                results.Add(new QueueThroughput { QueueName = queueName, Throughput = (int?)maxThroughput });
-            }
-        }
+                var queueName = queueNames[i];
 
-        return new QueueDetails
+                Out.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
+
+                var metricValues = await azure.GetMetrics(queueName, startTime, endTime, cancellationToken);
+
+                if (metricValues is not null)
+                {
+                    var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
+                    results.Add(new QueueThroughput { QueueName = queueName, Throughput = (int?)maxThroughput });
+                }
+            }
+
+            return new QueueDetails
+            {
+                StartTime = new DateTimeOffset(startTime, TimeSpan.Zero),
+                EndTime = new DateTimeOffset(endTime, TimeSpan.Zero),
+                Queues = results.OrderBy(q => q.QueueName).ToArray(),
+                TimeOfObservation = TimeSpan.FromDays(1)
+            };
+        }
+        catch (QueryException x)
         {
-            StartTime = new DateTimeOffset(startTime, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(endTime, TimeSpan.Zero),
-            Queues = results.OrderBy(q => q.QueueName).ToArray(),
-            TimeOfObservation = TimeSpan.FromDays(1)
-        };
+            throw new HaltException(x);
+        }
     }
 
     protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
