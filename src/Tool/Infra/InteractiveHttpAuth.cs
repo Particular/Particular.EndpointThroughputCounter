@@ -30,12 +30,19 @@
                     MaxConnectionsPerServer = 100
                 };
 
-                if (schemes.Any() && credential is not null)
+                if (credential is not null)
                 {
                     var credentialCache = new CredentialCache();
-                    foreach (var scheme in schemes)
+                    if (schemes.Any())
                     {
-                        credentialCache.Add(uriPrefix, scheme, credential);
+                        foreach (var scheme in schemes)
+                        {
+                            credentialCache.Add(uriPrefix, scheme, credential);
+                        }
+                    }
+                    else
+                    {
+                        credentialCache.Add(uriPrefix, "Basic", credential);
                     }
                     httpHandler.Credentials = credentialCache;
                 }
@@ -78,7 +85,11 @@
                     var pass = Out.ReadPassword();
 
                     credential = new NetworkCredential(currentUser, pass);
-                    schemes = response.Headers.WwwAuthenticate.Select(h => h.Scheme).ToArray();
+                    var newSchemes = response.Headers.WwwAuthenticate.Select(h => h.Scheme).ToArray();
+                    if (newSchemes.Any())
+                    {
+                        schemes = newSchemes;
+                    }
                 }
             }
         }
