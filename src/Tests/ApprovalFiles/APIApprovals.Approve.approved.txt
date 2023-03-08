@@ -3,34 +3,34 @@ namespace Particular.EndpointThroughputCounter.Data
     public class QueueThroughput
     {
         public QueueThroughput() { }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
-        public bool NoDataOrSendOnly { get; set; }
         public string QueueName { get; set; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
         public long? Throughput { get; set; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public bool NoDataOrSendOnly { get; init; }
     }
     public class Report
     {
         public Report() { }
-        public string CustomerName { get; set; }
-        public System.DateTimeOffset EndTime { get; set; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
-        public string[] IgnoredQueues { get; set; }
-        public string MessageTransport { get; set; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Include | Newtonsoft.Json.DefaultValueHandling.Ignore)]
-        public string Prefix { get; set; }
-        public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; set; }
-        public System.TimeSpan ReportDuration { get; set; }
-        public string ReportMethod { get; set; }
-        public System.DateTimeOffset StartTime { get; set; }
-        public string ToolVersion { get; set; }
-        public int TotalQueues { get; set; }
-        public long TotalThroughput { get; set; }
+        public string CustomerName { get; init; }
+        public System.DateTimeOffset EndTime { get; init; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string[] IgnoredQueues { get; init; }
+        public string MessageTransport { get; init; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string Prefix { get; init; }
+        public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; init; }
+        public System.TimeSpan ReportDuration { get; init; }
+        public string ReportMethod { get; init; }
+        public System.DateTimeOffset StartTime { get; init; }
+        public string ToolVersion { get; init; }
+        public int TotalQueues { get; init; }
+        public long TotalThroughput { get; init; }
     }
     public class SignedReport
     {
         public SignedReport() { }
-        public Particular.EndpointThroughputCounter.Data.Report ReportData { get; set; }
-        public string Signature { get; set; }
+        public Particular.EndpointThroughputCounter.Data.Report ReportData { get; init; }
+        public string Signature { get; init; }
     }
 }
