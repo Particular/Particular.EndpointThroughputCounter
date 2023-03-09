@@ -47,9 +47,15 @@ static class Versioning
 
     }
 
-    public static async Task<bool> CheckForCurrentVersion(CancellationToken cancellationToken = default)
+    public static async Task<bool> EvaluateVersion(bool skipVersionCheck, CancellationToken cancellationToken = default)
     {
         Out.WriteLine($"Particular.EndpointThroughputCounter {NuGetVersion} (Sha:{ShortSha})");
+
+        if (skipVersionCheck)
+        {
+            Out.WriteWarn("Skipping current version check. Please ensure you are not using an outdated version.");
+            return true;
+        }
 
         var logger = NullLogger.Instance;
         var cache = new SourceCacheContext();

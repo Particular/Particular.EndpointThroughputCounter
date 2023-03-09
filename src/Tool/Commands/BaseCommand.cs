@@ -102,6 +102,12 @@ abstract class BaseCommand
 
     async Task RunInternal(CancellationToken cancellationToken)
     {
+        if (!await Versioning.EvaluateVersion(shared.SkipVersionCheck, cancellationToken))
+        {
+            Environment.ExitCode = -1;
+            return;
+        }
+
         Out.WriteLine();
         if (!string.IsNullOrEmpty(shared.CustomerName))
         {
