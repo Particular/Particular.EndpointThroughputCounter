@@ -21,12 +21,19 @@ class SharedOptions
         Arity = ArgumentArity.ZeroOrOne
     };
 
+    public static readonly Option<bool> skipVersionCheck = new("--skipVersionCheck")
+    {
+        Description = "Do not check for a new version.",
+        Arity = ArgumentArity.ZeroOrOne
+    };
+
     public static readonly Option<int> runtimeInHours =
         new(name: "--runtime", getDefaultValue: () => 24) { IsHidden = true };
 
     public string[] MaskNames { get; private set; }
     public string CustomerName { get; set; }
     public bool RunUnattended { get; private set; }
+    public bool SkipVersionCheck { get; private set; }
     public int RuntimeInHours { get; private set; }
 
     public static void Register(Command command)
@@ -44,6 +51,7 @@ class SharedOptions
         command.AddGlobalOption(maskNames);
         command.AddGlobalOption(customerName);
         command.AddGlobalOption(runUnattended);
+        command.AddGlobalOption(skipVersionCheck);
         command.AddGlobalOption(runtimeInHours);
     }
 
@@ -56,6 +64,7 @@ class SharedOptions
             MaskNames = parse.GetValueForOption(maskNames),
             CustomerName = parse.GetValueForOption(customerName),
             RunUnattended = parse.GetValueForOption(runUnattended),
+            SkipVersionCheck = parse.GetValueForOption(skipVersionCheck),
             RuntimeInHours = parse.GetValueForOption(runtimeInHours)
         };
     }

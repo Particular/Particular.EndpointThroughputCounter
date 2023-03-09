@@ -406,24 +406,27 @@ HAVING COUNT(*) = 8";
         {
             try
             {
-                using (var conn = await OpenConnectionAsync(cancellationToken))
+                try
                 {
-                    _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
+                    using (var conn = await OpenConnectionAsync(cancellationToken))
+                    {
+                        _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
+                    }
                 }
-            }
-            catch (SqlException x) when (x.Number == -2146893019)
-            {
-                var builder = new SqlConnectionStringBuilder(connectionString);
-                if (builder.TrustServerCertificate)
+                catch (SqlException x) when (x.Number == -2146893019)
                 {
-                    throw;
-                }
+                    var builder = new SqlConnectionStringBuilder(connectionString);
+                    if (builder.TrustServerCertificate)
+                    {
+                        throw;
+                    }
 
-                builder.TrustServerCertificate = true;
-                connectionString = builder.ToString();
-                using (var conn = await OpenConnectionAsync(cancellationToken))
-                {
-                    _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
+                    builder.TrustServerCertificate = true;
+                    connectionString = builder.ToString();
+                    using (var conn = await OpenConnectionAsync(cancellationToken))
+                    {
+                        _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME");
+                    }
                 }
             }
             catch (SqlException x) when (x.Number is 233 or 18456 or 53)
