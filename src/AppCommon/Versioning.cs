@@ -19,7 +19,7 @@ static class Versioning
 
     static Versioning()
     {
-        var assembly = typeof(Versioning).Assembly;
+        var assembly = Assembly.GetEntryAssembly();
         var infoVersionAtt = assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>().FirstOrDefault();
         InformationalVersion = infoVersionAtt?.InformationalVersion ?? "Unknown";
 
