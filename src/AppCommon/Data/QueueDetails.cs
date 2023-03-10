@@ -1,5 +1,4 @@
-﻿using System;
-using Particular.EndpointThroughputCounter.Data;
+﻿using Particular.EndpointThroughputCounter.Data;
 
 public class QueueDetails
 {
