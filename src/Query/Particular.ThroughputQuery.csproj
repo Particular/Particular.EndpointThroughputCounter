@@ -12,6 +12,8 @@
     <PackageReference Include="AWSSDK.CloudWatch" />
     <PackageReference Include="AWSSDK.SecurityToken" />
     <PackageReference Include="AWSSDK.SQS" />
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
