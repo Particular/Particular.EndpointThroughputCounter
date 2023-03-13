@@ -42,6 +42,16 @@
                 return true;
             }
 
+            if (TableName.EndsWith(".Timeouts", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (TableName.EndsWith(".TimeoutsDispatcher", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
             if (TableName.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
