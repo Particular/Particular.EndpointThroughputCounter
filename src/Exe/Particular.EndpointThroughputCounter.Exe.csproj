@@ -17,29 +17,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Data\Particular.EndpointThroughputCounter.Data.csproj" />
-    <ProjectReference Include="..\Query\Particular.ThroughputQuery.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Dapper" />
-    <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
-    <PackageReference Include="Newtonsoft.Json"  />
-    <PackageReference Include="NuGet.Protocol"  />
-    <PackageReference Include="System.CommandLine" />
+    <ProjectReference Include="..\AppCommon\AppCommon.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Particular.Packaging" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\Tool\**\*.cs" Exclude="**\obj\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="..\Tool\public-key.pem" />
   </ItemGroup>
 
 </Project>

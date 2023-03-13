@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-public static class Extensions
+﻿public static class Extensions
 {
     public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key)
     {

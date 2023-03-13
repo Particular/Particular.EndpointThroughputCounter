@@ -1,9 +1,5 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using NuGet.Common;
 using NuGet.Configuration;
 using NuGet.Protocol.Core.Types;
@@ -19,7 +15,7 @@ static class Versioning
 
     static Versioning()
     {
-        var assembly = typeof(Versioning).Assembly;
+        var assembly = Assembly.GetEntryAssembly();
         var infoVersionAtt = assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>().FirstOrDefault();
         InformationalVersion = infoVersionAtt?.InformationalVersion ?? "Unknown";
 

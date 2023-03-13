@@ -1,5 +1,4 @@
-﻿using System;
-using Particular.ThroughputQuery;
+﻿using Particular.ThroughputQuery;
 
 class HaltException : ApplicationException
 {

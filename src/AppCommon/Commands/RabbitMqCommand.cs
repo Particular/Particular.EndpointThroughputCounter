@@ -1,8 +1,4 @@
-﻿using System;
-using System.CommandLine;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.CommandLine;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.ThroughputQuery;
