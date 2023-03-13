@@ -2,10 +2,8 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Dapper;
     using Microsoft.Data.SqlClient;
 
     public class DatabaseDetails
@@ -47,10 +45,7 @@
             {
                 try
                 {
-                    using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME").ConfigureAwait(false);
-                    }
+                    await TestGetServerName(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SqlException x) when (x.Number == -2146893019)
                 {
@@ -62,10 +57,8 @@
 
                     builder.TrustServerCertificate = true;
                     connectionString = builder.ToString();
-                    using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        _ = await conn.ExecuteScalarAsync<string>("select @@SERVERNAME").ConfigureAwait(false);
-                    }
+
+                    await TestGetServerName(cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (SqlException x) when (x.Number is 233 or 18456 or 53)
@@ -74,20 +67,36 @@
             }
         }
 
+        async Task TestGetServerName(CancellationToken cancellationToken)
+        {
+            using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "select @@SERVERNAME";
+                _ = (await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)) as string;
+            }
+        }
+
         public async Task GetTables(CancellationToken cancellationToken = default)
         {
-            List<TableDetails> tables = null;
+            List<TableDetails> tables = new();
 
             using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
+            using (var cmd = conn.CreateCommand())
             {
-                tables = (await conn.QueryAsync<TableDetails>(GetQueueListCommandText).ConfigureAwait(false)).ToList();
+                cmd.CommandText = GetQueueListCommandText;
+                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    while (reader.Read())
+                    {
+                        var schema = reader["TableSchema"] as string;
+                        var name = reader["TableName"] as string;
+                        tables.Add(new TableDetails(DatabaseName, schema, name));
+                    }
+                }
             }
 
             _ = tables.RemoveAll(t => IgnoreTable(t.TableName));
-            foreach (var table in tables)
-            {
-                table.Database = this;
-            }
 
             Tables = tables;
         }

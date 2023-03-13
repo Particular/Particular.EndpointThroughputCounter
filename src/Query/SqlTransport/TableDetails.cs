@@ -8,15 +8,22 @@
     [DebuggerDisplay("{FullName}")]
     public class TableDetails
     {
-        public string TableSchema { get; init; }
-        public string TableName { get; init; }
+        public string DatabaseName { get; }
+        public string TableSchema { get; }
+        public string TableName { get; }
         public long? StartRowVersion { get; set; }
         public long? EndRowVersion { get; set; }
-        public DatabaseDetails Database { get; set; }
+
+        public TableDetails(string dbName, string tableSchema, string tableName)
+        {
+            DatabaseName = dbName;
+            TableSchema = tableSchema;
+            TableName = tableName;
+        }
 
         public string FullName => $"[{TableSchema}].[{TableName}]";
 
-        public string DisplayName => Database is null ? FullName : $"[{Database.DatabaseName}].{FullName}";
+        public string DisplayName => $"[{DatabaseName}].{FullName}";
 
         public async Task<long?> GetMaxRowVersion(SqlConnection conn, CancellationToken cancellationToken = default)
         {
