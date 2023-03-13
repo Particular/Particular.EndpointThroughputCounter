@@ -105,10 +105,6 @@ class SqlServerCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        foreach (var db in databases)
-        {
-            db.RemoveIgnored();
-        }
         totalQueues = databases.Sum(d => d.TableCount);
         sampledQueues = 0;
 

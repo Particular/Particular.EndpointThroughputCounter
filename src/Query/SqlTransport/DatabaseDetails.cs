@@ -33,7 +33,6 @@
         }
 
         public int TableCount => Tables.Count;
-        public void RemoveIgnored() => Tables.RemoveAll(t => t.IgnoreTable());
 
         /// <remarks>
         /// Error numbers caught here:
@@ -84,7 +83,7 @@
                 tables = (await conn.QueryAsync<TableDetails>(GetQueueListCommandText).ConfigureAwait(false)).ToList();
             }
 
-            _ = tables.RemoveAll(t => t.IgnoreTable());
+            _ = tables.RemoveAll(t => IgnoreTable(t.TableName));
             foreach (var table in tables)
             {
                 table.Database = this;
@@ -119,6 +118,31 @@
             {
                 ErrorCount++;
             }
+        }
+
+        bool IgnoreTable(string tableName)
+        {
+            if (tableName is "error" or "audit")
+            {
+                return true;
+            }
+
+            if (tableName.EndsWith(".Timeouts", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (tableName.EndsWith(".TimeoutsDispatcher", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (tableName.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

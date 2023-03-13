@@ -1,6 +1,5 @@
 ﻿namespace Particular.ThroughputQuery.SqlTransport
 {
-    using System;
     using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
@@ -33,31 +32,6 @@
             }
 
             return null;
-        }
-
-        internal bool IgnoreTable()
-        {
-            if (TableName is "error" or "audit")
-            {
-                return true;
-            }
-
-            if (TableName.EndsWith(".Timeouts", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (TableName.EndsWith(".TimeoutsDispatcher", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (TableName.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return false;
         }
 
         public long GetThroughput()
