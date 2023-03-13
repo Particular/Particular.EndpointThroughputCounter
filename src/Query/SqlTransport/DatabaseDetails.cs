@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Data.SqlClient;
@@ -9,10 +10,9 @@
     public class DatabaseDetails
     {
         string connectionString;
-        int successCount;
 
         public string DatabaseName { get; }
-        public List<TableDetails> Tables { get; private set; }
+        public List<QueueTableName> Tables { get; private set; }
         public int ErrorCount { get; private set; }
 
         public DatabaseDetails(string connectionString)
@@ -79,7 +79,7 @@
 
         public async Task GetTables(CancellationToken cancellationToken = default)
         {
-            List<TableDetails> tables = new();
+            List<QueueTableName> tables = new();
 
             using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
             using (var cmd = conn.CreateCommand())
@@ -91,14 +91,62 @@
                     {
                         var schema = reader["TableSchema"] as string;
                         var name = reader["TableName"] as string;
-                        tables.Add(new TableDetails(DatabaseName, schema, name));
+                        tables.Add(new QueueTableName(DatabaseName, schema, name));
                     }
                 }
             }
 
-            _ = tables.RemoveAll(t => IgnoreTable(t.TableName));
+            _ = tables.RemoveAll(t => IgnoreTable(t.Name));
 
             Tables = tables;
+        }
+
+        public async Task<QueueTableSnapshot[]> GetCurrentCounts(CancellationToken cancellationToken = default)
+        {
+            var data = Tables.Select(t => new QueueTableSnapshot(t)).ToArray();
+
+            using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
+            {
+                foreach (var table in data)
+                {
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = $"select IDENT_CURRENT('{table.FullName}')";
+                        var value = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+                        if (value is decimal decimalValue) // That's the return type of IDENT_CURRENT
+                        {
+                            table.RowVersion = (long)decimalValue;
+                        }
+                    }
+                }
+            }
+
+            return data;
+        }
+
+        public static QueueTableThroughput[] CalculateThroughput(IEnumerable<QueueTableSnapshot> startData, IEnumerable<QueueTableSnapshot> endData)
+        {
+            return CalculateThroughputInternal(startData, endData)
+                .OrderBy(t => t.DisplayName)
+                .ToArray();
+        }
+
+        static IEnumerable<QueueTableThroughput> CalculateThroughputInternal(IEnumerable<QueueTableSnapshot> startData, IEnumerable<QueueTableSnapshot> endData)
+        {
+            var dictionary = startData.ToDictionary(t => t.DisplayName);
+
+            foreach (var endSnap in endData)
+            {
+                if (dictionary.TryGetValue(endSnap.DisplayName, out var startSnap))
+                {
+                    if (endSnap.RowVersion is not null && startSnap.RowVersion is not null)
+                    {
+                        var throughput = endSnap.RowVersion.Value - startSnap.RowVersion.Value;
+                        yield return new QueueTableThroughput(endSnap, throughput);
+                    }
+                }
+            }
         }
 
         public async Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
@@ -106,27 +154,6 @@
             var conn = new SqlConnection(connectionString);
             await conn.OpenAsync(cancellationToken).ConfigureAwait(false);
             return conn;
-        }
-
-        public void LogSuccessOrFailure(bool success, bool reset = false)
-        {
-            if (reset)
-            {
-                ErrorCount = 0;
-                successCount = 0;
-            }
-            else if (success)
-            {
-                successCount++;
-                if (successCount > 5)
-                {
-                    ErrorCount = 0;
-                }
-            }
-            else
-            {
-                ErrorCount++;
-            }
         }
 
         bool IgnoreTable(string tableName)

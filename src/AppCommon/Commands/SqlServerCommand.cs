@@ -93,208 +93,12 @@ class SqlServerCommand : BaseCommand
     }
 
     readonly string[] connectionStrings;
-    int totalQueues;
-    int sampledQueues;
     DatabaseDetails[] databases;
 
     public SqlServerCommand(SharedOptions shared, string[] connectionStrings)
         : base(shared)
     {
         this.connectionStrings = connectionStrings;
-    }
-
-    protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
-    {
-        totalQueues = databases.Sum(d => d.TableCount);
-        sampledQueues = 0;
-
-        var start = DateTimeOffset.Now;
-        var targetEnd = start + PollingRunTime;
-
-        var tokenSource = new CancellationTokenSource();
-        var getMinimumsTask = GetMinimums(tokenSource.Token);
-
-        Out.WriteLine("Waiting to collect maximum row versions...");
-        while (DateTimeOffset.Now < targetEnd)
-        {
-            var timeLeft = targetEnd - DateTimeOffset.Now;
-            Out.Progress($"Wait Time Left: {timeLeft:hh':'mm':'ss} - {sampledQueues}/{totalQueues} sampled");
-            await Task.Delay(250, cancellationToken);
-        }
-
-        Out.EndProgress();
-        Out.WriteLine();
-
-        tokenSource.Cancel();
-        await getMinimumsTask;
-
-        await GetMaximums(cancellationToken);
-
-        var end = DateTimeOffset.Now;
-        var queues = databases.SelectMany(db => db.Tables)
-            .Select(t => new QueueThroughput
-            {
-                QueueName = t.DisplayName,
-                Throughput = t.GetThroughput()
-            })
-            .OrderBy(q => q.QueueName)
-            .ToArray();
-
-        return new QueueDetails
-        {
-            StartTime = start,
-            EndTime = end,
-            Queues = queues
-        };
-    }
-
-    async Task GetMaximums(CancellationToken cancellationToken)
-    {
-        Out.WriteLine("Sampling started for maximum row versions...");
-        Out.WriteLine("(This may still take up to 15 minutes depending on queue traffic.)");
-        int counter = 0;
-        int totalMsWaited = 0;
-        sampledQueues = 0;
-
-        DateTimeOffset maxWaitUntil = DateTimeOffset.Now.AddMinutes(15);
-
-        var allTables = databases.SelectMany(db => db.Tables).ToArray();
-        var sqlExceptions = new Queue<SqlException>(5);
-
-        foreach (var db in databases)
-        {
-            db.LogSuccessOrFailure(true, reset: true);
-        }
-
-        while (sampledQueues < totalQueues && DateTimeOffset.Now < maxWaitUntil)
-        {
-            foreach (var db in databases)
-            {
-                try
-                {
-                    using (var conn = await db.OpenConnectionAsync(cancellationToken))
-                    {
-                        foreach (var table in db.Tables.Where(t => t.EndRowVersion is null))
-                        {
-                            var rowversion = await table.GetMaxRowVersion(conn, cancellationToken);
-                            if (rowversion != null)
-                            {
-                                table.EndRowVersion = rowversion;
-                                // If start value isn't filled in and we somehow got lucky now, mark it down, though this will result in 0 throughput anyway
-                                table.StartRowVersion ??= rowversion;
-                            }
-                        }
-                    }
-                    db.LogSuccessOrFailure(true);
-                }
-                catch (SqlException x)
-                {
-                    db.LogSuccessOrFailure(false);
-                    sqlExceptions.Enqueue(x);
-                    while (sqlExceptions.Count > 5)
-                    {
-                        _ = sqlExceptions.Dequeue();
-                    }
-                }
-            }
-
-            sampledQueues = allTables.Count(t => t.EndRowVersion is not null);
-            Out.Progress($"{sampledQueues}/{totalQueues} sampled");
-            if (sampledQueues < totalQueues)
-            {
-                await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
-
-                // After every 5 minutes of delay (if necessary) reset to the fast query pattern
-                // This could be 3 rounds during the 15 minutes
-                if (totalMsWaited > 5 * 60 * 1000)
-                {
-                    counter = 0;
-                    totalMsWaited = 0;
-                }
-            }
-        }
-
-        Out.EndProgress();
-        Out.WriteLine();
-
-        if (databases.Any(db => db.Tables.Any(t => t.EndRowVersion is null) && db.ErrorCount > 0))
-        {
-            throw new AggregateException("Unable to sample maximum row versions without repeated SqlExceptions. The last 5 exception instances are included.", sqlExceptions);
-        }
-    }
-
-    async Task GetMinimums(CancellationToken cancellationToken)
-    {
-        Out.WriteLine("Sampling started for minimum row versions...");
-        int counter = 0;
-        int totalMsWaited = 0;
-
-        var allTables = databases.SelectMany(db => db.Tables).ToArray();
-        var sqlExceptions = new Queue<SqlException>();
-
-        try
-        {
-            while (sampledQueues < totalQueues)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                foreach (var db in databases)
-                {
-                    try
-                    {
-                        using (var conn = await db.OpenConnectionAsync(cancellationToken))
-                        {
-                            foreach (var table in db.Tables.Where(t => t.StartRowVersion is null))
-                            {
-                                table.StartRowVersion = await table.GetMaxRowVersion(conn, cancellationToken);
-                            }
-                        }
-                        db.LogSuccessOrFailure(true);
-                    }
-                    catch (SqlException x)
-                    {
-                        db.LogSuccessOrFailure(false);
-                        sqlExceptions.Enqueue(x);
-                        while (sqlExceptions.Count > 5)
-                        {
-                            _ = sqlExceptions.Dequeue();
-                        }
-                    }
-                }
-
-                sampledQueues = allTables.Count(t => t.StartRowVersion is not null);
-                if (sampledQueues < totalQueues)
-                {
-                    await Task.Delay(GetDelayMilliseconds(ref counter, ref totalMsWaited), cancellationToken);
-
-                    // After every 15 minutes of delay (if necessary) reset to the fast query pattern
-                    if (totalMsWaited > 15 * 60 * 1000)
-                    {
-                        counter = 0;
-                        totalMsWaited = 0;
-                    }
-                }
-            }
-
-            Out.WriteLine();
-            Out.WriteLine("Sampling of minimum row versions completed for all tables successfully.");
-            Out.WriteLine();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            int successCount = allTables.Count(t => t.StartRowVersion is not null);
-            Out.WriteLine($"Sampling of minimum row versions interrupted. Captured {successCount}/{allTables.Length} values.");
-        }
-        finally
-        {
-            if (databases.Any(db => db.Tables.Any(t => t.StartRowVersion is null) && db.ErrorCount > 0))
-            {
-                throw new AggregateException("Unable to sample minimum row versions without repeated SqlExceptions. The last 5 exception instances are included.", sqlExceptions);
-            }
-        }
     }
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
@@ -333,20 +137,43 @@ class SqlServerCommand : BaseCommand
         }
     }
 
-    static int GetDelayMilliseconds(ref int counter, ref int totalMsWaited)
+    protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        var waitMs = counter switch
+        var start = DateTimeOffset.Now;
+        var targetEnd = start.UtcDateTime + PollingRunTime;
+
+        Out.WriteLine("Sampling minimum row versions...");
+        var startDbTasks = databases.Select(db => db.GetCurrentCounts(cancellationToken)).ToArray();
+        var startData = await Task.WhenAll(startDbTasks);
+
+        Out.WriteLine("Waiting to collect maximum row versions...");
+        await Out.CountdownTimer("Wait Time Left", targetEnd, cancellationToken: cancellationToken);
+
+        Out.WriteLine("Sampling maximum row versions...");
+        var endDbTasks = databases.Select(db => db.GetCurrentCounts(cancellationToken)).ToArray();
+        var endData = await Task.WhenAll(endDbTasks);
+
+        var end = DateTimeOffset.Now;
+
+        var allStart = startData.SelectMany(db => db);
+        var allEnd = endData.SelectMany(db => db);
+        var queues = DatabaseDetails.CalculateThroughput(allStart, allEnd)
+            .Select(t => new QueueThroughput
+            {
+                QueueName = t.DisplayName,
+                Throughput = t.Throughput
+            })
+            .OrderBy(q => q.QueueName)
+            .ToArray();
+
+        return new QueueDetails
         {
-            < 20 => 50,     // 20 times in the first second
-            < 100 => 100,   // 10 times/sec in the next 8 seconds
-            < 160 => 1000,  // Once per second for a minute
-            _ => 10_000,     // Once every 10s after that
+            StartTime = start,
+            EndTime = end,
+            Queues = queues
         };
-
-        counter++;
-        totalMsWaited += waitMs;
-
-        return waitMs;
     }
+
+
 
 }
