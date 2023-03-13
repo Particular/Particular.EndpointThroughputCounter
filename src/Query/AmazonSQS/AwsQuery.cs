@@ -1,4 +1,4 @@
-﻿namespace Particular.ThroughputQuery
+﻿namespace Particular.ThroughputQuery.AmazonSQS
 {
     using System;
     using System.Collections.Generic;

@@ -2,6 +2,7 @@
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.ThroughputQuery;
+using Particular.ThroughputQuery.AzureServiceBus;
 
 class AzureServiceBusCommand : BaseCommand
 {

@@ -1,4 +1,4 @@
-﻿namespace Particular.ThroughputQuery
+﻿namespace Particular.ThroughputQuery.AzureServiceBus
 {
     using System;
     using System.Collections.Generic;
