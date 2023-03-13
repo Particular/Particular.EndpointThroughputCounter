@@ -2,6 +2,7 @@
 using System.CommandLine.Parsing;
 using Microsoft.Data.SqlClient;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.ThroughputQuery;
 using Particular.ThroughputQuery.SqlTransport;
 
 class SqlServerCommand : BaseCommand
@@ -302,31 +303,38 @@ class SqlServerCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        databases = connectionStrings.Select(connStr => new DatabaseDetails(connStr)).ToArray();
-
-        foreach (var db in databases)
+        try
         {
-            await db.TestConnection(cancellationToken);
-        }
+            databases = connectionStrings.Select(connStr => new DatabaseDetails(connStr)).ToArray();
 
-        foreach (var db in databases)
-        {
-            await db.GetTables(cancellationToken);
-
-            if (!db.Tables.Any())
+            foreach (var db in databases)
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, $"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
+                await db.TestConnection(cancellationToken);
             }
+
+            foreach (var db in databases)
+            {
+                await db.GetTables(cancellationToken);
+
+                if (!db.Tables.Any())
+                {
+                    throw new HaltException(HaltReason.InvalidEnvironment, $"ERROR: We were unable to locate any queues in the database '{db.DatabaseName}'. Please check the provided connection string(s) and try again.");
+                }
+            }
+
+            var queueNames = databases.SelectMany(db => db.Tables).Select(t => t.DisplayName).OrderBy(x => x).ToArray();
+
+            return new EnvironmentDetails
+            {
+                MessageTransport = "SqlTransport",
+                ReportMethod = "SqlServerQuery",
+                QueueNames = queueNames
+            };
         }
-
-        var queueNames = databases.SelectMany(db => db.Tables).Select(t => t.DisplayName).OrderBy(x => x).ToArray();
-
-        return new EnvironmentDetails
+        catch (QueryException x)
         {
-            MessageTransport = "SqlTransport",
-            ReportMethod = "SqlServerQuery",
-            QueueNames = queueNames
-        };
+            throw new HaltException(x);
+        }
     }
 
     static int GetDelayMilliseconds(ref int counter, ref int totalMsWaited)
