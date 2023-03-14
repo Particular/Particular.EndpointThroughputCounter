@@ -142,15 +142,15 @@ class SqlServerCommand : BaseCommand
         var start = DateTimeOffset.Now;
         var targetEnd = start.UtcDateTime + PollingRunTime;
 
-        Out.WriteLine("Sampling minimum row versions...");
-        var startDbTasks = databases.Select(db => db.GetCurrentCounts(cancellationToken)).ToArray();
+        Out.WriteLine("Sampling queue table initial values...");
+        var startDbTasks = databases.Select(db => db.GetSnapshot(cancellationToken)).ToArray();
         var startData = await Task.WhenAll(startDbTasks);
 
-        Out.WriteLine("Waiting to collect maximum row versions...");
+        Out.WriteLine("Waiting to collect final values...");
         await Out.CountdownTimer("Wait Time Left", targetEnd, cancellationToken: cancellationToken);
 
-        Out.WriteLine("Sampling maximum row versions...");
-        var endDbTasks = databases.Select(db => db.GetCurrentCounts(cancellationToken)).ToArray();
+        Out.WriteLine("Sampling queue table final values...");
+        var endDbTasks = databases.Select(db => db.GetSnapshot(cancellationToken)).ToArray();
         var endData = await Task.WhenAll(endDbTasks);
 
         var end = DateTimeOffset.Now;

@@ -101,7 +101,7 @@
             Tables = tables;
         }
 
-        public async Task<QueueTableSnapshot[]> GetCurrentCounts(CancellationToken cancellationToken = default)
+        public async Task<QueueTableSnapshot[]> GetSnapshot(CancellationToken cancellationToken = default)
         {
             var data = Tables.Select(t => new QueueTableSnapshot(t)).ToArray();
 
