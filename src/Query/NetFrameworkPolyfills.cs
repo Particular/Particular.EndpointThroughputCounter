@@ -15,4 +15,14 @@ namespace Particular.ThroughputQuery
         }
     }
 }
+
+// To support property init setters (i.e. { get; init; } ) on .NET Framework
+namespace System.Runtime.CompilerServices
+{
+    using System.ComponentModel;
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    static class IsExternalInit { }
+}
+
 #endif

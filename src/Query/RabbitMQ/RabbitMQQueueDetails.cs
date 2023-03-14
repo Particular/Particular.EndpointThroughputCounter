@@ -1,4 +1,4 @@
-﻿namespace Particular.ThroughputQuery
+﻿namespace Particular.ThroughputQuery.RabbitMQ
 {
     using Newtonsoft.Json.Linq;
 

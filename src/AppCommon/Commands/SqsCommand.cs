@@ -2,7 +2,7 @@
 using System.CommandLine;
 using Amazon;
 using Particular.EndpointThroughputCounter.Data;
-using Particular.ThroughputQuery;
+using Particular.ThroughputQuery.AmazonSQS;
 
 class SqsCommand : BaseCommand
 {

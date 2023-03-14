@@ -1,4 +1,4 @@
-﻿namespace Particular.ThroughputQuery
+﻿namespace Particular.ThroughputQuery.RabbitMQ
 {
     public class RabbitMQDetails
     {
