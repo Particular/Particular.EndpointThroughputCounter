@@ -76,11 +76,15 @@ class SqsCommand : BaseCommand
         {
             var maxThroughput = await aws.GetMaxThroughput(queueName, cancellationToken).ConfigureAwait(false);
 
-            data.Add(new QueueThroughput
+            // Since we get 30 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
+            if (maxThroughput > 0)
             {
-                QueueName = queueName,
-                Throughput = maxThroughput
-            });
+                data.Add(new QueueThroughput
+                {
+                    QueueName = queueName,
+                    Throughput = maxThroughput
+                });
+            }
 
             _ = Interlocked.Increment(ref metricsReceived);
             Out.Progress($"Got data for {metricsReceived}/{queueNames.Count} SQS queues.");
