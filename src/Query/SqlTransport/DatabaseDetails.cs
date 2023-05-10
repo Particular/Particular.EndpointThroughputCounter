@@ -17,12 +17,15 @@
 
         public DatabaseDetails(string connectionString)
         {
-            this.connectionString = connectionString;
-
             try
             {
-                var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString };
+                var builder = new SqlConnectionStringBuilder
+                {
+                    ConnectionString = connectionString,
+                    TrustServerCertificate = true
+                };
                 DatabaseName = (builder["Initial Catalog"] as string) ?? (builder["Database"] as string);
+                this.connectionString = builder.ToString();
             }
             catch (Exception x) when (x is FormatException or ArgumentException)
             {
@@ -34,7 +37,6 @@
 
         /// <remarks>
         /// Error numbers caught here:
-        /// -2146893019: When you don't add TrustServerCertificate=true to your connection string. We fix this and retry.
         /// 233: Named pipes: No process is on the other end of the pipe
         /// 18456: Login failed
         /// 53: A network-related or instance-specific error occurred while establishing a connection to SQL Server
@@ -43,23 +45,7 @@
         {
             try
             {
-                try
-                {
-                    await TestGetServerName(cancellationToken).ConfigureAwait(false);
-                }
-                catch (SqlException x) when (x.Number == -2146893019)
-                {
-                    var builder = new SqlConnectionStringBuilder(connectionString);
-                    if (builder.TrustServerCertificate)
-                    {
-                        throw;
-                    }
-
-                    builder.TrustServerCertificate = true;
-                    connectionString = builder.ToString();
-
-                    await TestGetServerName(cancellationToken).ConfigureAwait(false);
-                }
+                await TestGetServerName(cancellationToken).ConfigureAwait(false);
             }
             catch (SqlException x) when (x.Number is 233 or 18456 or 53)
             {
