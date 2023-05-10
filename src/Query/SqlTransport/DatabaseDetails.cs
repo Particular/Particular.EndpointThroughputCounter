@@ -35,22 +35,50 @@
 
         public int TableCount => Tables.Count;
 
-        /// <remarks>
-        /// Error numbers caught here:
-        /// 233: Named pipes: No process is on the other end of the pipe
-        /// 18456: Login failed
-        /// 53: A network-related or instance-specific error occurred while establishing a connection to SQL Server
-        /// </remarks>
         public async Task TestConnection(CancellationToken cancellationToken = default)
         {
             try
             {
                 await TestGetServerName(cancellationToken).ConfigureAwait(false);
             }
-            catch (SqlException x) when (x.Number is 233 or 18456 or 53)
+            catch (SqlException x) when (IsLoginIssue(x))
             {
                 throw new QueryException(QueryFailureReason.Auth, "Could not access SQL database. Is the connection string correct?", x);
             }
+        }
+
+        static bool IsLoginIssue(SqlException x)
+        {
+            // Reference is here: https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/cc645603(v=sql.105)?redirectedfrom=MSDN
+
+            return x.Number switch
+            {
+                // 233: Named pipes: No process is on the other end of the pipe
+                // 53: A network-related or instance-specific error occurred while establishing a connection to SQL Server
+                // -2146893022: The target principal name is incorrect
+                // 4060: Cannot open database "%.*ls" requested by the login. The login failed.
+                // 4064: Cannot open user default database. Login failed.
+                // 9758: Login protocol negotiation error occurred.
+                // 14520: %s is not a valid SQL Server standard login, Windows NT user, Windows NT group, or msdb database role.
+                // 15007: '%s' is not a valid login or you do not have permission.
+                // 15537: Login '%.*ls' does not have access to server.
+                // 15538: Login '%.*ls' does not have access to database.
+                // 17197: Login failed due to timeout; the connection has been closed. This error may indicate heavy server load. Reduce the load on the server and retry login.%.*ls
+                // 17892: Logon failed for login '%.*ls' due to trigger execution.%.*ls
+                233 or 53 or -2146893022 or 4060 or 4064 or 9758 or 14520 or 15007 or 15537 or 15538 or 17197 or 17892 => true,
+
+                // Pretty much every error in this range is login-related
+                // https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/cc645934(v=sql.105)
+                >= 18301 and <= 18496 => true,
+
+                // 21142: The SQL Server '%s' could not obtain Windows group membership information for login '%s'. Verify that the Windows account has access to the domain of the login.
+                // 28034: Connection handshake failed.The login '%.*ls' does not have CONNECT permission on the endpoint.State % d.
+                // 33041: Cannot create login token for existing authenticators. If dbo is a windows user make sure that its windows account information is accessible to SQL Server.
+                21142 or 28034 or 33041 => true,
+
+                // Everything else
+                _ => false
+            };
         }
 
         async Task TestGetServerName(CancellationToken cancellationToken)
