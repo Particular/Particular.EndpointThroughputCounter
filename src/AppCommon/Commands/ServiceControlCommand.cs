@@ -242,19 +242,38 @@ partial class ServiceControlCommand : BaseCommand
             var remotesInfoJson = await primary.GetData<JArray>("/configuration/remotes", cancellationToken);
             var remoteInfo = remotesInfoJson.Select(remote =>
             {
+                var uri = remote["api_uri"].Value<string>();
+                var status = remote["status"].Value<string>();
                 var versionString = remote["version"]?.Value<string>();
                 var retentionString = remote["configuration"]?["data_retention"]?["audit_retention_period"]?.Value<string>();
 
                 return new
                 {
-                    Version = SemVerVersion.TryParse(versionString, out var v) ? v : null,
+                    Uri = uri,
+                    Status = status,
+                    VersionString = versionString,
+                    SemVer = SemVerVersion.TryParse(versionString, out var v) ? v : null,
                     Retention = TimeSpan.TryParse(retentionString, out var ts) ? ts : TimeSpan.Zero
                 };
             })
             .ToArray();
 
+            foreach (var remote in remoteInfo)
+            {
+                if (remote.Status == "online" || remote.SemVer is not null)
+                {
+                    Out.WriteLine($"ServiceControl Audit instance at {remote.Uri} detected running version {remote.SemVer}");
+                }
+                else
+                {
+                    var configUrl = primary.GetFullUrl("/configuration/remotes");
+                    var remoteConfigMsg = $"Unable to determine the version of one or more ServiceControl Audit instances. For the instance with URI {remote.Uri}, the status was '{remote.Status}' and the version string returned was '{remote.VersionString}'. If you are not able to resolve this issue on your own, send the contents of {configUrl} to Particular when requesting help.";
+                    throw new HaltException(HaltReason.InvalidEnvironment, remoteConfigMsg);
+                }
+            }
+
             // Want 2d audit retention so we get one complete UTC day no matter what time it is
-            useAuditCounts = remoteInfo.All(r => r.Version.Version >= MinAuditCountsVersion && r.Retention > TimeSpan.FromDays(2));
+            useAuditCounts = remoteInfo.All(r => r.SemVer.Version >= MinAuditCountsVersion && r.Retention > TimeSpan.FromDays(2));
         }
 
         foreach (var endpoint in endpoints)
