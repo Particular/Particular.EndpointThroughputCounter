@@ -258,12 +258,18 @@ partial class ServiceControlCommand : BaseCommand
             })
             .ToArray();
 
-            var firstBad = remoteInfo.FirstOrDefault(r => r.Status != "online" || r.SemVer is null);
-            if (firstBad is not null)
+            foreach (var remote in remoteInfo)
             {
-                var configUrl = primary.GetFullUrl("/configuration/remotes");
-                var remoteConfigMsg = $"Unable to determine the version of one or more ServiceControl Audit instances. For the instance with URI {firstBad.Uri}, the status was '{firstBad.Status}' and the version string was '{firstBad.VersionString}'. If you are not able to resolve this issue on your own, send the contents of {configUrl} to Particular when requesting help.";
-                throw new HaltException(HaltReason.InvalidEnvironment, remoteConfigMsg);
+                if (remote.Status == "online" || remote.SemVer is not null)
+                {
+                    Out.WriteLine($"ServiceControl Audit instance at {remote.Uri} detected running version {remote.SemVer}");
+                }
+                else
+                {
+                    var configUrl = primary.GetFullUrl("/configuration/remotes");
+                    var remoteConfigMsg = $"Unable to determine the version of one or more ServiceControl Audit instances. For the instance with URI {remote.Uri}, the status was '{remote.Status}' and the version string returned was '{remote.VersionString}'. If you are not able to resolve this issue on your own, send the contents of {configUrl} to Particular when requesting help.";
+                    throw new HaltException(HaltReason.InvalidEnvironment, remoteConfigMsg);
+                }
             }
 
             // Want 2d audit retention so we get one complete UTC day no matter what time it is
