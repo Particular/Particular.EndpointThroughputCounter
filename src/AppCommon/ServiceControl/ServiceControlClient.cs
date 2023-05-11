@@ -40,14 +40,19 @@
             return GetData<TJsonType>(pathAndQuery, 1, cancellationToken);
         }
 
-        public async Task<TJsonType> GetData<TJsonType>(string pathAndQuery, int tryCount, CancellationToken cancellationToken = default)
+        public string GetFullUrl(string pathAndQuery)
         {
             if (pathAndQuery is null || !pathAndQuery.StartsWith('/'))
             {
                 throw new ArgumentException("pathAndQuery must start with a forward slash.");
             }
 
-            var url = rootUrl + pathAndQuery;
+            return rootUrl + pathAndQuery;
+        }
+
+        public async Task<TJsonType> GetData<TJsonType>(string pathAndQuery, int tryCount, CancellationToken cancellationToken = default)
+        {
+            var url = GetFullUrl(pathAndQuery);
 
             for (int i = 0; i < tryCount; i++)
             {
