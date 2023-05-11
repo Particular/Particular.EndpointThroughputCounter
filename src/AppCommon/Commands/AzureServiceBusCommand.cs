@@ -89,7 +89,16 @@ class AzureServiceBusCommand : BaseCommand
                 if (metricValues is not null)
                 {
                     var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
-                    results.Add(new QueueThroughput { QueueName = queueName, Throughput = (int?)maxThroughput });
+
+                    // Since we get 30 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
+                    if (maxThroughput is not null and not 0)
+                    {
+                        results.Add(new QueueThroughput { QueueName = queueName, Throughput = (long?)maxThroughput });
+                    }
+                    else
+                    {
+                        Out.WriteLine(" - No throughput detected in 30 days, ignoring");
+                    }
                 }
             }
 
