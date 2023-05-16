@@ -94,7 +94,7 @@ partial class ServiceControlCommand : BaseCommand
         }
         Out.WriteLine("Sampling complete");
 
-        var queues = allData.GroupBy(q => q.QueueName)
+        var queues = allData.GroupBy(q => q.QueueName, StringComparer.OrdinalIgnoreCase)
             .Select(g => new QueueThroughput { QueueName = g.Key, Throughput = g.Sum(q => q.Throughput) })
             .ToList();
 
