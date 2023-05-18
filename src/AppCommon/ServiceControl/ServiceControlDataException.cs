@@ -8,7 +8,7 @@
         public int Attempts { get; }
 
         public ServiceControlDataException(string url, int tryCount, Exception inner)
-            : base(inner.Message, inner)
+            : base(inner.Message + $" (Attempted operation {tryCount} total times)", inner)
         {
             Url = url;
             Attempts = tryCount;
