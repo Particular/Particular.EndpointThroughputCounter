@@ -41,18 +41,26 @@
             {
                 await TestGetServerName(cancellationToken).ConfigureAwait(false);
             }
-            catch (SqlException x) when (IsLoginIssue(x))
+            catch (SqlException x) when (IsConnectionOrLoginIssue(x))
             {
                 throw new QueryException(QueryFailureReason.Auth, "Could not access SQL database. Is the connection string correct?", x);
             }
         }
 
-        static bool IsLoginIssue(SqlException x)
+        static bool IsConnectionOrLoginIssue(SqlException x)
         {
             // Reference is here: https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/cc645603(v=sql.105)?redirectedfrom=MSDN
 
             return x.Number switch
             {
+                // Unproven or negative codes that need further "proof" here. If we get a false negative because of a localized exception message, so be it.
+                // -2: Microsoft.Data.SqlClient.SqlException (0x80131904): Connection Timeout Expired.  The timeout period elapsed while attempting to consume the pre-login handshake acknowledgement.  This could be because the pre-login handshake failed or the server was unable to respond back in time.  The duration spent while attempting to connect to this server was - [Pre-Login] initialization=21041; handshake=4;
+                -2 => x.Message.Contains("Connection Timeout Expired"),
+
+                // 10060: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections.
+                // 10061: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections. (provider: TCP Provider, error: 0 - No connection could be made because the target machine actively refused it.
+                10060 or 10061 => true,
+
                 // 233: Named pipes: No process is on the other end of the pipe
                 // 53: A network-related or instance-specific error occurred while establishing a connection to SQL Server
                 // -2146893022: The target principal name is incorrect
