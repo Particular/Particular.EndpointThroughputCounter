@@ -58,7 +58,8 @@
                 -2 => x.Message.Contains("Connection Timeout Expired"),
 
                 // 10060: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections.
-                10060 => true,
+                // 10061: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections. (provider: TCP Provider, error: 0 - No connection could be made because the target machine actively refused it.
+                10060 or 10061 => true,
 
                 // 233: Named pipes: No process is on the other end of the pipe
                 // 53: A network-related or instance-specific error occurred while establishing a connection to SQL Server
