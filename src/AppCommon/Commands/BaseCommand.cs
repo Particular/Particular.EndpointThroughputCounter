@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.EndpointThroughputCounter.ServiceControl;
 
 abstract class BaseCommand
 {
@@ -72,6 +73,14 @@ abstract class BaseCommand
                 Out.WriteLine("Original exception message: " + halt.InnerException.Message);
             }
             Environment.ExitCode = halt.ExitCode;
+        }
+        catch (ServiceControlDataException scX)
+        {
+            Out.WriteLine();
+            Out.WriteLine();
+            Out.WriteError("There was a problem getting data from ServiceControl. Are all of the ServiceControl instances running correctly?");
+            Out.WriteLine();
+            Out.WriteLine("Original exception: " + scX.ToString());
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
