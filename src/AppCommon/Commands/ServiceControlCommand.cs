@@ -38,7 +38,7 @@ partial class ServiceControlCommand : BaseCommand
             RunInfo.Add("ServiceControlUrl", scUrl);
             RunInfo.Add("MonitoringUrl", monUrl);
 
-            var http = await InteractiveHttpAuth.CreateHttpClient(scUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(15), cancellationToken: cancellationToken);
+            var http = await InteractiveHttpAuth.CreateHttpClient(scUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
 
             var runner = new ServiceControlCommand(shared, http, scUrl, monUrl);
             await runner.Run(cancellationToken);
