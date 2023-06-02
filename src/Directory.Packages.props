@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.103.6" />
+    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.103.7" />
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
