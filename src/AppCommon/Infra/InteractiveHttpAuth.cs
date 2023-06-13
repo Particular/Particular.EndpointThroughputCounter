@@ -9,10 +9,10 @@
 
     static class InteractiveHttpAuth
     {
-        public static Task<HttpClient> CreateHttpClient(string authUrl, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
-            => CreateHttpClient(new Uri(authUrl), maxTries, configureNewClient, cancellationToken);
+        public static Task<Func<HttpClient>> CreateHttpClientFactory(string authUrl, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
+            => CreateHttpClientFactory(new Uri(authUrl), maxTries, configureNewClient, cancellationToken);
 
-        public static async Task<HttpClient> CreateHttpClient(Uri authUri, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
+        public static async Task<Func<HttpClient>> CreateHttpClientFactory(Uri authUri, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
         {
             var uriPrefix = new Uri(authUri.GetLeftPart(UriPartial.Authority));
             var credentials = new CredentialCache();
@@ -23,11 +23,12 @@
 
             while (true)
             {
-                var httpHandler = new HttpClientHandler
+                var socketHandler = new SocketsHttpHandler
                 {
                     PreAuthenticate = true,
                     AutomaticDecompression = DecompressionMethods.All,
-                    MaxConnectionsPerServer = 100
+                    MaxConnectionsPerServer = 20,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(1)
                 };
 
                 if (credential is not null)
@@ -44,14 +45,10 @@
                     {
                         credentialCache.Add(uriPrefix, "Basic", credential);
                     }
-                    httpHandler.Credentials = credentialCache;
-                }
-                else
-                {
-                    httpHandler.UseDefaultCredentials = true;
+                    socketHandler.Credentials = credentialCache;
                 }
 
-                var http = new HttpClient(httpHandler, true);
+                var http = new HttpClient(socketHandler, disposeHandler: false);
                 configureNewClient?.Invoke(http);
 
                 using var response = await http.GetAsync(authUri, cancellationToken);
@@ -59,11 +56,12 @@
                 try
                 {
                     _ = response.EnsureSuccessStatusCode();
-                    return http;
+
+                    return () => new HttpClient(socketHandler, disposeHandler: false);
                 }
                 catch (HttpRequestException x) when (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    http.Dispose();
+                    socketHandler.Dispose();
                     if (--maxTries <= 0)
                     {
                         throw new HaltException(HaltReason.Auth, "Unable to authenticate to " + uriPrefix, x);

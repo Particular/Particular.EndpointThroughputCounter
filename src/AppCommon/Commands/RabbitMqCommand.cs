@@ -27,9 +27,9 @@ class RabbitMqCommand : BaseCommand
 
             RunInfo.Add("RabbitMQUrl", url);
 
-            var http = await InteractiveHttpAuth.CreateHttpClient(url.TrimEnd('/') + "/api/overview");
+            var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(url.TrimEnd('/') + "/api/overview");
 
-            var rabbitMQManagement = new RabbitMQManagementClient(http, url);
+            var rabbitMQManagement = new RabbitMQManagementClient(httpFactory, url);
             var runner = new RabbitMqCommand(shared, rabbitMQManagement);
 
             await runner.Run(cancellationToken);

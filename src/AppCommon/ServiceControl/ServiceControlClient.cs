@@ -15,14 +15,14 @@
         static readonly Version MinServiceControlVersion = new Version(4, 21, 8);
         static readonly JsonSerializer serializer = new JsonSerializer();
 
-        readonly HttpClient http;
+        readonly Func<HttpClient> httpFactory;
         readonly string rootUrl;
         readonly string paramName;
         readonly string instanceType;
 
         public SemVerVersion Version { get; private set; }
 
-        public ServiceControlClient(string paramName, string instanceType, string rootUrl, HttpClient http)
+        public ServiceControlClient(string paramName, string instanceType, string rootUrl, Func<HttpClient> httpFactory)
         {
             if (string.IsNullOrWhiteSpace(rootUrl))
             {
@@ -32,7 +32,7 @@
             this.paramName = paramName;
             this.instanceType = instanceType;
             this.rootUrl = rootUrl.TrimEnd('/');
-            this.http = http;
+            this.httpFactory = httpFactory;
         }
 
         public Task<TJsonType> GetData<TJsonType>(string pathAndQuery, CancellationToken cancellationToken = default)
@@ -53,6 +53,8 @@
         public async Task<TJsonType> GetData<TJsonType>(string pathAndQuery, int tryCount, CancellationToken cancellationToken = default)
         {
             var url = GetFullUrl(pathAndQuery);
+
+            using var http = httpFactory();
 
             for (int i = 0; i < tryCount; i++)
             {
@@ -83,6 +85,8 @@
 
         public async Task CheckEndpoint(Func<string, bool> contentTest, CancellationToken cancellationToken = default)
         {
+            using var http = httpFactory();
+
             HttpResponseMessage res = null;
             try
             {
