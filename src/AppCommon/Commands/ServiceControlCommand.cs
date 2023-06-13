@@ -38,9 +38,9 @@ partial class ServiceControlCommand : BaseCommand
             RunInfo.Add("ServiceControlUrl", scUrl);
             RunInfo.Add("MonitoringUrl", monUrl);
 
-            var http = await InteractiveHttpAuth.CreateHttpClient(scUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
+            var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(scUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
 
-            var runner = new ServiceControlCommand(shared, http, scUrl, monUrl);
+            var runner = new ServiceControlCommand(shared, httpFactory, scUrl, monUrl);
             await runner.Run(cancellationToken);
         });
 
@@ -65,11 +65,11 @@ partial class ServiceControlCommand : BaseCommand
     const int MinutesPerSample = 60;
 #endif
 
-    public ServiceControlCommand(SharedOptions shared, HttpClient http, string primaryUrl, string monitoringUrl)
+    public ServiceControlCommand(SharedOptions shared, Func<HttpClient> httpFactory, string primaryUrl, string monitoringUrl)
         : base(shared)
     {
-        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, http);
-        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, http);
+        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, httpFactory);
+        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, httpFactory);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)

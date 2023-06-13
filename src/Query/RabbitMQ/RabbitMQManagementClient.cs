@@ -1,5 +1,6 @@
 ﻿namespace Particular.ThroughputQuery.RabbitMQ
 {
+    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
@@ -12,12 +13,12 @@
     public class RabbitMQManagementClient
 
     {
-        readonly HttpClient http;
+        readonly Func<HttpClient> httpFactory;
         readonly JsonSerializer serializer;
 
-        public RabbitMQManagementClient(HttpClient http, string managementUri)
+        public RabbitMQManagementClient(Func<HttpClient> httpFactory, string managementUri)
         {
-            this.http = http;
+            this.httpFactory = httpFactory;
             ManagementUri = managementUri.TrimEnd('/');
 
             serializer = new JsonSerializer();
@@ -57,6 +58,8 @@
         {
             var url = $"{ManagementUri}/api/queues?page={page}&page_size=500&name=&use_regex=false&pagination=true";
 
+            using var http = httpFactory();
+
             using (var stream = await http.GetStreamAsync(url, cancellationToken).ConfigureAwait(false))
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
@@ -80,6 +83,8 @@
         public async Task<RabbitMQDetails> GetRabbitDetails(CancellationToken cancellationToken = default)
         {
             var url = $"{ManagementUri}/api/overview";
+
+            using var http = httpFactory();
 
             try
             {
