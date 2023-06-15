@@ -189,9 +189,10 @@ partial class ServiceControlCommand : BaseCommand
         var obj = await primary.GetData<JObject>("/configuration", 5, cancellationToken);
 
         var transportTypeToken = obj["transport"]["transport_customization_type"]
-            ?? throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
+                                 ?? obj["transport"]["transport_type"]
+                                 ?? throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
 
-        var transportCustomizationTypeStr = obj["transport"]["transport_customization_type"].Value<string>();
+        var transportCustomizationTypeStr = transportTypeToken.Value<string>();
 
         var split = transportCustomizationTypeStr.Split(',');
 
