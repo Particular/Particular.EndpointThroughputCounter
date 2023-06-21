@@ -25,15 +25,15 @@
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.104.21" />
+    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.104.22" />
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.103.15" />
+    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.103.16" />
   </ItemGroup>
 
   <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.103.4" />
+    <PackageVersion Include="AWSSDK.SQS" Version="3.7.103.5" />
   </ItemGroup>
 
 </Project>
