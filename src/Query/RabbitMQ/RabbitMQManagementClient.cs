@@ -113,6 +113,10 @@
                     };
                 }
             }
+            catch (JsonReaderException)
+            {
+                throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {url} did not return a valid JSON response. Is the RabbitMQ server configured correctly?");
+            }
             catch (HttpRequestException hx)
             {
                 throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {url} did not respond. The exception message was: {hx.Message}");
