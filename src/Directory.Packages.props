@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.104.22" />
+    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.103.16" />
+    <PackageVersion Include="AWSSDK.SQS" Version="3.7.103.5" />
     <PackageVersion Include="Azure.Identity" Version="1.9.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.15.0" />
     <PackageVersion Include="Azure.Monitor.Query" Version="1.2.0" />
@@ -22,18 +25,6 @@
     <PackageVersion Include="PublicApiGenerator" Version="11.0.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageVersion Include="Particular.Packaging" Version="3.0.0" />
-  </ItemGroup>
-
-  <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.104.22" />
-  </ItemGroup>
-
-  <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.103.16" />
-  </ItemGroup>
-
-  <ItemGroup Label="Separate AWS dependencies so Dependabot PRs don't always have to be rebased">
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.103.5" />
   </ItemGroup>
 
 </Project>
