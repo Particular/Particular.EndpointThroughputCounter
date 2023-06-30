@@ -185,7 +185,7 @@ abstract class BaseCommand
             if (!metadata.QueuesAreEndpoints)
             {
                 Out.WriteLine("Not all queues represent logical endpoints. So, although data from all queues will be included");
-                Out.WriteLine("in the report, not all the queues will count toward the licensed endpoint count.");
+                Out.WriteLine("in the report, not all the queues will automatically be included the licensed endpoint count.");
             }
 
             if (!shared.RunUnattended)
