@@ -61,14 +61,13 @@ static class Versioning
         try
         {
             Out.WriteLine("Checking for latest version...");
-            var resource = await repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken);
-
             NuGetVersion[] versions = null;
 
             using (var tokenSource = new CancellationTokenSource(10_000))
             {
                 try
                 {
+                    var resource = await repository.GetResourceAsync<FindPackageByIdResource>(tokenSource.Token);
                     versions = (await resource.GetAllVersionsAsync("Particular.EndpointThroughputCounter", cache, logger, tokenSource.Token)).ToArray();
                 }
                 catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
