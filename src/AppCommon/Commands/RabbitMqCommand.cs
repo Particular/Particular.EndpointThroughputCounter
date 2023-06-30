@@ -112,6 +112,7 @@ class RabbitMqCommand : BaseCommand
                         throw new HaltException(HaltReason.RuntimeError, "The connection to RabbitMQ has failed too many times and appears unreliable.", x);
                     }
                     Out.WriteWarn($"Encountered error updating statistics, ignoring for now: {x.Message}");
+                    Out.WriteDebugTimestamp();
                 }
             }
         });
