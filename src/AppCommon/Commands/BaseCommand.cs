@@ -140,6 +140,8 @@ abstract class BaseCommand
 
         Out.WriteLine();
 
+        await Initialize(cancellationToken);
+
         Out.WriteLine("Collecting environment info...");
         var metadata = await GetEnvironment(cancellationToken);
 
@@ -241,6 +243,11 @@ abstract class BaseCommand
         }
 
         return queueName;
+    }
+
+    protected virtual Task Initialize(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
     }
 
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);
