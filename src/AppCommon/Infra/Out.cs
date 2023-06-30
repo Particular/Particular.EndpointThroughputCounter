@@ -93,6 +93,8 @@ public static class Out
         }
     }
 
+    public static void WriteDebugTimestamp() => output.AppendLine($" - Debug timestamp: {DateTime.UtcNow:O}");
+
     public static string ReadPassword()
     {
         var pass = string.Empty;

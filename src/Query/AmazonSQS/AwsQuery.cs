@@ -39,27 +39,34 @@
 
             var queueNames = new List<string>();
 
-            while (true)
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var response = await sqs.ListQueuesAsync(request, cancellationToken).ConfigureAwait(false);
-
-                queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
-
-                onProgress(queueNames.Count);
-
-                if (response.NextToken is not null)
+                while (true)
                 {
-                    request.NextToken = response.NextToken;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var response = await sqs.ListQueuesAsync(request, cancellationToken).ConfigureAwait(false);
+
+                    queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
+
+                    onProgress(queueNames.Count);
+
+                    if (response.NextToken is not null)
+                    {
+                        request.NextToken = response.NextToken;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
-                else
-                {
-                    break;
-                }
+
+                return queueNames;
             }
-
-            return queueNames;
+            catch (AmazonSQSException sqsX) when (sqsX.ErrorType == Amazon.Runtime.ErrorType.Sender)
+            {
+                throw new QueryException(QueryFailureReason.Auth, sqsX.Message, sqsX);
+            }
         }
 
         public async Task<long> GetMaxThroughput(string queueName, CancellationToken cancellationToken = default)

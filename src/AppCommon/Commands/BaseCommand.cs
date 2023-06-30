@@ -140,14 +140,19 @@ abstract class BaseCommand
 
         Out.WriteLine();
 
+        await Initialize(cancellationToken);
+
         Out.WriteLine("Collecting environment info...");
         var metadata = await GetEnvironment(cancellationToken);
+
+        var queueNoun = metadata.QueuesAreEndpoints ? "endpoint" : "queue";
+        var queueNounUpper = metadata.QueuesAreEndpoints ? "Endpoint" : "Queue";
 
         if (!metadata.SkipEndpointListCheck)
         {
             if (!metadata.QueueNames.Any())
             {
-                throw new HaltException(HaltReason.InvalidEnvironment, "No queues or endpoints could be discovered. Please check to make sure your configuration is correct.");
+                throw new HaltException(HaltReason.InvalidEnvironment, $"No {queueNoun}s could be discovered. Please check to make sure your configuration is correct.");
             }
 
             var mappedQueueNames = metadata.QueueNames
@@ -155,10 +160,10 @@ abstract class BaseCommand
                 .ToArray();
 
             Out.WriteLine();
-            Out.WriteLine("Writing endpoint/queue names discovered:");
+            Out.WriteLine($"Writing {queueNoun} names discovered:");
             Out.WriteLine();
 
-            const string leftLabel = "Queue/Endpoint Name";
+            string leftLabel = $"{queueNounUpper} Name";
             const string rightLabel = "Will be reported as";
             var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.Length).Max());
             var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.Masked.Length).Max());
@@ -173,9 +178,15 @@ abstract class BaseCommand
             }
             Out.WriteLine();
 
-            Out.WriteLine("The right column shows how queue names will be reported. If queue names contain sensitive");
+            Out.WriteLine($"The right column shows how {queueNoun} names will be reported. If {queueNoun} names contain sensitive");
             Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
             Out.WriteLine();
+
+            if (!metadata.QueuesAreEndpoints)
+            {
+                Out.WriteLine("Not all queues represent logical endpoints. So, although data from all queues will be included");
+                Out.WriteLine("in the report, not all the queues will automatically be included the licensed endpoint count.");
+            }
 
             if (!shared.RunUnattended)
             {
@@ -241,6 +252,11 @@ abstract class BaseCommand
         }
 
         return queueName;
+    }
+
+    protected virtual Task Initialize(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
     }
 
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);

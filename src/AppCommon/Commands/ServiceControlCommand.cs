@@ -38,9 +38,7 @@ partial class ServiceControlCommand : BaseCommand
             RunInfo.Add("ServiceControlUrl", scUrl);
             RunInfo.Add("MonitoringUrl", monUrl);
 
-            var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(scUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
-
-            var runner = new ServiceControlCommand(shared, httpFactory, scUrl, monUrl);
+            var runner = new ServiceControlCommand(shared, scUrl, monUrl);
             await runner.Run(cancellationToken);
         });
 
@@ -52,8 +50,10 @@ partial class ServiceControlCommand : BaseCommand
 
     static readonly Version MinAuditCountsVersion = new Version(4, 29);
 
-    readonly ServiceControlClient primary;
-    readonly ServiceControlClient monitoring;
+    readonly string primaryUrl;
+    readonly string monitoringUrl;
+    ServiceControlClient primary;
+    ServiceControlClient monitoring;
     ServiceControlEndpoint[] knownEndpoints;
 
 #if DEBUG
@@ -65,9 +65,16 @@ partial class ServiceControlCommand : BaseCommand
     const int MinutesPerSample = 60;
 #endif
 
-    public ServiceControlCommand(SharedOptions shared, Func<HttpClient> httpFactory, string primaryUrl, string monitoringUrl)
+    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl)
         : base(shared)
     {
+        this.primaryUrl = primaryUrl;
+        this.monitoringUrl = monitoringUrl;
+    }
+
+    protected override async Task Initialize(CancellationToken cancellationToken = default)
+    {
+        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(primaryUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
         primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, httpFactory);
         monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, httpFactory);
     }
@@ -211,7 +218,8 @@ partial class ServiceControlCommand : BaseCommand
         {
             MessageTransport = className,
             ReportMethod = "ServiceControl API",
-            QueueNames = knownEndpoints.OrderBy(q => q.Name).Select(q => q.Name).ToArray()
+            QueueNames = knownEndpoints.OrderBy(q => q.Name).Select(q => q.Name).ToArray(),
+            QueuesAreEndpoints = true
         };
     }
 

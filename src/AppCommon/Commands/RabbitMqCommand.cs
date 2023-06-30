@@ -27,10 +27,7 @@ class RabbitMqCommand : BaseCommand
 
             RunInfo.Add("RabbitMQUrl", url);
 
-            var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(url.TrimEnd('/') + "/api/overview");
-
-            var rabbitMQManagement = new RabbitMQManagementClient(httpFactory, url);
-            var runner = new RabbitMqCommand(shared, rabbitMQManagement);
+            var runner = new RabbitMqCommand(shared, url);
 
             await runner.Run(cancellationToken);
         });
@@ -38,20 +35,27 @@ class RabbitMqCommand : BaseCommand
         return command;
     }
 
-    readonly RabbitMQManagementClient _rabbitMQ;
+    readonly string managementUrl;
     readonly TimeSpan pollingInterval;
-
+    RabbitMQManagementClient _rabbitMQ;
     RabbitMQDetails _rabbitMQDetails;
 
-    public RabbitMqCommand(SharedOptions shared, RabbitMQManagementClient rabbitMq)
+    public RabbitMqCommand(SharedOptions shared, string managementUrl)
         : base(shared)
     {
-        _rabbitMQ = rabbitMq;
+        this.managementUrl = managementUrl;
 #if DEBUG
         pollingInterval = TimeSpan.FromSeconds(10);
 #else
         pollingInterval = TimeSpan.FromMinutes(5);
 #endif
+    }
+
+    protected override async Task Initialize(CancellationToken cancellationToken = default)
+    {
+        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", cancellationToken: cancellationToken);
+
+        _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
@@ -108,6 +112,7 @@ class RabbitMqCommand : BaseCommand
                         throw new HaltException(HaltReason.RuntimeError, "The connection to RabbitMQ has failed too many times and appears unreliable.", x);
                     }
                     Out.WriteWarn($"Encountered error updating statistics, ignoring for now: {x.Message}");
+                    Out.WriteDebugTimestamp();
                 }
             }
         });
