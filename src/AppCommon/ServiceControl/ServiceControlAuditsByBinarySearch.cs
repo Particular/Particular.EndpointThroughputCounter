@@ -35,7 +35,7 @@
             }
             catch (ServiceControlDataException x)
             {
-                Out.WriteError($"Warning: Unable to read ServiceControl data from {x.Url} after {x.Attempts} attempts: {x.Message}");
+                Out.WriteWarn($"Warning: Unable to read ServiceControl data from {x.Url} after {x.Attempts} attempts: {x.Message}");
                 return null;
             }
         }
