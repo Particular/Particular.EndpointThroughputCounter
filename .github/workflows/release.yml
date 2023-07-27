@@ -33,8 +33,8 @@ jobs:
           name: nugets
           path: nugets/*
           retention-days: 1
-      - name: Deploy to MyGet
-        run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --api-key ${{ secrets.MYGET_PUBLISH_API_KEY }} --source "https://www.myget.org/F/particular/api/v3/index.json"
+      - name: Deploy to Feedz
+        run: dotnet nuget push nugets/Particular.EndpointThroughputCounter.${{env.MinVerVersion}}.nupkg --api-key ${{ secrets.FEEDZIO_PUBLISH_API_KEY }} --source "${{ vars.PARTICULAR_PACKAGES_FEED_URL }}"
       - name: Build SelfContained
         run: dotnet publish src/Exe --configuration Release --output binaries
       - name: Install AzureSignTool
