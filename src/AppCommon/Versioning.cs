@@ -55,7 +55,7 @@ static class Versioning
 
         var logger = NullLogger.Instance;
         var cache = new SourceCacheContext();
-        var packageSource = new PackageSource("https://www.myget.org/F/particular/api/v3/index.json");
+        var packageSource = new PackageSource("https://f.feedz.io/particular-software/packages/nuget/index.json");
         var repository = new SourceRepository(packageSource, Repository.Provider.GetCoreV3());
 
         try
@@ -72,7 +72,7 @@ static class Versioning
                 }
                 catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
                 {
-                    Out.WriteWarn("WARNING: Unable to connect to MyGet within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
+                    Out.WriteWarn("WARNING: Unable to check current version within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
                     return true;
                 }
             }
@@ -88,7 +88,7 @@ static class Versioning
                 Out.WriteLine("** Download the latest version here: https://s3.amazonaws.com/particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip");
 #else
                 Out.WriteLine("** To install, execute the following command:");
-                Out.WriteLine(" > dotnet tool update -g Particular.EndpointThroughputCounter --add-source=https://www.myget.org/F/particular/api/v3/index.json");
+                Out.WriteLine(" > dotnet tool update -g Particular.EndpointThroughputCounter --add-source=https://f.feedz.io/particular-software/packages/nuget/index.json");
 #endif
                 Out.WriteLine();
                 return false;
@@ -96,7 +96,7 @@ static class Versioning
         }
         catch (NuGetProtocolException)
         {
-            Out.WriteWarn("WARNING: Unable to connect to www.myget.org to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
+            Out.WriteWarn("WARNING: Unable to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
         }
 
         return true;
