@@ -197,8 +197,8 @@ class RabbitMqCommand : BaseCommand
         }
 
         public string Name { get; init; }
-        public int Baseline { get; private set; }
-        public int AckedMessages { get; private set; }
+        public long Baseline { get; private set; }
+        public long AckedMessages { get; private set; }
 
         public void AddData(RabbitMQQueueDetails newReading)
         {
