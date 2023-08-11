@@ -9,10 +9,10 @@
             Name = token["name"].Value<string>();
             if (token["message_stats"] is JObject stats && stats["ack"] is JValue val)
             {
-                AckedMessages = val.Value<int>();
+                AckedMessages = val.Value<long>();
             }
         }
         public string Name { get; }
-        public int? AckedMessages { get; }
+        public long? AckedMessages { get; }
     }
 }
