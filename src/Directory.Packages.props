@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.200.18" />
+    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.200.19" />
     <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.201.14" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.200.19" />
     <PackageVersion Include="Azure.Identity" Version="1.9.0" />
