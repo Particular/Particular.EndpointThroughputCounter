@@ -30,11 +30,12 @@ class SharedOptions
     public static readonly Option<int> runtimeInHours =
         new(name: "--runtime", getDefaultValue: () => 24) { IsHidden = true };
 
-    public string[] MaskNames { get; private set; }
     public string CustomerName { get; set; }
     public bool RunUnattended { get; private set; }
     public bool SkipVersionCheck { get; private set; }
     public int RuntimeInHours { get; private set; }
+
+    (string Mask, string Replacement)[] masks;
 
     public static void Register(Command command)
     {
@@ -55,17 +56,35 @@ class SharedOptions
         command.AddGlobalOption(runtimeInHours);
     }
 
+    SharedOptions(System.CommandLine.Parsing.ParseResult parse)
+    {
+        CustomerName = parse.GetValueForOption(customerName);
+        RunUnattended = parse.GetValueForOption(runUnattended);
+        SkipVersionCheck = parse.GetValueForOption(skipVersionCheck);
+        RuntimeInHours = parse.GetValueForOption(runtimeInHours);
+
+        int number = 0;
+        masks = parse.GetValueForOption(maskNames)
+            .Select(mask =>
+            {
+                number++;
+                return (mask, $"REDACTED{number}");
+            })
+            .ToArray();
+    }
+
     public static SharedOptions Parse(InvocationContext context)
     {
-        var parse = context.ParseResult;
+        return new SharedOptions(context.ParseResult);
+    }
 
-        return new SharedOptions
+    public string Mask(string stringToMask)
+    {
+        foreach (var (mask, replacement) in masks)
         {
-            MaskNames = parse.GetValueForOption(maskNames),
-            CustomerName = parse.GetValueForOption(customerName),
-            RunUnattended = parse.GetValueForOption(runUnattended),
-            SkipVersionCheck = parse.GetValueForOption(skipVersionCheck),
-            RuntimeInHours = parse.GetValueForOption(runtimeInHours)
-        };
+            stringToMask = stringToMask.Replace(mask, replacement, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return stringToMask;
     }
 }

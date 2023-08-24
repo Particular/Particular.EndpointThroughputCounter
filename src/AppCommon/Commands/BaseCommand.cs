@@ -156,7 +156,7 @@ abstract class BaseCommand
             }
 
             var mappedQueueNames = metadata.QueueNames
-                .Select(name => new { Name = name, Masked = MaskName(name) })
+                .Select(name => new { Name = name, Masked = shared.Mask(name) })
                 .ToArray();
 
             Out.WriteLine();
@@ -202,7 +202,7 @@ abstract class BaseCommand
 
         foreach (var q in data.Queues)
         {
-            q.QueueName = MaskName(q.QueueName);
+            q.QueueName = shared.Mask(q.QueueName);
             if (q.Throughput.HasValue)
             {
                 q.Throughput = Math.Abs(q.Throughput.Value);
@@ -213,7 +213,7 @@ abstract class BaseCommand
         {
             CustomerName = shared.CustomerName,
             MessageTransport = metadata.MessageTransport,
-            ReportMethod = metadata.ReportMethod,
+            ReportMethod = shared.Mask(metadata.ReportMethod),
             ToolVersion = Versioning.NuGetVersion,
             Prefix = metadata.Prefix,
             StartTime = data.StartTime,
@@ -222,7 +222,7 @@ abstract class BaseCommand
             Queues = data.Queues,
             TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
             TotalQueues = data.Queues.Length,
-            IgnoredQueues = metadata.IgnoredQueues?.Select(q => MaskName(q)).ToArray()
+            IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
         };
 
         var report = new SignedReport
@@ -242,16 +242,6 @@ abstract class BaseCommand
             ser.Serialize(jsonWriter, report, typeof(SignedReport));
         }
         Out.WriteLine("EndpointThroughputTool complete.");
-    }
-
-    string MaskName(string queueName)
-    {
-        foreach (string mask in shared.MaskNames)
-        {
-            queueName = queueName.Replace(mask, "***", StringComparison.OrdinalIgnoreCase);
-        }
-
-        return queueName;
     }
 
     protected virtual Task Initialize(CancellationToken cancellationToken = default)
