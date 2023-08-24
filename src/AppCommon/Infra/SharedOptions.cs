@@ -82,7 +82,7 @@ class SharedOptions
     {
         foreach (var (mask, replacement) in masks)
         {
-            stringToMask = stringToMask.Replace(mask, replacement);
+            stringToMask = stringToMask.Replace(mask, replacement, StringComparison.OrdinalIgnoreCase);
         }
 
         return stringToMask;
