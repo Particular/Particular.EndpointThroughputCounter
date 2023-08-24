@@ -105,7 +105,6 @@
                     }
                 }
             }
-
         }
 
         async Task<(RabbitMQQueueDetails[], bool morePages)> GetPage(int page, CancellationToken cancellationToken)
