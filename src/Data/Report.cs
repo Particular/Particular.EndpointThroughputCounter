@@ -51,5 +51,8 @@
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool NoDataOrSendOnly { get; init; }
+
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string[] EndpointIndicators { get; init; }
     }
 }

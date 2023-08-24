@@ -122,6 +122,8 @@
             Assert.That(data.Queues.Length, Is.EqualTo(7));
             Assert.That(data.Queues.All(q => q.Throughput == 0));
             Assert.That(data.Queues.All(q => !string.IsNullOrEmpty(q.QueueName)));
+            Assert.That(data.Queues.All(q => q.NoDataOrSendOnly == false));
+            Assert.That(data.Queues.All(q => q.EndpointIndicators is null));
 
             Assert.That(data.TotalThroughput, Is.EqualTo(0));
             Assert.That(data.TotalQueues, Is.EqualTo(7));

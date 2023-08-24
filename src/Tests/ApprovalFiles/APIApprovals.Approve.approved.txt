@@ -7,6 +7,8 @@ namespace Particular.EndpointThroughputCounter.Data
         [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
         public long? Throughput { get; set; }
         [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string[] EndpointIndicators { get; init; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
         public bool NoDataOrSendOnly { get; init; }
     }
     public class Report

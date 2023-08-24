@@ -62,6 +62,7 @@ class RabbitMqCommand : BaseCommand
     {
         Out.WriteLine("Taking initial queue statistics.");
         var startData = await _rabbitMQ.GetQueueDetails(cancellationToken);
+        await _rabbitMQ.AddAdditionalQueueDetails(startData, cancellationToken);
         var startTime = DateTimeOffset.Now;
 
         if (startData.All(q => q.AckedMessages is null))
@@ -126,7 +127,8 @@ class RabbitMqCommand : BaseCommand
             .Select(t => new QueueThroughput
             {
                 QueueName = t.Name,
-                Throughput = t.AckedMessages
+                Throughput = t.AckedMessages,
+                EndpointIndicators = t.EndpointIndicators.Any() ? t.EndpointIndicators : null
             })
             .OrderBy(q => q.QueueName)
             .ToArray();
@@ -194,11 +196,13 @@ class RabbitMqCommand : BaseCommand
             Name = startReading.Name;
             Baseline = startReading.AckedMessages ?? 0;
             AckedMessages = 0;
+            EndpointIndicators = startReading.EndpointIndicators.ToArray();
         }
 
         public string Name { get; init; }
         public long Baseline { get; private set; }
         public long AckedMessages { get; private set; }
+        public string[] EndpointIndicators { get; init; }
 
         public void AddData(RabbitMQQueueDetails newReading)
         {
