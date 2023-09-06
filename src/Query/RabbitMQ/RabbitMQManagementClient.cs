@@ -117,19 +117,33 @@
             using (var reader = new StreamReader(stream))
             using (var jsonReader = new JsonTextReader(reader))
             {
-                var obj = serializer.Deserialize<JObject>(jsonReader);
+                var container = serializer.Deserialize<JContainer>(jsonReader);
 
-                var pageCount = obj["page_count"].Value<int>();
-                var pageReturned = obj["page"].Value<int>();
-
-                if (obj["items"] is not JArray items)
+                if (container is JObject obj)
                 {
-                    return (null, false);
+
+                    var pageCount = obj["page_count"].Value<int>();
+                    var pageReturned = obj["page"].Value<int>();
+
+                    if (obj["items"] is not JArray items)
+                    {
+                        return (null, false);
+                    }
+
+                    var queues = items.Select(item => new RabbitMQQueueDetails(item)).ToArray();
+
+                    return (queues, pageCount > pageReturned);
                 }
+                else if (container is JArray arr) // Older versions of RabbitMQ API did not have paging and returned the array of items directly
+                {
+                    var queues = arr.Select(item => new RabbitMQQueueDetails(item)).ToArray();
 
-                var queues = items.Select(item => new RabbitMQQueueDetails(item)).ToArray();
-
-                return (queues, pageCount > pageReturned);
+                    return (queues, false);
+                }
+                else
+                {
+                    throw new Exception($"Was not able to get list of queues from RabbitMQ broker. API call succeeded and deserialized but was of unexpected type '{container.GetType().FullName}'.");
+                }
             }
         }
 
