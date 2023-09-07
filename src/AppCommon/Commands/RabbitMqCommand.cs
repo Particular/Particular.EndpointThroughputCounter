@@ -87,7 +87,6 @@ class RabbitMqCommand : BaseCommand
                     tracker.AddData(q);
                 }
             }
-            nextPollTime = DateTime.UtcNow + pollingInterval;
         }
 
         Out.WriteLine("Waiting until next reading...");
@@ -115,6 +114,8 @@ class RabbitMqCommand : BaseCommand
                     Out.WriteWarn($"Encountered error updating statistics, ignoring for now: {x.Message}");
                     Out.WriteDebugTimestamp();
                 }
+
+                nextPollTime = DateTime.UtcNow + pollingInterval;
             }
         });
 
