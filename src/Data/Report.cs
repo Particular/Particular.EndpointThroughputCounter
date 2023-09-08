@@ -1,7 +1,7 @@
 ﻿namespace Particular.EndpointThroughputCounter.Data
 {
     using System;
-    using Newtonsoft.Json;
+    using System.Text.Json.Serialization;
 
     public class SignedReport
     {
@@ -19,7 +19,7 @@
 
         public string ToolVersion { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Prefix { get; init; }
 
         public DateTimeOffset StartTime { get; init; }
@@ -38,7 +38,7 @@
 
         public int TotalQueues { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string[] IgnoredQueues { get; init; }
     }
 
@@ -46,13 +46,13 @@
     {
         public string QueueName { get; set; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public long? Throughput { get; set; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool NoDataOrSendOnly { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string[] EndpointIndicators { get; init; }
     }
 }

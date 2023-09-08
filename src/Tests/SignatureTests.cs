@@ -4,11 +4,11 @@
     using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
-    using System.Text;
-    using Newtonsoft.Json;
+    using System.Text.Json;
     using NUnit.Framework;
     using Particular.Approvals;
     using Particular.EndpointThroughputCounter.Data;
+    using JsonSerializer = System.Text.Json.JsonSerializer;
 
     [TestFixture]
     public class SignatureTests
@@ -137,11 +137,9 @@
         {
             var assembly = typeof(SignatureTests).Assembly;
             var assemblyName = assembly.GetName().Name;
-            using (var stream = assembly.GetManifestResourceStream($"{assemblyName}.{resourceName}"))
-            using (var reader = new StreamReader(stream))
-            {
-                return reader.ReadToEnd();
-            }
+            using var stream = assembly.GetManifestResourceStream($"{assemblyName}.{resourceName}");
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
 
         SignedReport CreateReport()
@@ -179,29 +177,13 @@
             };
         }
 
-        string SerializeReport(SignedReport report)
-        {
-            var serializer = new JsonSerializer();
-
-            using (var writer = new StringWriter())
-            using (var jsonWriter = new JsonTextWriter(writer))
+        string SerializeReport(SignedReport report) =>
+            JsonSerializer.Serialize(report, typeof(SignedReport), new JsonSerializerOptions
             {
-                jsonWriter.Formatting = Formatting.Indented;
-                serializer.Serialize(jsonWriter, report, typeof(SignedReport));
-                return writer.ToString();
-            }
-        }
+                WriteIndented = true
+            });
 
-        SignedReport DeserializeReport(string reportString)
-        {
-            var serializer = new JsonSerializer();
-
-            using (var reader = new StringReader(reportString))
-            using (var jsonReader = new JsonTextReader(reader))
-            {
-                return serializer.Deserialize<SignedReport>(jsonReader);
-            }
-        }
+        SignedReport DeserializeReport(string reportString) => JsonSerializer.Deserialize<SignedReport>(reportString);
 
         bool PrivateKeyAvailable => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
 
@@ -221,23 +203,21 @@
             }
 #endif
 
-            var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
+            var reserializedReportBytes = JsonSerializer.SerializeToUtf8Bytes(signedReport.ReportData, new JsonSerializerOptions { WriteIndented = false });
             var shaHash = GetShaHash(reserializedReportBytes);
 
             try
             {
-                using (var rsa = RSA.Create())
-                {
-                    var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
-                    ImportPrivateKey(rsa, privateKeyText);
+                using var rsa = RSA.Create();
+                var privateKeyText = Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY");
+                ImportPrivateKey(rsa, privateKeyText);
 
-                    var correctSignature = Convert.ToBase64String(shaHash);
+                var correctSignature = Convert.ToBase64String(shaHash);
 
-                    var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
-                    var decryptedSignature = Convert.ToBase64String(decryptedHash);
+                var decryptedHash = rsa.Decrypt(Convert.FromBase64String(signedReport.Signature), RSAEncryptionPadding.Pkcs1);
+                var decryptedSignature = Convert.ToBase64String(decryptedHash);
 
-                    return correctSignature == decryptedSignature;
-                }
+                return correctSignature == decryptedSignature;
             }
             catch (CryptographicException)
             {
@@ -248,15 +228,10 @@
 
         byte[] GetShaHash(byte[] reportBytes)
         {
-            using (var sha = SHA512.Create())
-            {
-                return sha.ComputeHash(reportBytes);
-            }
+            using var sha = SHA512.Create();
+            return sha.ComputeHash(reportBytes);
         }
 
-        static void ImportPrivateKey(RSA rsa, string privateKeyText)
-        {
-            rsa.ImportFromPem(privateKeyText);
-        }
+        static void ImportPrivateKey(RSA rsa, string privateKeyText) => rsa.ImportFromPem(privateKeyText);
     }
 }

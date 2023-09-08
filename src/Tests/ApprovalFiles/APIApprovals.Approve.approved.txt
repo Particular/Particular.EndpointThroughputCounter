@@ -4,11 +4,11 @@ namespace Particular.EndpointThroughputCounter.Data
     {
         public QueueThroughput() { }
         public string QueueName { get; set; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public long? Throughput { get; set; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string[] EndpointIndicators { get; init; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool NoDataOrSendOnly { get; init; }
     }
     public class Report
@@ -16,10 +16,10 @@ namespace Particular.EndpointThroughputCounter.Data
         public Report() { }
         public string CustomerName { get; init; }
         public System.DateTimeOffset EndTime { get; init; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string[] IgnoredQueues { get; init; }
         public string MessageTransport { get; init; }
-        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public string Prefix { get; init; }
         public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; init; }
         public System.TimeSpan ReportDuration { get; init; }
