@@ -32,9 +32,16 @@ public static class Out
 
     public static string ReadLine()
     {
-        var result = Console.ReadLine();
-        output.AppendLine(result);
-        return result;
+        try
+        {
+            var result = Console.ReadLine();
+            output.AppendLine(result);
+            return result;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, "This tool must be run in an interactive shell.");
+        }
     }
 
     public static void WriteError(string message)
@@ -97,49 +104,63 @@ public static class Out
 
     public static string ReadPassword()
     {
-        var pass = string.Empty;
-        ConsoleKey key;
-        do
+        try
         {
-            var keyInfo = Console.ReadKey(intercept: true);
-            key = keyInfo.Key;
-
-            if (key == ConsoleKey.Backspace && pass.Length > 0)
+            var pass = string.Empty;
+            ConsoleKey key;
+            do
             {
-                Console.Write("\b \b");
-                pass = pass[0..^1];
-            }
-            else if (!char.IsControl(keyInfo.KeyChar))
-            {
-                Console.Write("*");
-                pass += keyInfo.KeyChar;
-            }
-        } while (key != ConsoleKey.Enter);
+                var keyInfo = Console.ReadKey(intercept: true);
+                key = keyInfo.Key;
 
-        Console.WriteLine();
-        output.AppendLine(new string('*', pass.Length));
-        return pass;
+                if (key == ConsoleKey.Backspace && pass.Length > 0)
+                {
+                    Console.Write("\b \b");
+                    pass = pass[0..^1];
+                }
+                else if (!char.IsControl(keyInfo.KeyChar))
+                {
+                    Console.Write("*");
+                    pass += keyInfo.KeyChar;
+                }
+            } while (key != ConsoleKey.Enter);
+
+            Console.WriteLine();
+            output.AppendLine(new string('*', pass.Length));
+            return pass;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, "This tool must be run in an interactive shell.");
+        }
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0010:Add missing cases", Justification = "Don't need every key")]
     public static bool Confirm(string prompt)
     {
-        Write(prompt);
-        Write(" (Y/N): ");
-        while (true)
+        try
         {
-            var key = Console.ReadKey(true);
-            switch (key.Key)
+            Write(prompt);
+            Write(" (Y/N): ");
+            while (true)
             {
-                case ConsoleKey.Y:
-                    WriteLine("Yes");
-                    return true;
-                case ConsoleKey.N:
-                    WriteLine("No");
-                    return false;
-                default:
-                    continue;
+                var key = Console.ReadKey(true);
+                switch (key.Key)
+                {
+                    case ConsoleKey.Y:
+                        WriteLine("Yes");
+                        return true;
+                    case ConsoleKey.N:
+                        WriteLine("No");
+                        return false;
+                    default:
+                        continue;
+                }
             }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, "This tool must be run in an interactive shell.");
         }
     }
 
