@@ -56,6 +56,8 @@
                 // Unproven or negative codes that need further "proof" here. If we get a false negative because of a localized exception message, so be it.
                 // -2: Microsoft.Data.SqlClient.SqlException (0x80131904): Connection Timeout Expired.  The timeout period elapsed while attempting to consume the pre-login handshake acknowledgement.  This could be because the pre-login handshake failed or the server was unable to respond back in time.  The duration spent while attempting to connect to this server was - [Pre-Login] initialization=21041; handshake=4;
                 -2 => x.Message.Contains("Connection Timeout Expired"),
+                0 => x.Message.Contains("Failed to authenticate"),
+
 
                 // 10060: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections.
                 // 10061: A network-related or instance-specific error occurred while establishing a connection to SQL Server. The server was not found or was not accessible. Verify that the instance name is correct and that SQL Server is configured to allow remote connections. (provider: TCP Provider, error: 0 - No connection could be made because the target machine actively refused it.
