@@ -73,4 +73,8 @@ jobs:
 
           aws s3 cp ./binaries/Particular.EndpointThroughputCounter.zip s3://particular.downloads/EndpointThroughputCounter/Particular.EndpointThroughputCounter.zip --content-type application/zip --acl public-read
 
+          echo "Uploading version.txt file to AWS"
+          echo "${{env.MinVerVersion}}" > version.txt
+          aws s3 cp ./version.txt s3://particular.downloads/EndpointThroughputCounter/version.txt --content-type text/plain --acl public-read
+
           echo "Complete"

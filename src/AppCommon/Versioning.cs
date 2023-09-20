@@ -1,8 +1,5 @@
 ﻿using System.Reflection;
 using System.Text.RegularExpressions;
-using NuGet.Common;
-using NuGet.Configuration;
-using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 
 static class Versioning
@@ -53,31 +50,35 @@ static class Versioning
             return true;
         }
 
-        var logger = NullLogger.Instance;
-        var cache = new SourceCacheContext();
-        var packageSource = new PackageSource("https://f.feedz.io/particular-software/packages/nuget/index.json");
-        var repository = new SourceRepository(packageSource, Repository.Provider.GetCoreV3());
+        const string checkUrl = "https://s3.amazonaws.com/particular.downloads/EndpointThroughputCounter/version.txt";
 
         try
         {
             Out.WriteLine("Checking for latest version...");
-            NuGetVersion[] versions = null;
+            NuGetVersion latest = null;
 
             using (var tokenSource = new CancellationTokenSource(10_000))
+            using (var combinedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cancellationToken))
             {
                 try
                 {
-                    var resource = await repository.GetResourceAsync<FindPackageByIdResource>(tokenSource.Token);
-                    versions = (await resource.GetAllVersionsAsync("Particular.EndpointThroughputCounter", cache, logger, tokenSource.Token)).ToArray();
+                    using var http = new HttpClient();
+                    var versionString = await http.GetStringAsync(checkUrl, combinedTokenSource.Token);
+                    latest = new NuGetVersion(versionString.Trim());
                 }
-                catch (OperationCanceledException) when (tokenSource.Token.IsCancellationRequested)
+                catch (OperationCanceledException) when (combinedTokenSource.Token.IsCancellationRequested)
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        // Shutting down
+                        throw;
+                    }
+                    // 10s timeout
                     Out.WriteWarn("WARNING: Unable to check current version within 10s timeout. The tool will still run, but only the most recent version of the tool should be used.");
                     return true;
                 }
             }
 
-            var latest = versions.OrderByDescending(pkg => pkg.Version).FirstOrDefault();
             var current = new NuGetVersion(NuGetVersion);
 
             if (latest != null && latest > current)
@@ -94,7 +95,7 @@ static class Versioning
                 return false;
             }
         }
-        catch (NuGetProtocolException)
+        catch (HttpRequestException)
         {
             Out.WriteWarn("WARNING: Unable to validate the latest version of the tool. The tool will still run, but only the most recent version of the tool should be used.");
         }
