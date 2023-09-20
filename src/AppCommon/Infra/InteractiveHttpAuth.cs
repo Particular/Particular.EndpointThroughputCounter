@@ -76,7 +76,7 @@
                         socketHandler.Dispose();
                         if (--maxTries <= 0)
                         {
-                            throw new HaltException(HaltReason.Auth, "Unable to authenticate to " + uriPrefix, x);
+                            throw new HaltException(HaltReason.Auth, $"Unable to authenticate to {uriPrefix}", x);
                         }
 
                         Out.WriteLine();
