@@ -14,7 +14,17 @@
 
         public static async Task<Func<HttpClient>> CreateHttpClientFactory(Uri authUri, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
         {
-            var uriPrefix = new Uri(authUri.GetLeftPart(UriPartial.Authority));
+            Uri uriPrefix = null;
+
+            try
+            {
+                uriPrefix = new Uri(authUri.GetLeftPart(UriPartial.Authority));
+            }
+            catch (UriFormatException)
+            {
+                throw new HaltException(HaltReason.InvalidConfig, $"The URL '{authUri}' is invalid. It must be fully-formed, including http:// or https://.");
+            }
+
             var credentials = new CredentialCache();
 
             NetworkCredential credential = null;
