@@ -124,19 +124,27 @@
         {
             return GetDataWithCurrentCredentials(async token =>
             {
-                var response = await currentClients.Metrics.QueryResourceAsync(resourceId,
-                    new[] { "CompleteMessage" },
-                    new MetricsQueryOptions
-                    {
-                        Filter = $"EntityName eq '{queueName}'",
-                        TimeRange = new QueryTimeRange(startTime, endTime),
-                        Granularity = TimeSpan.FromDays(1)
-                    },
-                    token).ConfigureAwait(false);
+                try
+                {
+                    var response = await currentClients.Metrics.QueryResourceAsync(resourceId,
+                        new[] { "CompleteMessage" },
+                        new MetricsQueryOptions
+                        {
+                            Filter = $"EntityName eq '{queueName}'",
+                            TimeRange = new QueryTimeRange(startTime, endTime),
+                            Granularity = TimeSpan.FromDays(1)
+                        },
+                        token).ConfigureAwait(false);
 
-                // Yeah, it's buried deep
-                var metricValues = response.Value.Metrics.FirstOrDefault()?.TimeSeries.FirstOrDefault()?.Values;
-                return metricValues;
+                    // Yeah, it's buried deep
+                    var metricValues = response.Value.Metrics.FirstOrDefault()?.TimeSeries.FirstOrDefault()?.Values;
+                    return metricValues;
+                }
+                catch (Azure.RequestFailedException reqFailed) when (reqFailed.Message.Contains("ResourceGroupNotFound"))
+                {
+                    // Azure exception message has a lot of information including exact resource group name
+                    throw new QueryException(QueryFailureReason.InvalidEnvironment, reqFailed.Message);
+                }
             }, cancellationToken);
         }
 
