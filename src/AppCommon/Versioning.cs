@@ -58,15 +58,15 @@ static class Versioning
             NuGetVersion latest = null;
 
             using (var tokenSource = new CancellationTokenSource(10_000))
-            using (var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cancellationToken))
+            using (var combinedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cancellationToken))
             {
                 try
                 {
                     using var http = new HttpClient();
-                    var versionString = await http.GetStringAsync(checkUrl, combinedToken.Token);
+                    var versionString = await http.GetStringAsync(checkUrl, combinedTokenSource.Token);
                     latest = new NuGetVersion(versionString.Trim());
                 }
-                catch (OperationCanceledException) when (combinedToken.Token.IsCancellationRequested)
+                catch (OperationCanceledException) when (combinedTokenSource.Token.IsCancellationRequested)
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
