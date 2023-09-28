@@ -67,7 +67,6 @@ class SqsCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        var aws = new AwsQuery();
         Out.WriteLine($"Loading CloudWatch metrics from {aws.CloudWatchRegion}.");
 
         var data = new ConcurrentBag<QueueThroughput>();
