@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
+    using System.Threading.RateLimiting;
     using System.Threading.Tasks;
     using Amazon.CloudWatch;
     using Amazon.CloudWatch.Model;
@@ -14,6 +15,7 @@
     {
         readonly AmazonCloudWatchClient cloudWatch;
         readonly AmazonSQSClient sqs;
+        readonly FixedWindowRateLimiter rateLimiter;
 
         public DateTime EndTimeUtc { get; set; }
         public DateTime StartTimeUtc { get; set; }
@@ -23,6 +25,15 @@
 
         public AwsQuery()
         {
+            rateLimiter = new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                // 1/4 the AWS default quota value (400) for cloudwatch, still do 20k queues in 3 minutes
+                PermitLimit = 100,
+                Window = TimeSpan.FromSeconds(1),
+                // Otherwise AcquireAsync() will return a lease immediately with IsAcquired = false
+                QueueLimit = int.MaxValue
+            });
             EndTimeUtc = DateTime.UtcNow.Date.AddDays(1);
             StartTimeUtc = EndTimeUtc.AddDays(-30);
 
@@ -47,7 +58,7 @@
 
                     var response = await sqs.ListQueuesAsync(request, cancellationToken).ConfigureAwait(false);
 
-                    queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
+                    queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]).ToArray());
 
                     onProgress(queueNames.Count);
 
@@ -84,9 +95,10 @@
                 }
             };
 
+            using var lease = await rateLimiter.AcquireAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             var resp = await cloudWatch.GetMetricStatisticsAsync(req, cancellationToken).ConfigureAwait(false);
 
-            var maxThroughput = resp.Datapoints.OrderByDescending(d => d.Sum).FirstOrDefault()?.Sum ?? 0;
+            var maxThroughput = resp.Datapoints.MaxBy(d => d.Sum)?.Sum ?? 0;
 
             return (long)maxThroughput;
         }

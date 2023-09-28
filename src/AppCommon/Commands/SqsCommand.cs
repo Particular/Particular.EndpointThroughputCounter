@@ -67,10 +67,10 @@ class SqsCommand : BaseCommand
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
     {
-        var aws = new AwsQuery();
         Out.WriteLine($"Loading CloudWatch metrics from {aws.CloudWatchRegion}.");
 
         var data = new ConcurrentBag<QueueThroughput>();
+        var numberOfQueues = queueNames.Count;
 
         var tasks = queueNames.Select(async queueName =>
         {
@@ -86,8 +86,8 @@ class SqsCommand : BaseCommand
                 });
             }
 
-            _ = Interlocked.Increment(ref metricsReceived);
-            Out.Progress($"Got data for {metricsReceived}/{queueNames.Count} SQS queues.");
+            var numberOfReceivedMetrics = Interlocked.Increment(ref metricsReceived);
+            Out.Progress($"Got data for {numberOfReceivedMetrics}/{numberOfQueues} SQS queues.");
         });
 
         await Task.WhenAll(tasks);
