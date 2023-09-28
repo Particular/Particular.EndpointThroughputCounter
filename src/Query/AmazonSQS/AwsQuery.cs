@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
+    using System.Threading.RateLimiting;
     using System.Threading.Tasks;
     using Amazon.CloudWatch;
     using Amazon.CloudWatch.Model;
@@ -14,6 +15,7 @@
     {
         readonly AmazonCloudWatchClient cloudWatch;
         readonly AmazonSQSClient sqs;
+        readonly FixedWindowRateLimiter rateLimiter;
 
         public DateTime EndTimeUtc { get; set; }
         public DateTime StartTimeUtc { get; set; }
@@ -23,6 +25,13 @@
 
         public AwsQuery()
         {
+            rateLimiter = new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                // AWS default quota value for cloudwatch
+                PermitLimit = 400,
+                Window = TimeSpan.FromSeconds(1)
+            });
             EndTimeUtc = DateTime.UtcNow.Date.AddDays(1);
             StartTimeUtc = EndTimeUtc.AddDays(-30);
 
@@ -84,6 +93,7 @@
                 }
             };
 
+            using var lease = await rateLimiter.AcquireAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             var resp = await cloudWatch.GetMetricStatisticsAsync(req, cancellationToken).ConfigureAwait(false);
 
             var maxThroughput = resp.Datapoints.MaxBy(d => d.Sum)?.Sum ?? 0;
