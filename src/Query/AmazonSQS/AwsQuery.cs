@@ -47,7 +47,7 @@
 
                     var response = await sqs.ListQueuesAsync(request, cancellationToken).ConfigureAwait(false);
 
-                    queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
+                    queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]).ToArray());
 
                     onProgress(queueNames.Count);
 
