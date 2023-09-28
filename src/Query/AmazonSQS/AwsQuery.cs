@@ -28,9 +28,11 @@
             rateLimiter = new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                // AWS default quota value for cloudwatch
-                PermitLimit = 400,
-                Window = TimeSpan.FromSeconds(1)
+                // 1/4 the AWS default quota value (400) for cloudwatch, still do 20k queues in 3 minutes
+                PermitLimit = 100,
+                Window = TimeSpan.FromSeconds(1),
+                // Otherwise AcquireAsync() will return a lease immediately with IsAcquired = false
+                QueueLimit = int.MaxValue
             });
             EndTimeUtc = DateTime.UtcNow.Date.AddDays(1);
             StartTimeUtc = EndTimeUtc.AddDays(-30);
