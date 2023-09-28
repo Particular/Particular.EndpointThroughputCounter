@@ -86,7 +86,7 @@
 
             var resp = await cloudWatch.GetMetricStatisticsAsync(req, cancellationToken).ConfigureAwait(false);
 
-            var maxThroughput = resp.Datapoints.OrderByDescending(d => d.Sum).FirstOrDefault()?.Sum ?? 0;
+            var maxThroughput = resp.Datapoints.MaxBy(d => d.Sum)?.Sum ?? 0;
 
             return (long)maxThroughput;
         }
