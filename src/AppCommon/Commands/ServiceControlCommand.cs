@@ -25,28 +25,39 @@ partial class ServiceControlCommand : BaseCommand
             IsRequired = true
         };
 
-        var tryUnsupportedVersionArg = new Option<bool>(TryUnsupportedVersionArgName)
+        var tryUnsupportedServiceControlVersionArg = new Option<bool>(TryUnsupportedServiceControlVersionArgName)
         {
-            Description = "This will allow you to try run against an unsupported version of service control.",
+            Description = "This allows for trying to run on unsupported versions of ServiceControl.",
             Arity = ArgumentArity.ZeroOrOne
         };
 
+        var tryUnsupportedMonitoringVersionArg = new Option<bool>(TryUnsupportedMonitoringVersionArgName)
+        {
+            Description = "This allows for trying to run on unsupported versions of ServiceControl monitoring.",
+            Arity = ArgumentArity.ZeroOrOne
+        };
+
+
         command.AddOption(scUrlArg);
         command.AddOption(monitoringUrlArg);
-        command.AddOption(tryUnsupportedVersionArg);
+        command.AddOption(tryUnsupportedServiceControlVersionArg);
+        command.AddOption(tryUnsupportedMonitoringVersionArg);
 
         command.SetHandler(async context =>
         {
             var shared = SharedOptions.Parse(context);
             var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
             var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
-            var tryUnsupportedVersion = context.ParseResult.GetValueForOption(tryUnsupportedVersionArg);
+            var tryUnsupportedServiceControlVersion =
+                context.ParseResult.GetValueForOption(tryUnsupportedServiceControlVersionArg);
+            var tryUnsupportedMonitoringVersion =
+                context.ParseResult.GetValueForOption(tryUnsupportedMonitoringVersionArg);
             var cancellationToken = context.GetCancellationToken();
 
             RunInfo.Add("ServiceControlUrl", scUrl);
             RunInfo.Add("MonitoringUrl", monUrl);
 
-            var runner = new ServiceControlCommand(shared, scUrl, monUrl, tryUnsupportedVersion);
+            var runner = new ServiceControlCommand(shared, scUrl, monUrl, tryUnsupportedServiceControlVersion, tryUnsupportedMonitoringVersion);
             await runner.Run(cancellationToken);
         });
 
@@ -55,13 +66,15 @@ partial class ServiceControlCommand : BaseCommand
 
     const string PrimaryUrlArgName = "--serviceControlApiUrl";
     const string MonitoringUrlArgName = "--monitoringApiUrl";
-    const string TryUnsupportedVersionArgName = "--tryUnsupportedVersion";
+    const string TryUnsupportedServiceControlVersionArgName = "--tryUnsupportedServiceControlVersion";
+    const string TryUnsupportedMonitoringVersionArgName = "--tryUnsupportedMonitoringVersion";
 
     static readonly Version MinAuditCountsVersion = new Version(4, 29);
 
     readonly string primaryUrl;
     readonly string monitoringUrl;
-    readonly bool tryUnsupportedVersion;
+    readonly bool tryUnsupportedServiceControlVersion;
+    readonly bool tryUnsupportedMonitoringVersion;
     ServiceControlClient primary;
     ServiceControlClient monitoring;
     ServiceControlEndpoint[] knownEndpoints;
@@ -75,19 +88,28 @@ partial class ServiceControlCommand : BaseCommand
     const int MinutesPerSample = 60;
 #endif
 
-    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl, bool tryUnsupportedVersion = false)
+    public ServiceControlCommand(
+        SharedOptions shared,
+        string primaryUrl,
+        string monitoringUrl,
+        bool tryUnsupportedServiceControlVersion = false,
+        bool tryUnsupportedMonitoringVersion = false)
         : base(shared)
     {
         this.primaryUrl = primaryUrl;
         this.monitoringUrl = monitoringUrl;
-        this.tryUnsupportedVersion = tryUnsupportedVersion;
+        this.tryUnsupportedServiceControlVersion = tryUnsupportedServiceControlVersion;
+        this.tryUnsupportedMonitoringVersion = tryUnsupportedMonitoringVersion;
     }
 
     protected override async Task Initialize(CancellationToken cancellationToken = default)
     {
-        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(primaryUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
-        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, httpFactory, tryUnsupportedVersion);
-        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, httpFactory, tryUnsupportedVersion);
+        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(primaryUrl,
+            configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
+        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, httpFactory,
+            tryUnsupportedServiceControlVersion);
+        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl,
+            httpFactory, tryUnsupportedMonitoringVersion);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
@@ -96,7 +118,8 @@ partial class ServiceControlCommand : BaseCommand
 
         var start = DateTimeOffset.Now.AddMinutes(-MinutesPerSample);
 
-        Out.WriteLine($"The tool will sample ServiceControl data {SampleCount} times at {MinutesPerSample}-minute intervals.");
+        Out.WriteLine(
+            $"The tool will sample ServiceControl data {SampleCount} times at {MinutesPerSample}-minute intervals.");
 
         Out.WriteLine("Performing initial data sampling...");
         allData.AddRange(await SampleData(MinutesPerSample, cancellationToken));
@@ -110,6 +133,7 @@ partial class ServiceControlCommand : BaseCommand
 
             allData.AddRange(await SampleData(MinutesPerSample, cancellationToken));
         }
+
         Out.WriteLine("Sampling complete");
 
         var queues = allData.GroupBy(q => q.QueueName, StringComparer.OrdinalIgnoreCase)
@@ -135,11 +159,7 @@ partial class ServiceControlCommand : BaseCommand
             }
             else if (recordedByMetrics is null)
             {
-                queues.Add(new QueueThroughput
-                {
-                    QueueName = knownEndpoint.Name,
-                    NoDataOrSendOnly = true
-                });
+                queues.Add(new QueueThroughput { QueueName = knownEndpoint.Name, NoDataOrSendOnly = true });
             }
         }
 
@@ -164,23 +184,21 @@ partial class ServiceControlCommand : BaseCommand
             var throughputAvgPerSec = token["metrics"]["throughput"]["average"].Value<double>();
             var throughputTotal = throughputAvgPerSec * minutes * 60;
 
-            return new QueueThroughput
-            {
-                QueueName = name,
-                Throughput = (int)throughputTotal
-            };
+            return new QueueThroughput { QueueName = name, Throughput = (int)throughputTotal };
         }).ToList();
 
         var monitoredNames = queueResults.Select(ep => ep.QueueName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var endpointsToCheckForHourlyAuditData = knownEndpoints.Where(ep => !monitoredNames.Contains(ep.Name) && ep.CheckHourlyAuditDataIfNoMonitoringData).ToArray();
+        var endpointsToCheckForHourlyAuditData = knownEndpoints
+            .Where(ep => !monitoredNames.Contains(ep.Name) && ep.CheckHourlyAuditDataIfNoMonitoringData).ToArray();
         if (endpointsToCheckForHourlyAuditData.Any())
         {
             var auditsFromBinarySearch = new ServiceControlAuditsByBinarySearch(primary, MinutesPerSample);
 
             foreach (var endpoint in endpointsToCheckForHourlyAuditData)
             {
-                var fromAuditing = await auditsFromBinarySearch.GetThroughputFromAudits(endpoint.Name, cancellationToken);
+                var fromAuditing =
+                    await auditsFromBinarySearch.GetThroughputFromAudits(endpoint.Name, cancellationToken);
                 if (fromAuditing is not null)
                 {
                     queueResults.Add(fromAuditing);
@@ -193,14 +211,18 @@ partial class ServiceControlCommand : BaseCommand
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        await primary.CheckEndpoint(content => content.Contains("\"known_endpoints_url\"") && content.Contains("\"endpoints_messages_url\""), cancellationToken);
-        await monitoring.CheckEndpoint(content => content.Contains("\"instanceType\"") && content.Contains("\"monitoring\""), cancellationToken);
+        await primary.CheckEndpoint(
+            content => content.Contains("\"known_endpoints_url\"") && content.Contains("\"endpoints_messages_url\""),
+            cancellationToken);
+        await monitoring.CheckEndpoint(
+            content => content.Contains("\"instanceType\"") && content.Contains("\"monitoring\""), cancellationToken);
 
         knownEndpoints = await GetKnownEndpoints(cancellationToken);
 
         if (!knownEndpoints.Any())
         {
-            throw new HaltException(HaltReason.InvalidEnvironment, "Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
+            throw new HaltException(HaltReason.InvalidEnvironment,
+                "Successfully connected to ServiceControl API but no known endpoints could be found. Are you using the correct URL?");
         }
 
         // Tool can't proceed without this data, try 5 times
@@ -208,7 +230,8 @@ partial class ServiceControlCommand : BaseCommand
 
         var transportTypeToken = obj["transport"]["transport_customization_type"]
                                  ?? obj["transport"]["transport_type"]
-                                 ?? throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
+                                 ?? throw new HaltException(HaltReason.InvalidEnvironment,
+                                     "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
 
         var transportCustomizationTypeStr = transportTypeToken.Value<string>();
 
@@ -242,8 +265,10 @@ partial class ServiceControlCommand : BaseCommand
         var endpoints = arr.Select(endpointToken => new
         {
             Name = endpointToken["name"].Value<string>(),
-            HeartbeatsEnabled = endpointToken["monitored"].Value<bool>(),
-            ReceivingHeartbeats = endpointToken["heartbeat_information"]["reported_status"].Value<string>() == "beating"
+            HeartbeatsEnabled =
+                endpointToken["monitored"].Value<bool>(),
+            ReceivingHeartbeats =
+                endpointToken["heartbeat_information"]["reported_status"].Value<string>() == "beating"
         })
         .GroupBy(x => x.Name)
         .Select(g => new ServiceControlEndpoint
@@ -261,39 +286,43 @@ partial class ServiceControlCommand : BaseCommand
             // Verify audit instances also have audit counts
             var remotesInfoJson = await primary.GetData<JArray>("/configuration/remotes", cancellationToken);
             var remoteInfo = remotesInfoJson.Select(remote =>
-            {
-                var uri = remote["api_uri"].Value<string>();
-                var status = remote["status"].Value<string>();
-                var versionString = remote["version"]?.Value<string>();
-                var retentionString = remote["configuration"]?["data_retention"]?["audit_retention_period"]?.Value<string>();
-
-                return new
                 {
-                    Uri = uri,
-                    Status = status,
-                    VersionString = versionString,
-                    SemVer = SemVerVersion.TryParse(versionString, out var v) ? v : null,
-                    Retention = TimeSpan.TryParse(retentionString, out var ts) ? ts : TimeSpan.Zero
-                };
-            })
-            .ToArray();
+                    var uri = remote["api_uri"].Value<string>();
+                    var status = remote["status"].Value<string>();
+                    var versionString = remote["version"]?.Value<string>();
+                    var retentionString = remote["configuration"]?["data_retention"]?["audit_retention_period"]
+                        ?.Value<string>();
+
+                    return new
+                    {
+                        Uri = uri,
+                        Status = status,
+                        VersionString = versionString,
+                        SemVer = SemVerVersion.TryParse(versionString, out var v) ? v : null,
+                        Retention = TimeSpan.TryParse(retentionString, out var ts) ? ts : TimeSpan.Zero
+                    };
+                })
+                .ToArray();
 
             foreach (var remote in remoteInfo)
             {
                 if (remote.Status == "online" || remote.SemVer is not null)
                 {
-                    Out.WriteLine($"ServiceControl Audit instance at {remote.Uri} detected running version {remote.SemVer}");
+                    Out.WriteLine(
+                        $"ServiceControl Audit instance at {remote.Uri} detected running version {remote.SemVer}");
                 }
                 else
                 {
                     var configUrl = primary.GetFullUrl("/configuration/remotes");
-                    var remoteConfigMsg = $"Unable to determine the version of one or more ServiceControl Audit instances. For the instance with URI {remote.Uri}, the status was '{remote.Status}' and the version string returned was '{remote.VersionString}'. If you are not able to resolve this issue on your own, send the contents of {configUrl} to Particular when requesting help.";
+                    var remoteConfigMsg =
+                        $"Unable to determine the version of one or more ServiceControl Audit instances. For the instance with URI {remote.Uri}, the status was '{remote.Status}' and the version string returned was '{remote.VersionString}'. If you are not able to resolve this issue on your own, send the contents of {configUrl} to Particular when requesting help.";
                     throw new HaltException(HaltReason.InvalidEnvironment, remoteConfigMsg);
                 }
             }
 
             // Want 2d audit retention so we get one complete UTC day no matter what time it is
-            useAuditCounts = remoteInfo.All(r => r.SemVer.Version >= MinAuditCountsVersion && r.Retention > TimeSpan.FromDays(2));
+            useAuditCounts = remoteInfo.All(r =>
+                r.SemVer.Version >= MinAuditCountsVersion && r.Retention > TimeSpan.FromDays(2));
         }
 
         foreach (var endpoint in endpoints)
@@ -326,9 +355,7 @@ partial class ServiceControlCommand : BaseCommand
 
     class AuditCount
     {
-        [JsonProperty("utc_date")]
-        public DateTime UtcDate { get; set; }
-        [JsonProperty("count")]
-        public long Count { get; set; }
+        [JsonProperty("utc_date")] public DateTime UtcDate { get; set; }
+        [JsonProperty("count")] public long Count { get; set; }
     }
 }
