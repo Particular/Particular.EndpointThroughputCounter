@@ -25,20 +25,28 @@ partial class ServiceControlCommand : BaseCommand
             IsRequired = true
         };
 
+        var tryUnsupportedVersionArg = new Option<bool>(TryUnsupportedVersionArgName)
+        {
+            Description = "This will allow you to try run against an unsupported version of service control.",
+            Arity = ArgumentArity.ZeroOrOne
+        };
+
         command.AddOption(scUrlArg);
         command.AddOption(monitoringUrlArg);
+        command.AddOption(tryUnsupportedVersionArg);
 
         command.SetHandler(async context =>
         {
             var shared = SharedOptions.Parse(context);
             var scUrl = context.ParseResult.GetValueForOption(scUrlArg);
             var monUrl = context.ParseResult.GetValueForOption(monitoringUrlArg);
+            var tryUnsupportedVersion = context.ParseResult.GetValueForOption(tryUnsupportedVersionArg);
             var cancellationToken = context.GetCancellationToken();
 
             RunInfo.Add("ServiceControlUrl", scUrl);
             RunInfo.Add("MonitoringUrl", monUrl);
 
-            var runner = new ServiceControlCommand(shared, scUrl, monUrl);
+            var runner = new ServiceControlCommand(shared, scUrl, monUrl, tryUnsupportedVersion);
             await runner.Run(cancellationToken);
         });
 
@@ -47,11 +55,13 @@ partial class ServiceControlCommand : BaseCommand
 
     const string PrimaryUrlArgName = "--serviceControlApiUrl";
     const string MonitoringUrlArgName = "--monitoringApiUrl";
+    const string TryUnsupportedVersionArgName = "--tryUnsupportedVersion";
 
     static readonly Version MinAuditCountsVersion = new Version(4, 29);
 
     readonly string primaryUrl;
     readonly string monitoringUrl;
+    readonly bool tryUnsupportedVersion;
     ServiceControlClient primary;
     ServiceControlClient monitoring;
     ServiceControlEndpoint[] knownEndpoints;
@@ -65,18 +75,19 @@ partial class ServiceControlCommand : BaseCommand
     const int MinutesPerSample = 60;
 #endif
 
-    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl)
+    public ServiceControlCommand(SharedOptions shared, string primaryUrl, string monitoringUrl, bool tryUnsupportedVersion = false)
         : base(shared)
     {
         this.primaryUrl = primaryUrl;
         this.monitoringUrl = monitoringUrl;
+        this.tryUnsupportedVersion = tryUnsupportedVersion;
     }
 
     protected override async Task Initialize(CancellationToken cancellationToken = default)
     {
         var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(primaryUrl, configureNewClient: c => c.Timeout = TimeSpan.FromSeconds(30), cancellationToken: cancellationToken);
-        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, httpFactory);
-        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, httpFactory);
+        primary = new ServiceControlClient(PrimaryUrlArgName, "ServiceControl", primaryUrl, httpFactory, tryUnsupportedVersion);
+        monitoring = new ServiceControlClient(MonitoringUrlArgName, "ServiceControl Monitoring", monitoringUrl, httpFactory, tryUnsupportedVersion);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
