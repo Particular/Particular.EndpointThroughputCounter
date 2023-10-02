@@ -25,9 +25,11 @@ partial class ServiceControlCommand : BaseCommand
             IsRequired = true
         };
 
-        var tryUnsupportedVersionArg = new Option<bool>(TryUnsupportedVersionArgName)
+        var tryUnsupportedVersionArg = new Option<bool>(
+            name: TryUnsupportedVersionArgName,
+            description: "Try to run using unsupported versions of ServiceControl and ServiceControl Monitoring.")
         {
-            Description = "This will allow you to try run against an unsupported version of service control.",
+            IsHidden = true,
             Arity = ArgumentArity.ZeroOrOne
         };
 
