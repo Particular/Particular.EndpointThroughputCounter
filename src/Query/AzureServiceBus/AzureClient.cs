@@ -181,8 +181,16 @@
 
             public AuthenticatedClientSet(TokenCredential credentials, string fullyQualifiedNamespace)
             {
+                var managementUrl = "https://management.azure.com";
+
+                if (!fullyQualifiedNamespace.EndsWith("servicebus.windows.net", StringComparison.OrdinalIgnoreCase))
+                {
+                    var reversedParts = fullyQualifiedNamespace.Split('.', StringSplitOptions.RemoveEmptyEntries).Reverse().ToArray();
+                    managementUrl = $"https://management.{reversedParts[1]}.{reversedParts[0]}";
+                }
+
                 Name = credentials.GetType().Name;
-                Metrics = new MetricsQueryClient(credentials);
+                Metrics = new MetricsQueryClient(new Uri(managementUrl), credentials);
                 ServiceBus = new ServiceBusAdministrationClient(fullyQualifiedNamespace, credentials);
             }
         }
