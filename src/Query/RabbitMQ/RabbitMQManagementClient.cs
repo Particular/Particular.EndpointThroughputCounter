@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Net;
     using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
@@ -60,49 +61,63 @@
             using var http = httpFactory();
             foreach (var queue in queues)
             {
-                var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings";
-                using (var stream = await http.GetStreamAsync(bindingsUrl, cancellationToken).ConfigureAwait(false))
-                using (var reader = new StreamReader(stream))
-                using (var jsonReader = new JsonTextReader(reader))
+                try
                 {
-                    var bindings = serializer.Deserialize<JArray>(jsonReader);
-                    var conventionalBindingFound = bindings.Any(binding =>
+                    var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings";
+                    using (var stream = await http.GetStreamAsync(bindingsUrl, cancellationToken).ConfigureAwait(false))
+                    using (var reader = new StreamReader(stream))
+                    using (var jsonReader = new JsonTextReader(reader))
                     {
-                        return binding["source"]?.Value<string>() == queue.Name
-                            && binding["vhost"]?.Value<string>() == queue.VHost
-                            && binding["destination"]?.Value<string>() == queue.Name
-                            && binding["destination_type"]?.Value<string>() == "queue"
-                            && binding["routing_key"]?.Value<string>() == string.Empty
-                            && binding["properties_key"]?.Value<string>() == "~";
-                    });
+                        var bindings = serializer.Deserialize<JArray>(jsonReader);
+                        var conventionalBindingFound = bindings.Any(binding =>
+                        {
+                            return binding["source"]?.Value<string>() == queue.Name
+                                && binding["vhost"]?.Value<string>() == queue.VHost
+                                && binding["destination"]?.Value<string>() == queue.Name
+                                && binding["destination_type"]?.Value<string>() == "queue"
+                                && binding["routing_key"]?.Value<string>() == string.Empty
+                                && binding["properties_key"]?.Value<string>() == "~";
+                        });
 
-                    if (conventionalBindingFound)
-                    {
-                        queue.EndpointIndicators.Add("ConventionalTopologyBinding");
+                        if (conventionalBindingFound)
+                        {
+                            queue.EndpointIndicators.Add("ConventionalTopologyBinding");
+                        }
                     }
                 }
-
-                var exchangeUrl = $"{ManagementUri}/api/exchanges/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings/destination";
-                using (var stream = await http.GetStreamAsync(exchangeUrl, cancellationToken).ConfigureAwait(false))
-                using (var reader = new StreamReader(stream))
-                using (var jsonReader = new JsonTextReader(reader))
+                catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    var bindings = serializer.Deserialize<JArray>(jsonReader);
-                    var delayBindingFound = bindings.Any(binding =>
-                    {
-                        var source = binding["source"]?.Value<string>();
+                    // Clearly no conventional topology binding here
+                }
 
-                        return (source == "nsb.v2.delay-delivery" || source == "nsb.delay-delivery")
-                            && binding["vhost"]?.Value<string>() == queue.VHost
-                            && binding["destination"]?.Value<string>() == queue.Name
-                            && binding["destination_type"]?.Value<string>() == "exchange"
-                            && binding["routing_key"]?.Value<string>() == $"#.{queue.Name}";
-                    });
-
-                    if (delayBindingFound)
+                try
+                {
+                    var exchangeUrl = $"{ManagementUri}/api/exchanges/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings/destination";
+                    using (var stream = await http.GetStreamAsync(exchangeUrl, cancellationToken).ConfigureAwait(false))
+                    using (var reader = new StreamReader(stream))
+                    using (var jsonReader = new JsonTextReader(reader))
                     {
-                        queue.EndpointIndicators.Add("DelayBinding");
+                        var bindings = serializer.Deserialize<JArray>(jsonReader);
+                        var delayBindingFound = bindings.Any(binding =>
+                        {
+                            var source = binding["source"]?.Value<string>();
+
+                            return (source == "nsb.v2.delay-delivery" || source == "nsb.delay-delivery")
+                                && binding["vhost"]?.Value<string>() == queue.VHost
+                                && binding["destination"]?.Value<string>() == queue.Name
+                                && binding["destination_type"]?.Value<string>() == "exchange"
+                                && binding["routing_key"]?.Value<string>() == $"#.{queue.Name}";
+                        });
+
+                        if (delayBindingFound)
+                        {
+                            queue.EndpointIndicators.Add("DelayBinding");
+                        }
                     }
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+                {
+                    // Clearly no delay binding here
                 }
             }
         }
