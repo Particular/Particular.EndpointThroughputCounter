@@ -295,7 +295,7 @@ partial class ServiceControlCommand : BaseCommand
             }
 
             // Want 2d audit retention so we get one complete UTC day no matter what time it is
-            useAuditCounts = remoteInfo.All(r => r.SemVer.Version >= MinAuditCountsVersion && r.Retention > TimeSpan.FromDays(2));
+            useAuditCounts = remoteInfo.All(r => r.SemVer.Version >= MinAuditCountsVersion && r.Retention >= TimeSpan.FromDays(2));
         }
 
         foreach (var endpoint in endpoints)
