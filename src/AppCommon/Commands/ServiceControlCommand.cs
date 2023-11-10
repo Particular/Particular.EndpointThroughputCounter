@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Particular.EndpointThroughputCounter.Data;
@@ -302,13 +303,13 @@ partial class ServiceControlCommand : BaseCommand
         {
             if (useAuditCounts)
             {
-                var path = $"/endpoints/{endpoint.Name}/audit-count";
+                var path = $"/endpoints/{endpoint.UrlName}/audit-count";
                 endpoint.AuditCounts = await primary.GetData<AuditCount[]>(path, 2, cancellationToken);
                 endpoint.CheckHourlyAuditDataIfNoMonitoringData = false;
             }
             else
             {
-                var path = $"/endpoints/{endpoint.Name}/messages/?per_page=1";
+                var path = $"/endpoints/{endpoint.UrlName}/messages/?per_page=1";
                 var recentMessages = await primary.GetData<JArray>(path, 2, cancellationToken);
                 endpoint.CheckHourlyAuditDataIfNoMonitoringData = recentMessages.Any();
             }
@@ -320,6 +321,7 @@ partial class ServiceControlCommand : BaseCommand
     class ServiceControlEndpoint
     {
         public string Name { get; set; }
+        public string UrlName => WebUtility.UrlEncode(Name);
         public bool HeartbeatsEnabled { get; set; }
         public bool ReceivingHeartbeats { get; set; }
         public bool CheckHourlyAuditDataIfNoMonitoringData { get; set; }
