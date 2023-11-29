@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.300.7" />
     <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.300.7" />
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.300.9" />
+    <PackageVersion Include="AWSSDK.SQS" Version="3.7.300.11" />
     <PackageVersion Include="Azure.Identity" Version="1.10.3" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.16.2" />
     <PackageVersion Include="Azure.Monitor.Query" Version="1.2.0" />
