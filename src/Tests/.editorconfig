@@ -12,3 +12,6 @@ dotnet_diagnostic.CA1050.severity = none
 
 # IDE0063: Use simple 'using' statement
 csharp_prefer_simple_using_statement = false
+
+# CA1822: Member does not access instance data and can be marked static - don't care in tests
+dotnet_diagnostic.CA1822.severity = none
