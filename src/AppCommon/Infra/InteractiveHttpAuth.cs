@@ -9,10 +9,10 @@
 
     static class InteractiveHttpAuth
     {
-        public static Task<Func<HttpClient>> CreateHttpClientFactory(string authUrl, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
-            => CreateHttpClientFactory(new Uri(authUrl), maxTries, configureNewClient, cancellationToken);
+        public static Task<Func<HttpClient>> CreateHttpClientFactory(string authUrl, int maxTries = 3, Action<HttpClient> configureNewClient = null, NetworkCredential defaultCredential = null, CancellationToken cancellationToken = default)
+            => CreateHttpClientFactory(new Uri(authUrl), maxTries, configureNewClient, defaultCredential, cancellationToken);
 
-        public static async Task<Func<HttpClient>> CreateHttpClientFactory(Uri authUri, int maxTries = 3, Action<HttpClient> configureNewClient = null, CancellationToken cancellationToken = default)
+        public static async Task<Func<HttpClient>> CreateHttpClientFactory(Uri authUri, int maxTries = 3, Action<HttpClient> configureNewClient = null, NetworkCredential defaultCredential = null, CancellationToken cancellationToken = default)
         {
             Uri uriPrefix = null;
 
@@ -27,7 +27,7 @@
 
             var credentials = new CredentialCache();
 
-            NetworkCredential credential = null;
+            NetworkCredential credential = defaultCredential;
             var schemes = Array.Empty<string>();
             string currentUser = null;
 

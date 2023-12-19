@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Net;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.ThroughputQuery;
@@ -66,7 +67,8 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task Initialize(CancellationToken cancellationToken = default)
     {
-        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", cancellationToken: cancellationToken);
+        var defaultCredential = new NetworkCredential("guest", "guest");
+        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", defaultCredential: defaultCredential, cancellationToken: cancellationToken);
 
         _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl, vhost);
     }
