@@ -5,10 +5,11 @@
         public string RabbitMQVersion { get; set; }
         public string ManagementVersion { get; set; }
         public string ClusterName { get; set; }
+        public string VHost { get; set; }
 
         public string ToReportMethodString()
         {
-            return $"RabbitMQ v{RabbitMQVersion}, Mgmt v{ManagementVersion}, Cluster {ClusterName}";
+            return $"RabbitMQ v{RabbitMQVersion}, Mgmt v{ManagementVersion}, Cluster {ClusterName}, VHost {VHost}";
         }
     }
 }
