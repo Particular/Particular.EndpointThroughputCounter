@@ -191,15 +191,6 @@ class RabbitMqCommand : BaseCommand
         {
             return false;
         }
-        if (name is "error" or "audit")
-        {
-            return false;
-        }
-
-        if (name.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
 
         return true;
     }
