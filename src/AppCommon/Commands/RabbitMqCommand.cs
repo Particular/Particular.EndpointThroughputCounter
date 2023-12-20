@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Net;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.ThroughputQuery;
@@ -19,15 +20,26 @@ class RabbitMqCommand : BaseCommand
 
         command.AddOption(urlArg);
 
+        var vhostArg = new Option<string>(
+            name: "--vhost",
+            description: "The RabbitMQ virtual host to measure")
+        {
+            IsRequired = false
+        };
+
+        command.AddOption(vhostArg);
+
         command.SetHandler(async context =>
         {
             var url = context.ParseResult.GetValueForOption(urlArg);
+            var vhost = context.ParseResult.GetValueForOption(vhostArg);
             var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
 
             RunInfo.Add("RabbitMQUrl", url);
+            RunInfo.Add("VHost", vhost);
 
-            var runner = new RabbitMqCommand(shared, url);
+            var runner = new RabbitMqCommand(shared, url, vhost);
 
             await runner.Run(cancellationToken);
         });
@@ -36,14 +48,16 @@ class RabbitMqCommand : BaseCommand
     }
 
     readonly string managementUrl;
+    readonly string vhost;
     readonly TimeSpan pollingInterval;
     RabbitMQManagementClient _rabbitMQ;
     RabbitMQDetails _rabbitMQDetails;
 
-    public RabbitMqCommand(SharedOptions shared, string managementUrl)
+    public RabbitMqCommand(SharedOptions shared, string managementUrl, string vhost)
         : base(shared)
     {
         this.managementUrl = managementUrl;
+        this.vhost = vhost;
 #if DEBUG
         pollingInterval = TimeSpan.FromSeconds(10);
 #else
@@ -53,9 +67,10 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task Initialize(CancellationToken cancellationToken = default)
     {
-        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", cancellationToken: cancellationToken);
+        var defaultCredential = new NetworkCredential("guest", "guest");
+        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", defaultCredential: defaultCredential, cancellationToken: cancellationToken);
 
-        _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl);
+        _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl, vhost);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
@@ -146,11 +161,12 @@ class RabbitMqCommand : BaseCommand
     {
         try
         {
-            _rabbitMQDetails = await _rabbitMQ.GetRabbitDetails(cancellationToken);
+            _rabbitMQDetails = await _rabbitMQ.GetRabbitDetails(vhost, cancellationToken);
 
             Out.WriteLine($"Connected to cluster {_rabbitMQDetails.ClusterName}");
             Out.WriteLine($"  - RabbitMQ Version: {_rabbitMQDetails.RabbitMQVersion}");
             Out.WriteLine($"  - Management Plugin Version: {_rabbitMQDetails.ManagementVersion}");
+            Out.WriteLine($"  - Virtual host: {_rabbitMQDetails.VHost}");
 
             var queueNames = (await _rabbitMQ.GetQueueDetails(cancellationToken))
                 .Where(q => IncludeQueue(q.Name))
@@ -174,15 +190,6 @@ class RabbitMqCommand : BaseCommand
     static bool IncludeQueue(string name)
     {
         if (name.StartsWith("nsb.delay-level-") || name.StartsWith("nsb.v2.delay-level-") || name.StartsWith("nsb.v2.verify-"))
-        {
-            return false;
-        }
-        if (name is "error" or "audit")
-        {
-            return false;
-        }
-
-        if (name.StartsWith("Particular.", StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
