@@ -18,17 +18,15 @@
         readonly Func<HttpClient> httpFactory;
         readonly JsonSerializer serializer;
 
-        public RabbitMQManagementClient(Func<HttpClient> httpFactory, string managementUri, string vhost)
+        public RabbitMQManagementClient(Func<HttpClient> httpFactory, string managementUri)
         {
             this.httpFactory = httpFactory;
             ManagementUri = managementUri.TrimEnd('/');
-            VHost = vhost;
 
             serializer = new JsonSerializer();
         }
 
         public string ManagementUri { get; }
-        public string VHost { get; }
 
         public async Task<List<RabbitMQQueueDetails>> GetQueueDetails(CancellationToken cancellationToken = default)
         {
@@ -126,8 +124,7 @@
 
         async Task<(RabbitMQQueueDetails[], bool morePages)> GetPage(int page, CancellationToken cancellationToken)
         {
-            var vhostSegment = VHost is null ? string.Empty : $"/{WebUtility.UrlEncode(VHost)}";
-            var url = $"{ManagementUri}/api/queues{vhostSegment}?page={page}&page_size=500&name=&use_regex=false&pagination=true";
+            var url = $"{ManagementUri}/api/queues?page={page}&page_size=500&name=&use_regex=false&pagination=true";
 
             using var http = httpFactory();
 
@@ -165,7 +162,7 @@
             }
         }
 
-        public async Task<RabbitMQDetails> GetRabbitDetails(string vhost, CancellationToken cancellationToken = default)
+        public async Task<RabbitMQDetails> GetRabbitDetails(CancellationToken cancellationToken = default)
         {
             var overviewUrl = $"{ManagementUri}/api/overview";
 
@@ -204,47 +201,6 @@
             catch (HttpRequestException hx)
             {
                 throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {overviewUrl} did not respond. The exception message was: {hx.Message}");
-            }
-
-            var vhostUrl = $"{ManagementUri}/api/vhosts";
-
-            try
-            {
-                using (var stream = await http.GetStreamAsync(vhostUrl, cancellationToken).ConfigureAwait(false))
-                using (var reader = new StreamReader(stream))
-                using (var jsonReader = new JsonTextReader(reader))
-                {
-                    var list = serializer.Deserialize<JArray>(jsonReader);
-
-                    if (list.Count == 0)
-                    {
-                        throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {vhostUrl} has no vhosts. Is the RabbitMQ server configured correctly?");
-                    }
-
-                    if (list.Count > 1 && string.IsNullOrEmpty(vhost))
-                    {
-                        throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {vhostUrl} has multiple vhosts, but the --vhost parameter was not specified. Include the --vhost parameter with the name of the virtual host to measure.");
-                    }
-
-                    var vhostNode = string.IsNullOrEmpty(vhost)
-                        ? list.SingleOrDefault()
-                        : list.FirstOrDefault(vh => vh["name"].Value<string>() == vhost);
-
-                    if (vhostNode == null)
-                    {
-                        throw new QueryException(QueryFailureReason.InvalidEnvironment, $"Could not find the vhost named '{vhost}' on the server at {vhostUrl}. Check the value of the --vhost parameter.");
-                    }
-
-                    details.VHost = vhostNode["name"].Value<string>();
-                }
-            }
-            catch (JsonReaderException)
-            {
-                throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {vhostUrl} did not return a valid JSON response. Is the RabbitMQ server configured correctly?");
-            }
-            catch (HttpRequestException hx)
-            {
-                throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {vhostUrl} did not respond. The exception message was: {hx.Message}");
             }
 
             return details;

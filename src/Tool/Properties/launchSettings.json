@@ -2,7 +2,7 @@
   "profiles": {
     "ThroughputTool-RabbitMQ": {
       "commandName": "Project",
-      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --vhost / --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
+      "commandLineArgs": "rabbitmq --apiUrl http://hostos:15672 --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }

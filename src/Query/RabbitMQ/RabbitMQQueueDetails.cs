@@ -14,6 +14,9 @@
                 AckedMessages = val.Value<long>();
             }
         }
+
+        public string Id => $"{VHost}:{Name}";
+
         public string Name { get; }
         public string VHost { get; }
         public long? AckedMessages { get; }

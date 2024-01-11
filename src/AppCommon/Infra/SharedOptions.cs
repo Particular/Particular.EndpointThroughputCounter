@@ -43,9 +43,9 @@ class SharedOptions
         {
             var runtime = result.GetValueForOption(runtimeInHours);
 
-            if (runtime is < 12 or > 24)
+            if (runtime is < 1 or > 24)
             {
-                result.ErrorMessage = "runtime must be between 12 and 24 hours.";
+                result.ErrorMessage = "runtime must be between 1 and 24 hours.";
             }
         });
 

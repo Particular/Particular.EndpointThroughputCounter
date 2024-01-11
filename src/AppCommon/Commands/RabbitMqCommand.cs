@@ -20,26 +20,15 @@ class RabbitMqCommand : BaseCommand
 
         command.AddOption(urlArg);
 
-        var vhostArg = new Option<string>(
-            name: "--vhost",
-            description: "The RabbitMQ virtual host to measure")
-        {
-            IsRequired = false
-        };
-
-        command.AddOption(vhostArg);
-
         command.SetHandler(async context =>
         {
             var url = context.ParseResult.GetValueForOption(urlArg);
-            var vhost = context.ParseResult.GetValueForOption(vhostArg);
             var shared = SharedOptions.Parse(context);
             var cancellationToken = context.GetCancellationToken();
 
             RunInfo.Add("RabbitMQUrl", url);
-            RunInfo.Add("VHost", vhost);
 
-            var runner = new RabbitMqCommand(shared, url, vhost);
+            var runner = new RabbitMqCommand(shared, url);
 
             await runner.Run(cancellationToken);
         });
@@ -48,16 +37,14 @@ class RabbitMqCommand : BaseCommand
     }
 
     readonly string managementUrl;
-    readonly string vhost;
     readonly TimeSpan pollingInterval;
     RabbitMQManagementClient _rabbitMQ;
     RabbitMQDetails _rabbitMQDetails;
 
-    public RabbitMqCommand(SharedOptions shared, string managementUrl, string vhost)
+    public RabbitMqCommand(SharedOptions shared, string managementUrl)
         : base(shared)
     {
         this.managementUrl = managementUrl;
-        this.vhost = vhost;
 #if DEBUG
         pollingInterval = TimeSpan.FromSeconds(10);
 #else
@@ -70,7 +57,7 @@ class RabbitMqCommand : BaseCommand
         var defaultCredential = new NetworkCredential("guest", "guest");
         var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", defaultCredential: defaultCredential, cancellationToken: cancellationToken);
 
-        _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl, vhost);
+        _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl);
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
@@ -87,9 +74,8 @@ class RabbitMqCommand : BaseCommand
 
         var trackers = startData
             .Where(start => IncludeQueue(start.Name))
-            // RabbitMQ queue names are case sensitive and SOMEHOW sometimes we see duplicates anyway
-            .GroupBy(start => start.Name, StringComparer.InvariantCulture)
-            .ToDictionary(g => g.Key, g => new QueueTracker(g.First()), StringComparer.InvariantCulture);
+            .Select(start => new QueueTracker(start))
+            .ToDictionary(t => t.Id, StringComparer.InvariantCulture);
         var nextPollTime = DateTime.UtcNow + pollingInterval;
 
         async Task UpdateTrackers()
@@ -97,7 +83,7 @@ class RabbitMqCommand : BaseCommand
             var data = await _rabbitMQ.GetQueueDetails(cancellationToken);
             foreach (var q in data)
             {
-                if (trackers.TryGetValue(q.Name, out var tracker))
+                if (trackers.TryGetValue(q.Id, out var tracker))
                 {
                     tracker.AddData(q);
                 }
@@ -140,11 +126,17 @@ class RabbitMqCommand : BaseCommand
         var endTime = DateTimeOffset.Now;
 
         var queues = trackers.Values
-            .Select(t => new QueueThroughput
+            .GroupBy(t => t.Name)
+            .Select(g =>
             {
-                QueueName = t.Name,
-                Throughput = t.AckedMessages,
-                EndpointIndicators = t.EndpointIndicators.Any() ? t.EndpointIndicators : null
+                var endpointIndicators = g.SelectMany(t => t.EndpointIndicators).Distinct().ToArray();
+
+                return new QueueThroughput
+                {
+                    QueueName = g.Key,
+                    Throughput = g.Sum(t => t.AckedMessages),
+                    EndpointIndicators = endpointIndicators.Any() ? endpointIndicators : null
+                };
             })
             .OrderBy(q => q.QueueName)
             .ToArray();
@@ -161,17 +153,17 @@ class RabbitMqCommand : BaseCommand
     {
         try
         {
-            _rabbitMQDetails = await _rabbitMQ.GetRabbitDetails(vhost, cancellationToken);
+            _rabbitMQDetails = await _rabbitMQ.GetRabbitDetails(cancellationToken);
 
             Out.WriteLine($"Connected to cluster {_rabbitMQDetails.ClusterName}");
             Out.WriteLine($"  - RabbitMQ Version: {_rabbitMQDetails.RabbitMQVersion}");
             Out.WriteLine($"  - Management Plugin Version: {_rabbitMQDetails.ManagementVersion}");
-            Out.WriteLine($"  - Virtual host: {_rabbitMQDetails.VHost}");
 
             var queueNames = (await _rabbitMQ.GetQueueDetails(cancellationToken))
                 .Where(q => IncludeQueue(q.Name))
-                .OrderBy(q => q.Name)
                 .Select(q => q.Name)
+                .Distinct()
+                .OrderBy(name => name)
                 .ToArray();
 
             return new EnvironmentDetails
@@ -201,13 +193,17 @@ class RabbitMqCommand : BaseCommand
     {
         public QueueTracker(RabbitMQQueueDetails startReading)
         {
+            Id = startReading.Id;
+            VHost = startReading.VHost;
             Name = startReading.Name;
             Baseline = startReading.AckedMessages ?? 0;
             AckedMessages = 0;
             EndpointIndicators = startReading.EndpointIndicators.ToArray();
         }
 
-        public string Name { get; init; }
+        public string Id { get; }
+        public string VHost { get; }
+        public string Name { get; }
         public long Baseline { get; private set; }
         public long AckedMessages { get; private set; }
         public string[] EndpointIndicators { get; init; }
