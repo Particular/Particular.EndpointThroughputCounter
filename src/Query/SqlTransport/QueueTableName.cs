@@ -19,6 +19,8 @@
         public string FullName => $"[{Schema}].[{Name}]";
 
         public string DisplayName => $"[{DatabaseName}].{FullName}";
+
+        public string DatabaseNameAndSchema => $"[{DatabaseName}].[{Schema}]";
     }
 }
 

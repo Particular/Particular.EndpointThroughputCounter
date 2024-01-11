@@ -22,6 +22,9 @@
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string Prefix { get; init; }
 
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string ScopeType { get; init; }
+
         public DateTimeOffset StartTime { get; init; }
 
         public DateTimeOffset EndTime { get; init; }
@@ -54,5 +57,8 @@
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string[] EndpointIndicators { get; init; }
+
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string Scope { get; init; }
     }
 }
