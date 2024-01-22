@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
     <ToolCommandName>throughput-counter</ToolCommandName>
     <PackAsTool>True</PackAsTool>
     <Description>A tool to measure per-endpoint throughput of an NServiceBus system.</Description>

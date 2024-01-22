@@ -94,6 +94,8 @@ class SqlServerCommand : BaseCommand
 
     readonly string[] connectionStrings;
     DatabaseDetails[] databases;
+    string scopeType;
+    Func<QueueTableName, string> getScope;
 
     public SqlServerCommand(SharedOptions shared, string[] connectionStrings)
         : base(shared)
@@ -122,7 +124,34 @@ class SqlServerCommand : BaseCommand
                 }
             }
 
-            var queueNames = databases.SelectMany(db => db.Tables).Select(t => t.DisplayName).OrderBy(x => x).ToArray();
+            var tables = databases.SelectMany(db => db.Tables).ToArray();
+
+            var catalogCount = tables.Select(t => t.DatabaseName).Distinct().Count();
+            var schemaCount = tables.Select(t => $"{t.DatabaseName}/{t.Schema}").Distinct().Count();
+            var queueNames = tables.Select(t => t.DisplayName).OrderBy(x => x).ToArray();
+
+            if (catalogCount > 1)
+            {
+                if (schemaCount > 1)
+                {
+                    scopeType = "Catalog & Schema";
+                    getScope = t => t.DatabaseNameAndSchema;
+                }
+                else
+                {
+                    scopeType = "Catalog";
+                    getScope = t => t.DatabaseName;
+                }
+            }
+            else if (schemaCount > 1)
+            {
+                scopeType = "Schema";
+                getScope = t => t.Schema;
+            }
+            else
+            {
+                getScope = t => null;
+            }
 
             return new EnvironmentDetails
             {
@@ -160,14 +189,16 @@ class SqlServerCommand : BaseCommand
         var queues = DatabaseDetails.CalculateThroughput(allStart, allEnd)
             .Select(t => new QueueThroughput
             {
-                QueueName = t.DisplayName,
-                Throughput = t.Throughput
+                QueueName = t.Name,
+                Throughput = t.Throughput,
+                Scope = getScope(t)
             })
             .OrderBy(q => q.QueueName)
             .ToArray();
 
         return new QueueDetails
         {
+            ScopeType = scopeType,
             StartTime = start,
             EndTime = end,
             Queues = queues

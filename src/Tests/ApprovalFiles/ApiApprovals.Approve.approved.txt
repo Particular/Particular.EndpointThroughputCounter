@@ -10,6 +10,8 @@ namespace Particular.EndpointThroughputCounter.Data
         public string[] EndpointIndicators { get; init; }
         [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
         public bool NoDataOrSendOnly { get; init; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string Scope { get; init; }
     }
     public class Report
     {
@@ -24,6 +26,8 @@ namespace Particular.EndpointThroughputCounter.Data
         public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; init; }
         public System.TimeSpan ReportDuration { get; init; }
         public string ReportMethod { get; init; }
+        [Newtonsoft.Json.JsonProperty(DefaultValueHandling=Newtonsoft.Json.DefaultValueHandling.Ignore)]
+        public string ScopeType { get; init; }
         public System.DateTimeOffset StartTime { get; init; }
         public string ToolVersion { get; init; }
         public int TotalQueues { get; init; }

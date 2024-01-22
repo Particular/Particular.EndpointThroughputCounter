@@ -216,6 +216,7 @@ abstract class BaseCommand
             ReportMethod = shared.Mask(metadata.ReportMethod),
             ToolVersion = Versioning.NuGetVersion,
             Prefix = metadata.Prefix,
+            ScopeType = data.ScopeType,
             StartTime = data.StartTime,
             EndTime = data.EndTime,
             ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,

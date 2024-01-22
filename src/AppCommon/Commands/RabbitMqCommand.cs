@@ -125,24 +125,24 @@ class RabbitMqCommand : BaseCommand
         await UpdateTrackers();
         var endTime = DateTimeOffset.Now;
 
-        var queues = trackers.Values
-            .GroupBy(t => t.Name)
-            .Select(g =>
-            {
-                var endpointIndicators = g.SelectMany(t => t.EndpointIndicators).Distinct().ToArray();
+        var useScopes = trackers.Values.Select(t => t.VHost).Distinct().Count() > 1;
 
-                return new QueueThroughput
-                {
-                    QueueName = g.Key,
-                    Throughput = g.Sum(t => t.AckedMessages),
-                    EndpointIndicators = endpointIndicators.Any() ? endpointIndicators : null
-                };
+        var queues = trackers.Values
+            .Select(t => new QueueThroughput
+            {
+                Scope = useScopes ? t.VHost : null,
+                QueueName = t.Name,
+                Throughput = t.AckedMessages,
+                EndpointIndicators = t.EndpointIndicators.Any() ? t.EndpointIndicators : null
+
             })
-            .OrderBy(q => q.QueueName)
+            .OrderBy(q => q.Scope)
+                .ThenBy(q => q.QueueName)
             .ToArray();
 
         return new QueueDetails
         {
+            ScopeType = useScopes ? "VirtualHost" : null,
             Queues = queues,
             StartTime = startTime,
             EndTime = endTime
