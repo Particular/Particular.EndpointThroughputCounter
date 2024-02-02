@@ -63,7 +63,7 @@
             {
                 try
                 {
-                    var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings";
+                    var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{HttpUtility.UrlEncode(queue.Name)}/bindings";
                     using (var stream = await http.GetStreamAsync(bindingsUrl, cancellationToken).ConfigureAwait(false))
                     using (var reader = new StreamReader(stream))
                     using (var jsonReader = new JsonTextReader(reader))
@@ -92,7 +92,7 @@
 
                 try
                 {
-                    var exchangeUrl = $"{ManagementUri}/api/exchanges/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings/destination";
+                    var exchangeUrl = $"{ManagementUri}/api/exchanges/{HttpUtility.UrlEncode(queue.VHost)}/{HttpUtility.UrlEncode(queue.Name)}/bindings/destination";
                     using (var stream = await http.GetStreamAsync(exchangeUrl, cancellationToken).ConfigureAwait(false))
                     using (var reader = new StreamReader(stream))
                     using (var jsonReader = new JsonTextReader(reader))
