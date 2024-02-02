@@ -63,7 +63,7 @@
             {
                 try
                 {
-                    var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{queue.Name}/bindings";
+                    var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{HttpUtility.UrlEncode(queue.Name)}/bindings";
                     using (var stream = await http.GetStreamAsync(bindingsUrl, cancellationToken).ConfigureAwait(false))
                     using (var reader = new StreamReader(stream))
                     using (var jsonReader = new JsonTextReader(reader))
