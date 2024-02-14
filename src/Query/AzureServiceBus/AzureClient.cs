@@ -31,14 +31,13 @@
 
             this.log = log ?? new(msg => { });
 
-            AzureResourceId.Parse(resourceId,
-                out var resourceIdSegments);
+            var resourceIdentifier = ResourceIdentifier.Parse(resourceId);
 
-            ResourceGroup = resourceIdSegments.resourceGroup;
+            ResourceGroup = resourceIdentifier.ResourceGroupName;
 
-            SubscriptionId = resourceIdSegments.subscriptionId;
+            SubscriptionId = resourceIdentifier.SubscriptionId;
 
-            FullyQualifiedNamespace = $"{resourceIdSegments.@namespace}.{serviceBusDomain}";
+            FullyQualifiedNamespace = $"{resourceIdentifier.Name}.{serviceBusDomain}";
 
             connections = CreateCredentials()
                 .Select(c => new AuthenticatedClientSet(c, FullyQualifiedNamespace))
