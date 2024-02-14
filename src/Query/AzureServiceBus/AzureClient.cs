@@ -28,19 +28,17 @@
         public AzureClient(string resourceId, string serviceBusDomain, Action<string> log = null)
         {
             this.resourceId = resourceId;
+
             this.log = log ?? new(msg => { });
 
-            var parts = resourceId.Split('/');
-            if (parts.Length != 9 || parts[0] != string.Empty || parts[1] != "subscriptions" || parts[3] != "resourceGroups" || parts[5] != "providers" || parts[6] != "Microsoft.ServiceBus" || parts[7] != "namespaces")
-            {
-                throw new Exception("The provided --resourceId value does not look like an Azure Service Bus resourceId. A correct value should take the form '/subscriptions/{GUID}/resourceGroups/{NAME}/providers/Microsoft.ServiceBus/namespaces/{NAME}'.");
-            }
+            AzureResourceId.Parse(resourceId,
+                out var resourceIdSegments);
 
-            ResourceGroup = parts[4];
-            SubscriptionId = parts[2];
-            var name = parts[8];
+            ResourceGroup = resourceIdSegments.resourceGroup;
 
-            FullyQualifiedNamespace = $"{name}.{serviceBusDomain}";
+            SubscriptionId = resourceIdSegments.subscriptionId;
+
+            FullyQualifiedNamespace = $"{resourceIdSegments.@namespace}.{serviceBusDomain}";
 
             connections = CreateCredentials()
                 .Select(c => new AuthenticatedClientSet(c, FullyQualifiedNamespace))
