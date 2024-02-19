@@ -41,6 +41,6 @@ jobs:
           path: nugets/
           retention-days: 7
       - name: Run tests
-        uses: Particular/run-tests-action@v1.6.0
+        uses: Particular/run-tests-action@v1.7.0
         env:
           RSA_PRIVATE_KEY: ${{ secrets.RSA_PRIVATE_KEY }}
