@@ -10,7 +10,7 @@
     <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.300.72" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.300.71" />
     <PackageVersion Include="Azure.Identity" Version="1.10.4" />
-    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.2" />
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.17.5" />
     <PackageVersion Include="Azure.Monitor.Query" Version="1.2.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="8.2.0.7535" />
