@@ -6,7 +6,10 @@ using Particular.EndpointThroughputCounter.Infra;
 public static class Exceptions
 {
 #if RELEASE
-    static RaygunClient raygun = new RaygunClient("e08ES555Pc1wZUhEQkafEQ");
+    static readonly RaygunClient raygun = new RaygunClient(new RaygunSettings
+    {
+        ApiKey = "e08ES555Pc1wZUhEQkafEQ"
+    });
 #endif
 
     public static void SetupUnhandledExceptionHandling()
