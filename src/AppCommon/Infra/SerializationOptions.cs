@@ -1,0 +1,22 @@
+﻿namespace Particular.EndpointThroughputCounter.Infra
+{
+    using System.Text.Encodings.Web;
+    using System.Text.Json;
+
+    public static class SerializationOptions
+    {
+        public static readonly JsonSerializerOptions IndentedWithNoEscaping = new()
+        {
+            WriteIndented = true,
+            //DefaultIgnoreCondition = JsonIgnoreCondition.when JsonIgnoreCondition.WhenWritingNull,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        public static readonly JsonSerializerOptions NotIndentedWithNoEscaping = new()
+        {
+            WriteIndented = false,
+            //DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+    }
+}

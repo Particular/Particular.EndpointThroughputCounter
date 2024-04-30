@@ -2,28 +2,24 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.IO;
     using System.Linq;
     using System.Net;
     using System.Net.Http;
+    using System.Text.Json;
+    using System.Text.Json.Nodes;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Web;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
 
     public class RabbitMQManagementClient
 
     {
         readonly Func<HttpClient> httpFactory;
-        readonly JsonSerializer serializer;
 
         public RabbitMQManagementClient(Func<HttpClient> httpFactory, string managementUri)
         {
             this.httpFactory = httpFactory;
             ManagementUri = managementUri.TrimEnd('/');
-
-            serializer = new JsonSerializer();
         }
 
         public string ManagementUri { get; }
@@ -65,19 +61,14 @@
                 {
                     var bindingsUrl = $"{ManagementUri}/api/queues/{HttpUtility.UrlEncode(queue.VHost)}/{HttpUtility.UrlEncode(queue.Name)}/bindings";
                     using (var stream = await http.GetStreamAsync(bindingsUrl, cancellationToken).ConfigureAwait(false))
-                    using (var reader = new StreamReader(stream))
-                    using (var jsonReader = new JsonTextReader(reader))
                     {
-                        var bindings = serializer.Deserialize<JArray>(jsonReader);
-                        var conventionalBindingFound = bindings.Any(binding =>
-                        {
-                            return binding["source"]?.Value<string>() == queue.Name
-                                && binding["vhost"]?.Value<string>() == queue.VHost
-                                && binding["destination"]?.Value<string>() == queue.Name
-                                && binding["destination_type"]?.Value<string>() == "queue"
-                                && binding["routing_key"]?.Value<string>() == string.Empty
-                                && binding["properties_key"]?.Value<string>() == "~";
-                        });
+                        var bindings = JsonSerializer.Deserialize<JsonArray>(stream);
+                        var conventionalBindingFound = bindings?.Any(binding => binding!["source"]?.GetValue<string>() == queue.Name
+                                                                    && binding["vhost"]?.GetValue<string>() == queue.VHost
+                                                                    && binding["destination"]?.GetValue<string>() == queue.Name
+                                                                    && binding["destination_type"]?.GetValue<string>() == "queue"
+                                                                    && binding["routing_key"]?.GetValue<string>() == string.Empty
+                                                                    && binding["properties_key"]?.GetValue<string>() == "~") ?? false;
 
                         if (conventionalBindingFound)
                         {
@@ -94,20 +85,19 @@
                 {
                     var exchangeUrl = $"{ManagementUri}/api/exchanges/{HttpUtility.UrlEncode(queue.VHost)}/{HttpUtility.UrlEncode(queue.Name)}/bindings/destination";
                     using (var stream = await http.GetStreamAsync(exchangeUrl, cancellationToken).ConfigureAwait(false))
-                    using (var reader = new StreamReader(stream))
-                    using (var jsonReader = new JsonTextReader(reader))
                     {
-                        var bindings = serializer.Deserialize<JArray>(jsonReader);
-                        var delayBindingFound = bindings.Any(binding =>
-                        {
-                            var source = binding["source"]?.Value<string>();
+                        var bindings = JsonSerializer.Deserialize<JsonArray>(stream);
 
-                            return (source == "nsb.v2.delay-delivery" || source == "nsb.delay-delivery")
-                                && binding["vhost"]?.Value<string>() == queue.VHost
-                                && binding["destination"]?.Value<string>() == queue.Name
-                                && binding["destination_type"]?.Value<string>() == "exchange"
-                                && binding["routing_key"]?.Value<string>() == $"#.{queue.Name}";
-                        });
+                        var delayBindingFound = bindings?.Any(binding =>
+                        {
+                            var source = binding!["source"]?.GetValue<string>();
+
+                            return source is "nsb.v2.delay-delivery" or "nsb.delay-delivery"
+                                && binding["vhost"]?.GetValue<string>() == queue.VHost
+                                && binding["destination"]?.GetValue<string>() == queue.Name
+                                && binding["destination_type"]?.GetValue<string>() == "exchange"
+                                && binding["routing_key"]?.GetValue<string>() == $"#.{queue.Name}";
+                        }) ?? false;
 
                         if (delayBindingFound)
                         {
@@ -129,35 +119,34 @@
             using var http = httpFactory();
 
             using (var stream = await http.GetStreamAsync(url, cancellationToken).ConfigureAwait(false))
-            using (var reader = new StreamReader(stream))
-            using (var jsonReader = new JsonTextReader(reader))
             {
-                var container = serializer.Deserialize<JContainer>(jsonReader);
+                var container = JsonSerializer.Deserialize<JsonNode>(stream);
 
-                if (container is JObject obj)
+                switch (container)
                 {
+                    case JsonObject obj:
+                        {
+                            var pageCount = obj["page_count"]!.GetValue<int>();
+                            var pageReturned = obj["page"]!.GetValue<int>();
 
-                    var pageCount = obj["page_count"].Value<int>();
-                    var pageReturned = obj["page"].Value<int>();
+                            if (obj["items"] is not JsonArray items)
+                            {
+                                return (null, false);
+                            }
 
-                    if (obj["items"] is not JArray items)
-                    {
-                        return (null, false);
-                    }
+                            var queues = items.Select(item => new RabbitMQQueueDetails(item!)).ToArray();
 
-                    var queues = items.Select(item => new RabbitMQQueueDetails(item)).ToArray();
+                            return (queues, pageCount > pageReturned);
+                        }
+                    // Older versions of RabbitMQ API did not have paging and returned the array of items directly
+                    case JsonArray arr:
+                        {
+                            var queues = arr.Select(item => new RabbitMQQueueDetails(item!)).ToArray();
 
-                    return (queues, pageCount > pageReturned);
-                }
-                else if (container is JArray arr) // Older versions of RabbitMQ API did not have paging and returned the array of items directly
-                {
-                    var queues = arr.Select(item => new RabbitMQQueueDetails(item)).ToArray();
-
-                    return (queues, false);
-                }
-                else
-                {
-                    throw new Exception($"Was not able to get list of queues from RabbitMQ broker. API call succeeded and deserialized but was of unexpected type '{container.GetType().FullName}'.");
+                            return (queues, false);
+                        }
+                    default:
+                        throw new Exception($"Was not able to get list of queues from RabbitMQ broker. API call succeeded and deserialized but was of unexpected type '{container.GetType().FullName}'.");
                 }
             }
         }
@@ -173,12 +162,10 @@
             try
             {
                 using (var stream = await http.GetStreamAsync(overviewUrl, cancellationToken).ConfigureAwait(false))
-                using (var reader = new StreamReader(stream))
-                using (var jsonReader = new JsonTextReader(reader))
                 {
-                    var obj = serializer.Deserialize<JObject>(jsonReader);
+                    var obj = JsonSerializer.Deserialize<JsonObject>(stream);
 
-                    var statsDisabled = obj["disable_stats"]?.Value<bool>() ?? false;
+                    var statsDisabled = obj["disable_stats"]?.GetValue<bool>() ?? false;
 
                     if (statsDisabled)
                     {
@@ -189,12 +176,12 @@
                     var mgmtVersion = obj["management_version"];
                     var clusterName = obj["cluster_name"];
 
-                    details.ClusterName = clusterName?.Value<string>() ?? "Unknown";
-                    details.RabbitMQVersion = mgmtVersion?.Value<string>() ?? "Unknown";
-                    details.ManagementVersion = mgmtVersion?.Value<string>() ?? "Unknown";
+                    details.ClusterName = clusterName?.GetValue<string>() ?? "Unknown";
+                    details.RabbitMQVersion = rabbitVersion?.GetValue<string>() ?? "Unknown";
+                    details.ManagementVersion = mgmtVersion?.GetValue<string>() ?? "Unknown";
                 }
             }
-            catch (JsonReaderException)
+            catch (JsonException)
             {
                 throw new QueryException(QueryFailureReason.InvalidEnvironment, $"The server at {overviewUrl} did not return a valid JSON response. Is the RabbitMQ server configured correctly?");
             }

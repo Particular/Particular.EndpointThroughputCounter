@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using System.Net;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
@@ -159,12 +159,12 @@ partial class ServiceControlCommand : BaseCommand
     async Task<QueueThroughput[]> SampleData(int minutes, CancellationToken cancellationToken)
     {
         // Lots of retries here because we get multiple queues in one go
-        var arr = await monitoring.GetData<JArray>($"/monitored-endpoints?history={minutes}", 5, cancellationToken);
+        var arr = await monitoring.GetData<JsonArray>($"/monitored-endpoints?history={minutes}", 5, cancellationToken);
 
         var queueResults = arr.Select(token =>
         {
-            var name = token["name"].Value<string>();
-            var throughputAvgPerSec = token["metrics"]["throughput"]["average"].Value<double>();
+            var name = token.AsObject().TryGetPropertyValue("name", out var nameProperty) ? nameProperty!.GetValue<string>() : null;
+            var throughputAvgPerSec = token?.AsObject().TryGetPropertyValue("metrics", out var metricsProperty) == true && metricsProperty?.AsObject().TryGetPropertyValue("throughput", out var throughputProperty) == true && throughputProperty?.AsObject().TryGetPropertyValue("average", out var averageProperty) == true ? averageProperty!.GetValue<double>() : 0;
             var throughputTotal = throughputAvgPerSec * minutes * 60;
 
             return new QueueThroughput
@@ -207,13 +207,14 @@ partial class ServiceControlCommand : BaseCommand
         }
 
         // Tool can't proceed without this data, try 5 times
-        var obj = await primary.GetData<JObject>("/configuration", 5, cancellationToken);
+        var obj = await primary.GetData<JsonObject>("/configuration", 5, cancellationToken);
 
-        var transportTypeToken = obj["transport"]["transport_customization_type"]
-                                 ?? obj["transport"]["transport_type"]
-                                 ?? throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
-
-        var transportCustomizationTypeStr = transportTypeToken.Value<string>();
+        var transportCustomizationTypeStr = obj?.AsObject().TryGetPropertyValue("transport", out var transport) == true && transport?.AsObject().TryGetPropertyValue("transport_customization_type", out var transportCustomType) == true ? transportCustomType!.GetValue<string>() : null;
+        transportCustomizationTypeStr ??= obj?.AsObject().TryGetPropertyValue("transport", out var transport2) == true && transport2?.AsObject().TryGetPropertyValue("transport_type", out var transportType) == true ? transportType!.GetValue<string>() : null;
+        if (transportCustomizationTypeStr is null)
+        {
+            throw new HaltException(HaltReason.InvalidEnvironment, "This version of ServiceControl is not supported. Update to a supported version of ServiceControl. See https://docs.particular.net/servicecontrol/upgrades/supported-versions");
+        }
 
         var split = transportCustomizationTypeStr.Split(',');
 
@@ -240,35 +241,37 @@ partial class ServiceControlCommand : BaseCommand
     async Task<ServiceControlEndpoint[]> GetKnownEndpoints(CancellationToken cancellationToken)
     {
         // Tool can't proceed without this data, try 5 times
-        var arr = await primary.GetData<JArray>("/endpoints", 5, cancellationToken);
+        var arr = await primary.GetData<JsonArray>("/endpoints", 5, cancellationToken);
 
-        var endpoints = arr.Select(endpointToken => new
+        var endpoints = arr?.Select(endpoint => new
         {
-            Name = endpointToken["name"].Value<string>(),
-            HeartbeatsEnabled = endpointToken["monitored"].Value<bool>(),
-            ReceivingHeartbeats = endpointToken["heartbeat_information"]["reported_status"].Value<string>() == "beating"
+            Name = endpoint?.AsObject().TryGetPropertyValue("name", out var name) == true ? name?.GetValue<string>() : "",
+            HeartbeatsEnabled = endpoint?.AsObject().TryGetPropertyValue("monitored", out var monitored) == true ? monitored?.GetValue<bool>() : false,
+            ReceivingHeartbeats = endpoint?.AsObject().TryGetPropertyValue("heartbeat_information", out var heartbeats) == true && heartbeats?.AsObject().TryGetPropertyValue("reported_status", out var reportStatus) == true && reportStatus!.GetValue<string>() == "beating",
         })
-        .GroupBy(x => x.Name)
-        .Select(g => new ServiceControlEndpoint
-        {
-            Name = g.Key,
-            HeartbeatsEnabled = g.Any(e => e.HeartbeatsEnabled),
-            ReceivingHeartbeats = g.Any(e => e.ReceivingHeartbeats)
-        })
-        .ToArray();
+            .GroupBy(x => x.Name)
+            .Select(g => new ServiceControlEndpoint
+            {
+                Name = g.Key!,
+                HeartbeatsEnabled = g.Any(e => e.HeartbeatsEnabled == true),
+                ReceivingHeartbeats = g.Any(e => e.ReceivingHeartbeats)
+            })
+            .ToArray();
 
         var useAuditCounts = false;
 
         if (primary.Version.Version >= MinAuditCountsVersion)
         {
             // Verify audit instances also have audit counts
-            var remotesInfoJson = await primary.GetData<JArray>("/configuration/remotes", cancellationToken);
+            var remotesInfoJson = await primary.GetData<JsonArray>("/configuration/remotes", cancellationToken);
             var remoteInfo = remotesInfoJson.Select(remote =>
             {
-                var uri = remote["api_uri"].Value<string>();
-                var status = remote["status"].Value<string>();
-                var versionString = remote["version"]?.Value<string>();
-                var retentionString = remote["configuration"]?["data_retention"]?["audit_retention_period"]?.Value<string>();
+                var uri = remote?.AsObject().TryGetPropertyValue("api_uri", out var apiUrl) == true ? apiUrl?.GetValue<string>() : null;
+                var status = remote?.AsObject().TryGetPropertyValue("status", out var statusVal) == true ? statusVal?.GetValue<string>() : null;
+                var versionString = remote?.AsObject().TryGetPropertyValue("version", out var version) == true ? version?.GetValue<string>() : null;
+                var retentionString = remote?.AsObject().TryGetPropertyValue("configuration", out var configuration) == true &&
+                                      configuration?.AsObject().TryGetPropertyValue("data_retention", out var data_retention) == true &&
+                                      configuration?.AsObject().TryGetPropertyValue("audit_retention_period", out var audit_retention_period) == true ? audit_retention_period!.GetValue<string>() : null;
 
                 return new
                 {
@@ -310,7 +313,7 @@ partial class ServiceControlCommand : BaseCommand
             else
             {
                 var path = $"/endpoints/{endpoint.UrlName}/messages/?per_page=1";
-                var recentMessages = await primary.GetData<JArray>(path, 2, cancellationToken);
+                var recentMessages = await primary.GetData<JsonArray>(path, 2, cancellationToken);
                 endpoint.CheckHourlyAuditDataIfNoMonitoringData = recentMessages.Any();
             }
         }
@@ -330,9 +333,9 @@ partial class ServiceControlCommand : BaseCommand
 
     class AuditCount
     {
-        [JsonProperty("utc_date")]
+        [JsonPropertyName("utc_date")]
         public DateTime UtcDate { get; set; }
-        [JsonProperty("count")]
+        [JsonPropertyName("count")]
         public long Count { get; set; }
     }
 }

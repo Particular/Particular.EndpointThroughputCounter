@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
-using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
 using Particular.EndpointThroughputCounter.Data;
+using Particular.EndpointThroughputCounter.Infra;
 
 static class Signature
 {
@@ -20,9 +20,7 @@ static class Signature
 
     public static string SignReport(Report report)
     {
-        var jsonToSign = JsonConvert.SerializeObject(report, Formatting.None);
-
-        var bytesToSign = Encoding.UTF8.GetBytes(jsonToSign);
+        var bytesToSign = JsonSerializer.SerializeToUtf8Bytes(report, SerializationOptions.NotIndentedWithNoEscaping);
 
         using (var rsa = RSA.Create())
         using (var sha = SHA512.Create())

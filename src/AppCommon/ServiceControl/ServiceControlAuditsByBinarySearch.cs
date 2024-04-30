@@ -3,9 +3,9 @@
     using System;
     using System.Diagnostics;
     using System.Linq;
+    using System.Text.Json.Nodes;
     using System.Threading;
     using System.Threading.Tasks;
-    using Newtonsoft.Json.Linq;
     using Particular.EndpointThroughputCounter.Data;
 
     class ServiceControlAuditsByBinarySearch
@@ -154,10 +154,12 @@
         {
             var pathAndQuery = $"/endpoints/{endpointName}/messages/?page={page}&per_page={pageSize}&sort=processed_at&direction=desc";
 
-            var arr = await primary.GetData<JArray>(pathAndQuery, cancellationToken);
+            var arr = await primary.GetData<JsonArray>(pathAndQuery, cancellationToken);
 
-            var processedAtValues = arr.Select(token => token["processed_at"].Value<DateTime>()).ToArray();
-
+            //var processedAtValues = arr.Select(token => token["processed_at"].Value<DateTime>()).ToArray();
+#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+            var processedAtValues = arr.Select(token => token?.AsObject().TryGetPropertyValue("processed_at", out JsonNode? processedAt) == true ? processedAt!.GetValue<DateTime>() : default).ToArray();
+#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             return new AuditBatch(processedAtValues);
         }
 
