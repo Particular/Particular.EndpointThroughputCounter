@@ -234,10 +234,7 @@ abstract class BaseCommand
 
         Out.WriteLine();
         Out.WriteLine($"Writing report to {outputPath}");
-        using (var writer = new StreamWriter(outputPath, false))
-        {
-            JsonSerializer.SerializeToUtf8Bytes(report, SerializationOptions.IndentedWithNoEscaping);
-        };
+        File.WriteAllBytes(outputPath, JsonSerializer.SerializeToUtf8Bytes(report, SerializationOptions.IndentedWithNoEscaping));
 
         Out.WriteLine("EndpointThroughputTool complete.");
     }
