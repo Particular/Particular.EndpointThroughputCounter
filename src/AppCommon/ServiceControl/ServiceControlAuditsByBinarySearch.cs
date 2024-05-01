@@ -1,4 +1,5 @@
-﻿namespace Particular.EndpointThroughputCounter.ServiceControl
+﻿#nullable enable
+namespace Particular.EndpointThroughputCounter.ServiceControl
 {
     using System;
     using System.Diagnostics;
@@ -25,7 +26,7 @@
             this.minutesPerSample = minutesPerSample;
         }
 
-        public async Task<QueueThroughput> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken = default)
+        public async Task<QueueThroughput?> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken = default)
         {
             Out.WriteLine($"Getting throughput from {endpointName} using audit data.");
 
@@ -40,7 +41,7 @@
             }
         }
 
-        async Task<QueueThroughput> GetThroughputFromAuditsInternal(string endpointName, CancellationToken cancellationToken)
+        async Task<QueueThroughput?> GetThroughputFromAuditsInternal(string endpointName, CancellationToken cancellationToken)
         {
             var collectionPeriodStartTime = DateTime.UtcNow.AddMinutes(-minutesPerSample);
 
@@ -156,10 +157,7 @@
 
             var arr = await primary.GetData<JsonArray>(pathAndQuery, cancellationToken);
 
-            //var processedAtValues = arr.Select(token => token["processed_at"].Value<DateTime>()).ToArray();
-#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             var processedAtValues = arr.Select(token => token?.AsObject().TryGetPropertyValue("processed_at", out JsonNode? processedAt) == true ? processedAt!.GetValue<DateTime>() : default).ToArray();
-#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             return new AuditBatch(processedAtValues);
         }
 
