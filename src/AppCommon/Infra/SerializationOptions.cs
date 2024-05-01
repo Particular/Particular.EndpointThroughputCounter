@@ -2,20 +2,21 @@
 {
     using System.Text.Encodings.Web;
     using System.Text.Json;
+    using System.Text.Json.Serialization;
 
     public static class SerializationOptions
     {
         public static readonly JsonSerializerOptions IndentedWithNoEscaping = new()
         {
             WriteIndented = true,
-            //DefaultIgnoreCondition = JsonIgnoreCondition.when JsonIgnoreCondition.WhenWritingNull,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
         public static readonly JsonSerializerOptions NotIndentedWithNoEscaping = new()
         {
             WriteIndented = false,
-            //DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
     }
