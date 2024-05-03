@@ -19,10 +19,8 @@
 
         public string ToolVersion { get; init; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault | JsonIgnoreCondition.WhenWritingNull)]
         public string Prefix { get; init; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault | JsonIgnoreCondition.WhenWritingNull)]
         public string ScopeType { get; init; }
 
         public DateTimeOffset StartTime { get; init; }
@@ -37,11 +35,12 @@
 
         public QueueThroughput[] Queues { get; init; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)] // Must be serialized even if 0 to maintain compatibility with old report signatures
         public long TotalThroughput { get; init; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)] // Must be serialized even if 0 to maintain compatibility with old report signatures
         public int TotalQueues { get; init; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault | JsonIgnoreCondition.WhenWritingNull)]
         public string[] IgnoredQueues { get; init; }
     }
 
@@ -49,16 +48,12 @@
     {
         public string QueueName { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault | JsonIgnoreCondition.WhenWritingNull)]
         public long? Throughput { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool NoDataOrSendOnly { get; init; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault | JsonIgnoreCondition.WhenWritingNull)]
         public string[] EndpointIndicators { get; init; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault | JsonIgnoreCondition.WhenWritingNull)]
         public string Scope { get; init; }
     }
 }

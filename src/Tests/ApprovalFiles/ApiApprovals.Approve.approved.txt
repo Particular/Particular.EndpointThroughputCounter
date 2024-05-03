@@ -4,13 +4,9 @@ namespace Particular.EndpointThroughputCounter.Data
     {
         public QueueThroughput() { }
         public string QueueName { get; set; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public long? Throughput { get; set; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string[] EndpointIndicators { get; init; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public bool NoDataOrSendOnly { get; init; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string Scope { get; init; }
     }
     public class Report
@@ -18,19 +14,18 @@ namespace Particular.EndpointThroughputCounter.Data
         public Report() { }
         public string CustomerName { get; init; }
         public System.DateTimeOffset EndTime { get; init; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string[] IgnoredQueues { get; init; }
         public string MessageTransport { get; init; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string Prefix { get; init; }
         public Particular.EndpointThroughputCounter.Data.QueueThroughput[] Queues { get; init; }
         public System.TimeSpan ReportDuration { get; init; }
         public string ReportMethod { get; init; }
-        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string ScopeType { get; init; }
         public System.DateTimeOffset StartTime { get; init; }
         public string ToolVersion { get; init; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
         public int TotalQueues { get; init; }
+        [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
         public long TotalThroughput { get; init; }
     }
     public class SignedReport
