@@ -4,6 +4,7 @@
     using System.IO;
     using System.Linq;
     using System.Security.Cryptography;
+    using System.Text;
     using System.Text.Json;
     using NUnit.Framework;
     using Particular.Approvals;
@@ -210,7 +211,8 @@
             }
 #endif
 
-            var reserializedReportBytes = JsonSerializer.SerializeToUtf8Bytes(signedReport.ReportData, SerializationOptions.NotIndentedWithNoEscaping);
+            var reserializedReport = JsonSerializer.Serialize(signedReport.ReportData, SerializationOptions.NotIndentedWithNoEscaping);
+            var reserializedReportBytes = Encoding.UTF8.GetBytes(reserializedReport);
             var shaHash = GetShaHash(reserializedReportBytes);
 
             try
