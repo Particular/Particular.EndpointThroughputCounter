@@ -1,5 +1,5 @@
-﻿using System.Text.RegularExpressions;
-using Newtonsoft.Json;
+﻿using System.Text.Json;
+using System.Text.RegularExpressions;
 using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
@@ -232,16 +232,10 @@ abstract class BaseCommand
             Signature = Signature.SignReport(reportData)
         };
 
-        var ser = new JsonSerializer();
-
         Out.WriteLine();
         Out.WriteLine($"Writing report to {outputPath}");
-        using (var writer = new StreamWriter(outputPath, false))
-        using (var jsonWriter = new JsonTextWriter(writer))
-        {
-            jsonWriter.Formatting = Formatting.Indented;
-            ser.Serialize(jsonWriter, report, typeof(SignedReport));
-        }
+        File.WriteAllBytes(outputPath, JsonSerializer.SerializeToUtf8Bytes(report, SerializationOptions.IndentedWithNoEscaping));
+
         Out.WriteLine("EndpointThroughputTool complete.");
     }
 

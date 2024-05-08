@@ -5,10 +5,11 @@
     using System.Linq;
     using System.Security.Cryptography;
     using System.Text;
-    using Newtonsoft.Json;
+    using System.Text.Json;
     using NUnit.Framework;
     using Particular.Approvals;
     using Particular.EndpointThroughputCounter.Data;
+    using Particular.EndpointThroughputCounter.Infra;
 
     [TestFixture]
     public class SignatureTests
@@ -184,26 +185,12 @@
 
         string SerializeReport(SignedReport report)
         {
-            var serializer = new JsonSerializer();
-
-            using (var writer = new StringWriter())
-            using (var jsonWriter = new JsonTextWriter(writer))
-            {
-                jsonWriter.Formatting = Formatting.Indented;
-                serializer.Serialize(jsonWriter, report, typeof(SignedReport));
-                return writer.ToString();
-            }
+            return JsonSerializer.Serialize(report, SerializationOptions.IndentedWithNoEscaping);
         }
 
         SignedReport DeserializeReport(string reportString)
         {
-            var serializer = new JsonSerializer();
-
-            using (var reader = new StringReader(reportString))
-            using (var jsonReader = new JsonTextReader(reader))
-            {
-                return serializer.Deserialize<SignedReport>(jsonReader);
-            }
+            return JsonSerializer.Deserialize<SignedReport>(reportString, SerializationOptions.NotIndentedWithNoEscaping);
         }
 
         bool PrivateKeyAvailable => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RSA_PRIVATE_KEY"));
@@ -224,7 +211,8 @@
             }
 #endif
 
-            var reserializedReportBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(signedReport.ReportData, Formatting.None));
+            var reserializedReport = JsonSerializer.Serialize(signedReport.ReportData, SerializationOptions.NotIndentedWithNoEscaping);
+            var reserializedReportBytes = Encoding.UTF8.GetBytes(reserializedReport);
             var shaHash = GetShaHash(reserializedReportBytes);
 
             try

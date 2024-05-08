@@ -1,11 +1,12 @@
-﻿namespace Particular.EndpointThroughputCounter.ServiceControl
+﻿#nullable enable
+namespace Particular.EndpointThroughputCounter.ServiceControl
 {
     using System;
     using System.Diagnostics;
     using System.Linq;
+    using System.Text.Json.Nodes;
     using System.Threading;
     using System.Threading.Tasks;
-    using Newtonsoft.Json.Linq;
     using Particular.EndpointThroughputCounter.Data;
 
     class ServiceControlAuditsByBinarySearch
@@ -25,7 +26,7 @@
             this.minutesPerSample = minutesPerSample;
         }
 
-        public async Task<QueueThroughput> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken = default)
+        public async Task<QueueThroughput?> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken = default)
         {
             Out.WriteLine($"Getting throughput from {endpointName} using audit data.");
 
@@ -40,7 +41,7 @@
             }
         }
 
-        async Task<QueueThroughput> GetThroughputFromAuditsInternal(string endpointName, CancellationToken cancellationToken)
+        async Task<QueueThroughput?> GetThroughputFromAuditsInternal(string endpointName, CancellationToken cancellationToken)
         {
             var collectionPeriodStartTime = DateTime.UtcNow.AddMinutes(-minutesPerSample);
 
@@ -154,10 +155,9 @@
         {
             var pathAndQuery = $"/endpoints/{endpointName}/messages/?page={page}&per_page={pageSize}&sort=processed_at&direction=desc";
 
-            var arr = await primary.GetData<JArray>(pathAndQuery, cancellationToken);
+            var arr = await primary.GetData<JsonArray>(pathAndQuery, cancellationToken);
 
-            var processedAtValues = arr.Select(token => token["processed_at"].Value<DateTime>()).ToArray();
-
+            var processedAtValues = arr.Select(token => token?.AsObject().TryGetPropertyValue("processed_at", out JsonNode? processedAt) == true ? processedAt!.GetValue<DateTime>() : default).ToArray();
             return new AuditBatch(processedAtValues);
         }
 

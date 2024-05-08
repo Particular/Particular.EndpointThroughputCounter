@@ -13,7 +13,6 @@
     <PackageReference Include="AWSSDK.SecurityToken" />
     <PackageReference Include="AWSSDK.SQS" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="System.Threading.RateLimiting" />
   </ItemGroup>
 

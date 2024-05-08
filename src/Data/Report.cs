@@ -1,7 +1,7 @@
 ﻿namespace Particular.EndpointThroughputCounter.Data
 {
     using System;
-    using Newtonsoft.Json;
+    using System.Text.Json.Serialization;
 
     public class SignedReport
     {
@@ -19,10 +19,8 @@
 
         public string ToolVersion { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string Prefix { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string ScopeType { get; init; }
 
         public DateTimeOffset StartTime { get; init; }
@@ -37,11 +35,12 @@
 
         public QueueThroughput[] Queues { get; init; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)] // Must be serialized even if 0 to maintain compatibility with old report signatures
         public long TotalThroughput { get; init; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)] // Must be serialized even if 0 to maintain compatibility with old report signatures
         public int TotalQueues { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string[] IgnoredQueues { get; init; }
     }
 
@@ -49,16 +48,12 @@
     {
         public string QueueName { get; set; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public long? Throughput { get; set; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool NoDataOrSendOnly { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string[] EndpointIndicators { get; init; }
 
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string Scope { get; init; }
     }
 }

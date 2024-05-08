@@ -1,19 +1,17 @@
 ﻿namespace Particular.EndpointThroughputCounter.ServiceControl
 {
     using System;
-    using System.IO;
     using System.Linq;
     using System.Net.Http;
     using System.Text;
+    using System.Text.Json;
     using System.Threading;
     using System.Threading.Tasks;
-    using Newtonsoft.Json;
     using Particular.EndpointThroughputCounter.Infra;
 
     class ServiceControlClient
     {
         static readonly Version MinServiceControlVersion = new Version(4, 21, 8);
-        static readonly JsonSerializer serializer = new JsonSerializer();
 
         readonly Func<HttpClient> httpFactory;
         readonly string rootUrl;
@@ -63,10 +61,8 @@
                 try
                 {
                     using (var stream = await http.GetStreamAsync(url, cancellationToken))
-                    using (var reader = new StreamReader(stream))
-                    using (var jsonReader = new JsonTextReader(reader))
                     {
-                        return serializer.Deserialize<TJsonType>(jsonReader);
+                        return JsonSerializer.Deserialize<TJsonType>(stream);
                     }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
