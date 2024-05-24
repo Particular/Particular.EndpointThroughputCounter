@@ -214,6 +214,7 @@ abstract class BaseCommand
             CustomerName = shared.CustomerName,
             MessageTransport = metadata.MessageTransport,
             ReportMethod = shared.Mask(metadata.ReportMethod),
+            ToolType = "Throughput Tool",
             ToolVersion = Versioning.NuGetVersion,
             Prefix = metadata.Prefix,
             ScopeType = data.ScopeType,
