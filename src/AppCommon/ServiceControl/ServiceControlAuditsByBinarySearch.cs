@@ -7,7 +7,7 @@ namespace Particular.EndpointThroughputCounter.ServiceControl
     using System.Text.Json.Nodes;
     using System.Threading;
     using System.Threading.Tasks;
-    using Particular.EndpointThroughputCounter.Data;
+    using Particular.LicensingComponent.Report;
 
     class ServiceControlAuditsByBinarySearch
     {

@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using System.Net;
-using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
 using Particular.ThroughputQuery.RabbitMQ;
 

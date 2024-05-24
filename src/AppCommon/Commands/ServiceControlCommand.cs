@@ -2,9 +2,9 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
+using Particular.LicensingComponent.Report;
 
 partial class ServiceControlCommand : BaseCommand
 {

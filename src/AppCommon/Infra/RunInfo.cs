@@ -6,7 +6,7 @@
 
     public static class RunInfo
     {
-        static readonly Dictionary<string, string> runValues = new();
+        static readonly Dictionary<string, string> runValues = [];
 
         public static readonly string TicketId;
 

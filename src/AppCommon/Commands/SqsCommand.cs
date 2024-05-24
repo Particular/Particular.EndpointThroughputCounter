@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.CommandLine;
 using Amazon;
-using Particular.EndpointThroughputCounter.Data;
+using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery.AmazonSQS;
 
 class SqsCommand : BaseCommand

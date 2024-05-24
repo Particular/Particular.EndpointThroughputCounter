@@ -5,8 +5,6 @@ VisualStudioVersion = 17.3.32811.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Particular.EndpointThroughputCounter", "Tool\Particular.EndpointThroughputCounter.csproj", "{03644CF9-B992-4804-A605-0745E96DE446}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Particular.EndpointThroughputCounter.Data", "Data\Particular.EndpointThroughputCounter.Data.csproj", "{52E89114-FC78-4DBE-93E7-819174B5BC9A}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tests", "Tests\Tests.csproj", "{2A220109-DF5D-4EC6-A44A-88DA77E2CB18}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Particular.EndpointThroughputCounter.Exe", "Exe\Particular.EndpointThroughputCounter.Exe.csproj", "{2E82CB5F-2C4D-4CD3-9F2E-B5AD854E7708}"
@@ -30,10 +28,6 @@ Global
 		{03644CF9-B992-4804-A605-0745E96DE446}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03644CF9-B992-4804-A605-0745E96DE446}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{03644CF9-B992-4804-A605-0745E96DE446}.Release|Any CPU.Build.0 = Release|Any CPU
-		{52E89114-FC78-4DBE-93E7-819174B5BC9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{52E89114-FC78-4DBE-93E7-819174B5BC9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{52E89114-FC78-4DBE-93E7-819174B5BC9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{52E89114-FC78-4DBE-93E7-819174B5BC9A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2A220109-DF5D-4EC6-A44A-88DA77E2CB18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2A220109-DF5D-4EC6-A44A-88DA77E2CB18}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A220109-DF5D-4EC6-A44A-88DA77E2CB18}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
-using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
+using Particular.LicensingComponent.Report;
 
 abstract class BaseCommand
 {
