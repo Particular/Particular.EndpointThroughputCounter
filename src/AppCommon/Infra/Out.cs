@@ -100,7 +100,14 @@ public static class Out
         }
     }
 
-    public static void WriteDebugTimestamp() => output.AppendLine($" - Debug timestamp: {DateTime.UtcNow:O}");
+    public static void WriteDebugTimestamp()
+    {
+        var message = $" - Debug timestamp: {DateTime.UtcNow:O}";
+        output.AppendLine(message);
+#if DEBUG
+        Console.WriteLine(message);
+#endif
+    }
 
     public static string ReadPassword()
     {
