@@ -104,9 +104,6 @@ class RabbitMqCommand : BaseCommand
 
                 _ = Task.Run(async () =>
                 {
-                    // So control can return to the loop
-                    await Task.Yield();
-
                     try
                     {
                         await UpdateTrackers();
