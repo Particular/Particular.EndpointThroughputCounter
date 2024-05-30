@@ -95,28 +95,40 @@ class RabbitMqCommand : BaseCommand
 
         var failCount = 0;
 
-        await Out.CountdownTimer("Data Collection Time Left", waitUntil, cancellationToken: cancellationToken, onLoopAction: async () =>
+        await Out.CountdownTimer("Data Collection Time Left", waitUntil, cancellationToken: cancellationToken, onLoopAction: () =>
         {
             if (DateTime.UtcNow > nextPollTime)
             {
-                try
-                {
-                    await UpdateTrackers();
-                }
-                catch (Exception x)
-                {
-                    failCount++;
-                    if (failCount >= 15)
-                    {
-                        // 1 day is 1440m which is 288 five-minute reporting intervals. 15 failures is 5.2% which is over an (arbitrary) 5% failure rate
-                        // indicating it's probably better to stop the collection rather than continue collecting untrustworthy data.
-                        throw new HaltException(HaltReason.RuntimeError, "The connection to RabbitMQ has failed too many times and appears unreliable.", x);
-                    }
-                    Out.WriteWarn($"Encountered error updating statistics, ignoring for now: {x.Message}");
-                    Out.WriteDebugTimestamp();
-                }
-
+                // Set this immediately, as loop may swing around in only 250ms
                 nextPollTime = DateTime.UtcNow + pollingInterval;
+
+                _ = Task.Run(async () =>
+                {
+                    // So control can return to the loop
+                    await Task.Yield();
+
+                    try
+                    {
+                        await UpdateTrackers();
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception x)
+                    {
+                        failCount++;
+                        if (failCount >= 15)
+                        {
+                            // 1 day is 1440m which is 96 five-minute reporting intervals. 15 failures is 15.6% which is over an (arbitrary) 5% failure rate
+                            // indicating it's probably better to stop the collection rather than continue collecting untrustworthy data.
+                            throw new HaltException(HaltReason.RuntimeError, "The connection to RabbitMQ has failed too many times and appears unreliable.", x);
+                        }
+                        Out.WriteLine();
+                        Out.WriteWarn($"Encountered error updating statistics, ignoring for now: {x.Message}");
+                        Out.WriteDebugTimestamp();
+                    }
+                });
             }
         });
 
