@@ -38,7 +38,9 @@
                     PreAuthenticate = true,
                     AutomaticDecompression = DecompressionMethods.All,
                     MaxConnectionsPerServer = 20,
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(1)
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(1),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(1),
+                    ConnectTimeout = TimeSpan.FromSeconds(30)
                 };
 
                 if (credential is not null)
