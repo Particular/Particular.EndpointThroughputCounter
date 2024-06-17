@@ -1,7 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
 using Microsoft.Data.SqlClient;
-using Particular.EndpointThroughputCounter.Data;
+using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
 using Particular.ThroughputQuery.SqlTransport;
 

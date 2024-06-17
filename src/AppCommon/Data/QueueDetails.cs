@@ -1,4 +1,5 @@
-﻿using Particular.EndpointThroughputCounter.Data;
+﻿
+using Particular.LicensingComponent.Report;
 
 public class QueueDetails
 {

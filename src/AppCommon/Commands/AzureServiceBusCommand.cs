@@ -1,6 +1,6 @@
 ﻿using System.CommandLine;
-using Particular.EndpointThroughputCounter.Data;
 using Particular.EndpointThroughputCounter.Infra;
+using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
 using Particular.ThroughputQuery.AzureServiceBus;
 

@@ -1,24 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
     <PackageReference Include="NuGet.Versioning" />
+    <PackageReference Include="Particular.LicensingComponent.Report" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Data\Particular.EndpointThroughputCounter.Data.csproj" />
     <ProjectReference Include="..\Query\Particular.ThroughputQuery.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="public-key.pem" />
-    <EmbeddedResource Include="public-key.pem" />
     <None Update="local.settings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
