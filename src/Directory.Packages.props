@@ -16,7 +16,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
     <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="10.1.1" />
     <PackageVersion Include="NuGet.Versioning" Version="6.11.0" />
-    <PackageVersion Include="NUnit" Version="4.2.1" />
+    <PackageVersion Include="NUnit" Version="4.2.2" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.3.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageVersion Include="Particular.Approvals" Version="1.0.0" />
