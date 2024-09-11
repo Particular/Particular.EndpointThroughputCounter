@@ -11,7 +11,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
         "A connection string for SQL Server that has access to all NServiceBus queue tables");
 
     static readonly Option<string> ConnectionStringSource = new("--connectionStringSource",
-        "A file that contains multiple SQL Server connection strings, one connection string per line, for each database catalog that contains NServiceBus queue tables");
+        "A file that contains multiple PostgreSQL connection strings, one connection string per line, for each database catalog that contains NServiceBus queue tables");
 
     static readonly Option<string[]> AddCatalogs = new("--addCatalogs")
     {
