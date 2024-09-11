@@ -14,6 +14,7 @@ public static class App
             rootCommand.AddCommand(AzureServiceBusCommand.CreateCommand());
             rootCommand.AddCommand(RabbitMqCommand.CreateCommand());
             rootCommand.AddCommand(SqlServerCommand.CreateCommand());
+            rootCommand.AddCommand(PostgreSqlCommand.CreateCommand());
             rootCommand.AddCommand(SqsCommand.CreateCommand());
 
             SharedOptions.Register(rootCommand);
