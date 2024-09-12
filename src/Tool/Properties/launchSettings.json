@@ -21,6 +21,13 @@
         "IS_DEVELOPMENT": "true"
       }
     },
+    "ThroughputTool-PostgreSQL": {
+      "commandName": "Project",
+      "commandLineArgs": "postgresql --connectionString \"User ID=postgres;Password=mysecretpassword;Host=localhost;Port=5432;Database=nservicebus;Pooling=true;Connection Lifetime=0;Include Error Detail=true\" --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
+      "environmentVariables": {
+        "IS_DEVELOPMENT": "true"
+      }
+    },
     "ThroughputTool-ASB": {
       "commandName": "Project",
       "commandLineArgs": "azureservicebus --resourceId LOAD_FROM_CONFIG --queueNameMasks Samples --customerName \"Particular Software\" --unattended",

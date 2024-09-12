@@ -8,7 +8,7 @@ using Particular.ThroughputQuery.SqlTransport;
 class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : BaseCommand(shared)
 {
     static readonly Option<string> ConnectionString = new("--connectionString",
-        "A connection string for SQL Server that has access to all NServiceBus queue tables");
+        "A connection string for PostgreSQL that has access to all NServiceBus queue tables");
 
     static readonly Option<string> ConnectionStringSource = new("--connectionStringSource",
         "A file that contains multiple PostgreSQL connection strings, one connection string per line, for each database catalog that contains NServiceBus queue tables");
@@ -22,7 +22,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
     public static Command CreateCommand()
     {
-        var command = new Command("postgresql", "Measure endpoints in PostgreSql transport using the direct query method");
+        var command = new Command("postgresql", "Measure endpoints in PostgreSQL transport using the direct query method");
 
         command.AddOption(ConnectionString);
         command.AddOption(ConnectionStringSource);
