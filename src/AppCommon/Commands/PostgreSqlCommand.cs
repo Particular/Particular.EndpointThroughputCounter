@@ -1,9 +1,9 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
-using Particular.ThroughputQuery.SqlTransport;
+using Particular.ThroughputQuery.PostgreSql;
 
 class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : BaseCommand(shared)
 {
@@ -71,10 +71,10 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
         if (addCatalogs is null || !addCatalogs.Any())
         {
-            return new[] { single };
+            return [single];
         }
 
-        var builder = new SqlConnectionStringBuilder
+        var builder = new NpgsqlConnectionStringBuilder
         {
             ConnectionString = single
         };
