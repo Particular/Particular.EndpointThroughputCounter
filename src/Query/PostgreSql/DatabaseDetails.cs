@@ -107,12 +107,12 @@
                 {
                     using (var cmd = conn.CreateCommand())
                     {
-                        cmd.CommandText = $"select IDENT_CURRENT('{table.FullName}')";
+                        cmd.CommandText = $"select last_value from \"{table.SequenceName}\";";
                         var value = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
 
-                        if (value is decimal decimalValue) // That's the return type of IDENT_CURRENT
+                        if (value is long longValue)
                         {
-                            table.RowVersion = (long)decimalValue;
+                            table.RowVersion = longValue;
                         }
                     }
                 }
