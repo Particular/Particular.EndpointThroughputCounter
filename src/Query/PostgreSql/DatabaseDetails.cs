@@ -23,7 +23,7 @@
                 {
                     ConnectionString = connectionString
                 };
-                DatabaseName = builder["Initial Catalog"] as string ?? builder["Database"] as string;
+                DatabaseName = builder["Database"] as string ?? "postgres";
                 this.connectionString = builder.ToString();
             }
             catch (Exception x) when (x is FormatException or ArgumentException)
@@ -38,7 +38,13 @@
         {
             try
             {
-                await TestGetServerName(cancellationToken).ConfigureAwait(false);
+                using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT version()";
+
+                    _ = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (NpgsqlException x) when (IsConnectionOrLoginIssue(x))
             {
@@ -48,18 +54,26 @@
 
         static bool IsConnectionOrLoginIssue(NpgsqlException x)
         {
-            //TODO
-            return x.Message.Contains("Cannot connect to the database");
-        }
+            // Reference is here: https://www.postgresql.org/docs/current/errcodes-appendix.html
 
-        async Task TestGetServerName(CancellationToken cancellationToken)
-        {
-            using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
-            using (var cmd = conn.CreateCommand())
+            return x.SqlState switch
             {
-                cmd.CommandText = "select @@SERVERNAME";
-                _ = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) as string;
-            }
+                //28000   invalid_authorization_specification
+                //28P01   invalid_password
+                "28000" or "28P01" => true,
+
+                //08000   connection_exception
+                //08003   connection_does_not_exist
+                //08006   connection_failure
+                //08001   sqlclient_unable_to_establish_sqlconnection
+                //08004   sqlserver_rejected_establishment_of_sqlconnection
+                //08007   transaction_resolution_unknown
+                //08P01   protocol_violation
+                "08000" or "08003" or "08006" or "08001" or "08004" or "08007" or "08P01" => true,
+
+                // Everything else
+                _ => false
+            };
         }
 
         public async Task GetTables(CancellationToken cancellationToken = default)

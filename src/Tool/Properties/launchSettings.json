@@ -23,7 +23,7 @@
     },
     "ThroughputTool-PostgreSQL": {
       "commandName": "Project",
-      "commandLineArgs": "postgresql --connectionString \"User ID=postgres;Password=mysecretpassword;Host=localhost;Port=5432;Database=nservicebus;Pooling=true;Connection Lifetime=0;Include Error Detail=true\" --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
+      "commandLineArgs": "postgresql --connectionString \"User ID=user;Password=admin;Host=localhost;Port=54320;Database=nservicebus;Include Error Detail=true\" --queueNameMasks Samples --customerName \"Particular Software\" --unattended",
       "environmentVariables": {
         "IS_DEVELOPMENT": "true"
       }
