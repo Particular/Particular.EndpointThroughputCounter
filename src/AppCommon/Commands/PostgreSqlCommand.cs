@@ -141,8 +141,8 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
             if (schemaCount > 1)
             {
-                scopeType = "Schema";
-                getScope = t => t.Schema;
+                scopeType = "Catalog & Schema";
+                getScope = t => t.DatabaseNameAndSchema;
             }
             else
             {

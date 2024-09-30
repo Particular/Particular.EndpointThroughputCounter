@@ -16,9 +16,9 @@
             Name = tableName;
         }
 
-        public string FullName => $"[{Schema}].[{Name}]";
+        public string QualifiedTableName => $"\"{Schema}\".\"{Name}\"";
 
-        public string DisplayName => $"[{DatabaseName}].{FullName}";
+        public string DisplayName => $"{QualifiedTableName}";
 
         public string DatabaseNameAndSchema => $"[{DatabaseName}].[{Schema}]";
     }

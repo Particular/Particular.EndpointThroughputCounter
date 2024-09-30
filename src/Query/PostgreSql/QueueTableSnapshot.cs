@@ -7,7 +7,7 @@
         {
         }
 
-        public string SequenceName => $"{FullName}_seq_seq";
+        public string SequenceName => $"{Name}_seq_seq";
 
         public long? RowVersion { get; set; }
     }
