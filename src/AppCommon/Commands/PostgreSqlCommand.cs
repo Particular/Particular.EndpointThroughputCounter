@@ -148,7 +148,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
             return new EnvironmentDetails
             {
-                MessageTransport = "PostgreSqlTransport",
+                MessageTransport = "PostgreSql",
                 ReportMethod = "PostgreSqlQuery",
                 QueueNames = queueNames
             };
