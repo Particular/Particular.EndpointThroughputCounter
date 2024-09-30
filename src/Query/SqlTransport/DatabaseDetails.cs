@@ -198,6 +198,11 @@
                 return true;
             }
 
+            if (tableName is "ServiceControl.ThroughputData")
+            {
+                return true;
+            }
+
             return false;
         }
 
