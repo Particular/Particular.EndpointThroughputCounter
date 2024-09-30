@@ -145,7 +145,7 @@
             }
         }
 
-        async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
+        async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)
         {
             var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync(cancellationToken).ConfigureAwait(false);
