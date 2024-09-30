@@ -2,7 +2,7 @@
 {
     using System.Diagnostics;
 
-    [DebuggerDisplay("{FullName}")]
+    [DebuggerDisplay("{QualifiedTableName}")]
     public class QueueTableName
     {
         public string DatabaseName { get; }
@@ -18,7 +18,7 @@
 
         public string QualifiedTableName => $"\"{Schema}\".\"{Name}\"";
 
-        public string DisplayName => $"{QualifiedTableName}";
+        public string DisplayName => $"{QualifiedTableName}"; //will need to add dbanme back into this if we are supporting multiples
 
         public string DatabaseNameAndSchema => $"[{DatabaseName}].[{Schema}]";
     }
