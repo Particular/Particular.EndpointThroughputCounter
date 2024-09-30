@@ -18,7 +18,7 @@
 
         public string QualifiedTableName => $"\"{Schema}\".\"{Name}\"";
 
-        public string DisplayName => $"{QualifiedTableName}"; //will need to add dbanme back into this if we are supporting multiples
+        public string DisplayName => $"\"{DatabaseName}\".{QualifiedTableName}";
 
         public string DatabaseNameAndSchema => $"[{DatabaseName}].[{Schema}]";
     }

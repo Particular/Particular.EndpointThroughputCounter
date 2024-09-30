@@ -1,6 +1,6 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
-//using Npgsql;
+using Npgsql;
 using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
 using Particular.ThroughputQuery.PostgreSql;
@@ -13,12 +13,12 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
     static readonly Option<string> ConnectionStringSource = new("--connectionStringSource",
         "A file that contains multiple PostgreSQL connection strings, one connection string per line, for each database that contains NServiceBus queue tables");
 
-    //static readonly Option<string[]> AddCatalogs = new("--addCatalogs")
-    //{
-    //    Description = "A list of additional database catalogs on the same server containing NServiceBus queue tables",
-    //    Arity = ArgumentArity.OneOrMore,
-    //    AllowMultipleArgumentsPerToken = true
-    //};
+    static readonly Option<string[]> AddCatalogs = new("--addCatalogs")
+    {
+        Description = "A list of additional database catalogs on the same server containing NServiceBus queue tables",
+        Arity = ArgumentArity.OneOrMore,
+        AllowMultipleArgumentsPerToken = true
+    };
 
     public static Command CreateCommand()
     {
@@ -26,7 +26,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
         command.AddOption(ConnectionString);
         command.AddOption(ConnectionStringSource);
-        //command.AddOption(AddCatalogs);
+        command.AddOption(AddCatalogs);
 
         command.SetHandler(async context =>
         {
@@ -62,36 +62,32 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
         }
 
         var single = parsed.GetValueForOption(ConnectionString);
-        //var addCatalogs = parsed.GetValueForOption(AddCatalogs);
+        var addCatalogs = parsed.GetValueForOption(AddCatalogs);
 
         if (single is null)
         {
             throw new InvalidOperationException($"No connection strings were provided.");
         }
 
-        return [single];
+        if (addCatalogs is null || !addCatalogs.Any())
+        {
+            return [single];
+        }
 
-        //if (addCatalogs is null || !addCatalogs.Any())
-        //{
-        //    return [single];
-        //}
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            ConnectionString = single
+        };
 
-        //var builder = new NpgsqlConnectionStringBuilder
-        //{
-        //    ConnectionString = single
-        //};
+        var list = new List<string> { single };
 
-        //var dbKey = builder["Initial Catalog"] is not null ? "Initial Catalog" : "Database";
+        foreach (var db in addCatalogs)
+        {
+            builder.Database = db;
+            list.Add(builder.ToString());
+        }
 
-        //var list = new List<string> { single };
-
-        //foreach (var db in addCatalogs)
-        //{
-        //    builder["Database"] = db;
-        //    list.Add(builder.ToString());
-        //}
-
-        //return list.ToArray();
+        return list.ToArray();
     }
 
     DatabaseDetails[] databases;
@@ -121,28 +117,22 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
             var tables = databases.SelectMany(db => db.Tables).ToArray();
 
-            //var catalogCount = tables.Select(t => t.DatabaseName).Distinct().Count();
+            var catalogCount = tables.Select(t => t.DatabaseName).Distinct().Count();
             var schemaCount = tables.Select(t => $"{t.DatabaseName}/{t.Schema}").Distinct().Count();
             var queueNames = tables.Select(t => t.DisplayName).OrderBy(x => x).ToArray();
 
-            //if (catalogCount > 1)
-            //{
-            //    if (schemaCount > 1)
-            //    {
-            //        scopeType = "Catalog & Schema";
-            //        getScope = t => t.DatabaseNameAndSchema;
-            //    }
-            //    else
-            //    {
-            //        scopeType = "Catalog";
-            //        getScope = t => t.DatabaseName;
-            //    }
-            //}
-
-            if (schemaCount > 1)
+            if (catalogCount > 1)
             {
-                scopeType = "Catalog & Schema";
-                getScope = t => t.DatabaseNameAndSchema;
+                if (schemaCount > 1)
+                {
+                    scopeType = "Catalog & Schema";
+                    getScope = t => t.DatabaseNameAndSchema;
+                }
+                else
+                {
+                    scopeType = "Catalog";
+                    getScope = t => t.DatabaseName;
+                }
             }
             else
             {
