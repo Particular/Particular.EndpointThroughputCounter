@@ -1,17 +1,17 @@
 ﻿namespace Particular.ThroughputQuery.RabbitMQ
 {
     using System.Collections.Generic;
-    using System.Text.Json.Nodes;
+    using System.Text.Json;
 
     public class RabbitMQQueueDetails
     {
-        public RabbitMQQueueDetails(JsonNode token)
+        public RabbitMQQueueDetails(JsonElement token)
         {
-            Name = token["name"]!.GetValue<string>();
-            VHost = token["vhost"]!.GetValue<string>();
-            if (token!["message_stats"] is JsonObject stats && stats["ack"] is JsonValue val)
+            Name = token.GetProperty("name").GetString();
+            VHost = token.GetProperty("vhost").GetString();
+            if (token.TryGetProperty("message_stats", out var stats) && stats.TryGetProperty("ack", out var val))
             {
-                AckedMessages = val.GetValue<long>();
+                AckedMessages = val.GetInt64();
             }
         }
 
