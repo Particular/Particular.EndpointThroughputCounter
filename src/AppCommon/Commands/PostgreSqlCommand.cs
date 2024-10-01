@@ -13,7 +13,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
     static readonly Option<string> ConnectionStringSource = new("--connectionStringSource",
         "A file that contains multiple PostgreSQL connection strings, one connection string per line, for each database that contains NServiceBus queue tables");
 
-    static readonly Option<string[]> AddCatalogs = new("--addCatalogs")
+    static readonly Option<string[]> AddDatabases = new("--addDatabases")
     {
         Description = "A list of additional database catalogs on the same server containing NServiceBus queue tables",
         Arity = ArgumentArity.OneOrMore,
@@ -26,7 +26,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
         command.AddOption(ConnectionString);
         command.AddOption(ConnectionStringSource);
-        command.AddOption(AddCatalogs);
+        command.AddOption(AddDatabases);
 
         command.SetHandler(async context =>
         {
@@ -62,7 +62,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
         }
 
         var single = parsed.GetValueForOption(ConnectionString);
-        var addCatalogs = parsed.GetValueForOption(AddCatalogs);
+        var addCatalogs = parsed.GetValueForOption(AddDatabases);
 
         if (single is null)
         {
@@ -117,11 +117,11 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
             var tables = databases.SelectMany(db => db.Tables).ToArray();
 
-            var catalogCount = tables.Select(t => t.DatabaseName).Distinct().Count();
+            var databaseCount = tables.Select(t => t.DatabaseName).Distinct().Count();
             var schemaCount = tables.Select(t => $"{t.DatabaseName}/{t.Schema}").Distinct().Count();
             var queueNames = tables.Select(t => t.DisplayName).OrderBy(x => x).ToArray();
 
-            if (catalogCount > 1)
+            if (databaseCount > 1)
             {
                 if (schemaCount > 1)
                 {
