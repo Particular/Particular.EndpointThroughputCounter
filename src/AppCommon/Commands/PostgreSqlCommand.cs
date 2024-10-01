@@ -15,7 +15,7 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
     static readonly Option<string[]> AddDatabases = new("--addDatabases")
     {
-        Description = "A list of additional database catalogs on the same server containing NServiceBus queue tables",
+        Description = "A list of additional databases on the same server containing NServiceBus queue tables",
         Arity = ArgumentArity.OneOrMore,
         AllowMultipleArgumentsPerToken = true
     };
