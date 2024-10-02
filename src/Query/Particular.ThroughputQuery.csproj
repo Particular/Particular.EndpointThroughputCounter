@@ -12,6 +12,7 @@
     <PackageReference Include="AWSSDK.CloudWatch" />
     <PackageReference Include="AWSSDK.SecurityToken" />
     <PackageReference Include="AWSSDK.SQS" />
+    <PackageReference Include="Npgsql" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="System.Threading.RateLimiting" />
   </ItemGroup>

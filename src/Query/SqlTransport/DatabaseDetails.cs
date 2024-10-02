@@ -9,7 +9,7 @@
 
     public class DatabaseDetails
     {
-        string connectionString;
+        readonly string connectionString;
 
         public string DatabaseName { get; }
         public List<QueueTableName> Tables { get; private set; }
@@ -19,12 +19,8 @@
         {
             try
             {
-                var builder = new SqlConnectionStringBuilder
-                {
-                    ConnectionString = connectionString,
-                    TrustServerCertificate = true
-                };
-                DatabaseName = (builder["Initial Catalog"] as string) ?? (builder["Database"] as string);
+                var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString, TrustServerCertificate = true };
+                DatabaseName = builder["Initial Catalog"] as string ?? builder["Database"] as string;
                 this.connectionString = builder.ToString();
             }
             catch (Exception x) when (x is FormatException or ArgumentException)
@@ -97,7 +93,7 @@
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "select @@SERVERNAME";
-                _ = (await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)) as string;
+                _ = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) as string;
             }
         }
 
@@ -202,11 +198,16 @@
                 return true;
             }
 
+            if (tableName is "ServiceControl.ThroughputData")
+            {
+                return true;
+            }
+
             return false;
         }
 
         /// <summary>
-        /// Query works by finidng all the columns in any table that *could* be from an NServiceBus
+        /// Query works by finding all the columns in any table that *could* be from an NServiceBus
         /// queue table, grouping by schema+name, and then using the HAVING COUNT(*) = 8 clause
         /// to ensure that all 8 columns are represented. Delay tables, for example, will match
         /// on 3 of the columns (Headers, Body, RowVersion) and many user tables might have an
