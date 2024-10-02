@@ -1,0 +1,16 @@
+[
+  {
+    "Id": "vhost1:queue1",
+    "Name": "queue1",
+    "VHost": "vhost1",
+    "AckedMessages": 1,
+    "EndpointIndicators": []
+  },
+  {
+    "Id": "vhost2:queue2",
+    "Name": "queue2",
+    "VHost": "vhost2",
+    "AckedMessages": 2,
+    "EndpointIndicators": []
+  }
+]
