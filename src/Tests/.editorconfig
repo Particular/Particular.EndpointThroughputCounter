@@ -3,9 +3,15 @@
 # CA2007: Consider calling ConfigureAwait on the awaited task
 dotnet_diagnostic.CA2007.severity = silent
 
+# PS0003: Making the cancellation token optional is not relevant for tests
+dotnet_diagnostic.PS0003.severity = none
+
 # PS0023: DateTime.UtcNow or DateTimeOffset.UtcNow should be used instead of DateTime.Now and DateTimeOffset.Now, unless the value is being used for displaying the current date-time in a user's local time zone
 # This is a client-side tool and we want to know the local time zone in which the tool was run
 dotnet_diagnostic.PS0023.severity = none
+
+# Justification: Tests don't support cancellation and don't need to forward IMessageHandlerContext.CancellationToken
+dotnet_diagnostic.NSB0002.severity = suggestion
 
 # CA1050: Declare types in namespaces
 dotnet_diagnostic.CA1050.severity = none
