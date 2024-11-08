@@ -6,14 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Query\Particular.ThroughputQuery.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Mindscape.Raygun4Net.AspNetCore" />
     <PackageReference Include="NuGet.Versioning" />
     <PackageReference Include="Particular.LicensingComponent.Report" />
     <PackageReference Include="System.CommandLine" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Query\Particular.ThroughputQuery.csproj" />
   </ItemGroup>
 
   <ItemGroup>
