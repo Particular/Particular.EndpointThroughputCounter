@@ -20,6 +20,6 @@
         public string Name { get; }
         public string VHost { get; }
         public long? AckedMessages { get; }
-        public List<string> EndpointIndicators { get; } = new List<string>();
+        public List<string> EndpointIndicators { get; } = [];
     }
 }

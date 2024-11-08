@@ -15,7 +15,7 @@
     {
         readonly string resourceId;
         readonly AuthenticatedClientSet[] connections;
-        readonly List<string> loginExceptions = new();
+        readonly List<string> loginExceptions = [];
         readonly Action<string> log;
 
         Queue<AuthenticatedClientSet> connectionQueue;

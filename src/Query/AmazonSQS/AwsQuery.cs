@@ -89,10 +89,8 @@
                 StartTimeUtc = StartTimeUtc,
                 EndTimeUtc = EndTimeUtc,
                 Period = 86400, // 1 day
-                Statistics = new List<string> { "Sum" },
-                Dimensions = new List<Dimension> {
-                    new Dimension { Name = "QueueName", Value = queueName }
-                }
+                Statistics = ["Sum"],
+                Dimensions = [new Dimension { Name = "QueueName", Value = queueName }]
             };
 
             using var lease = await rateLimiter.AcquireAsync(cancellationToken: cancellationToken).ConfigureAwait(false);

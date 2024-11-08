@@ -99,7 +99,7 @@
 
         public async Task GetTables(CancellationToken cancellationToken = default)
         {
-            List<QueueTableName> tables = new();
+            List<QueueTableName> tables = [];
 
             using (var conn = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false))
             using (var cmd = conn.CreateCommand())
