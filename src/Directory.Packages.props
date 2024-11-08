@@ -1,8 +1,10 @@
 <Project>
+
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.401.44" />
     <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.400.46" />
@@ -29,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Pinned transitive dependencies">
-    <PackageVersion Include="System.Runtime.Caching" Version="8.0.1" />
+    <PackageVersion Include="System.Private.Uri" Version="4.3.2" />
   </ItemGroup>
+
 </Project>
