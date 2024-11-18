@@ -95,7 +95,7 @@
                     {
                         var allExceptionMessages = string.Join(string.Empty, loginExceptions);
                         var msg = "Unable to log in to Azure service using multiple credential types. The exception messages for each credential type (including help links) are provided below:"
-                            + Environment.NewLine + allExceptionMessages;
+                                  + Environment.NewLine + allExceptionMessages;
                         throw new QueryException(QueryFailureReason.Auth, msg);
                     }
                 }
@@ -187,7 +187,7 @@
                 }
 
                 Name = credentials.GetType().Name;
-                Metrics = new MetricsQueryClient(new Uri(managementUrl), credentials);
+                Metrics = new MetricsQueryClient(new Uri(managementUrl), credentials, new MetricsQueryClientOptions { Audience = new MetricsQueryAudience(managementUrl) });
                 ServiceBus = new ServiceBusAdministrationClient(fullyQualifiedNamespace, credentials);
             }
         }
