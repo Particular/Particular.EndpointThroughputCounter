@@ -19,7 +19,7 @@
     <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="11.1.1" />
     <PackageVersion Include="Npgsql" Version="8.0.5" />
     <PackageVersion Include="NuGet.Versioning" Version="6.12.1" />
-    <PackageVersion Include="NUnit" Version="4.2.2" />
+    <PackageVersion Include="NUnit" Version="4.3.0" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.4.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageVersion Include="Particular.Approvals" Version="2.0.0" />
