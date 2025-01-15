@@ -9,7 +9,7 @@
     <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.402.27" />
     <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.401.28" />
     <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.79" />
-    <PackageVersion Include="Azure.Identity" Version="1.13.1" />
+    <PackageVersion Include="Azure.Identity" Version="1.13.2" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.18.2" />
     <PackageVersion Include="Azure.Monitor.Query" Version="1.5.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
