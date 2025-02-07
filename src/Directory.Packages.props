@@ -24,7 +24,7 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageVersion Include="Particular.Approvals" Version="2.0.1" />
     <PackageVersion Include="Particular.LicensingComponent.Report" Version="1.0.0" />
-    <PackageVersion Include="Particular.Packaging" Version="4.2.0" />
+    <PackageVersion Include="Particular.Packaging" Version="4.2.2" />
     <PackageVersion Include="PublicApiGenerator" Version="11.4.1" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageVersion Include="System.Threading.RateLimiting" Version="8.0.0" />
