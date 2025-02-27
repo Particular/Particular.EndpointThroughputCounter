@@ -16,7 +16,7 @@
     <PackageVersion Include="ICSharpCode.Decompiler" Version="8.2.0.7535" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-    <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="11.2.1" />
+    <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="11.2.2" />
     <PackageVersion Include="Npgsql" Version="8.0.5" />
     <PackageVersion Include="NuGet.Versioning" Version="6.13.1" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
