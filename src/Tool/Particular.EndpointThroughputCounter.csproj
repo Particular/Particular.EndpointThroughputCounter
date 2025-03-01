@@ -8,6 +8,7 @@
     <PackAsTool>True</PackAsTool>
     <Description>A tool to measure per-endpoint throughput of an NServiceBus system.</Description>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RollForward>Major</RollForward>
   </PropertyGroup>
 
   <ItemGroup>
