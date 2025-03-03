@@ -17,7 +17,7 @@
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="11.2.2" />
-    <PackageVersion Include="Npgsql" Version="8.0.5" />
+    <PackageVersion Include="Npgsql" Version="9.0.3" />
     <PackageVersion Include="NuGet.Versioning" Version="6.13.2" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.6.0" />
