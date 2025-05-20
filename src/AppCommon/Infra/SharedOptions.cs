@@ -27,12 +27,20 @@ class SharedOptions
         Arity = ArgumentArity.ZeroOrOne
     };
 
+    public static readonly Option<bool> skipThroughputCollection =
+        new("--skipThroughputCollection")
+        {
+            Description = "It returns only the queue names with zero throughput.",
+            Arity = ArgumentArity.ZeroOrOne
+        };
+
     public static readonly Option<int> runtimeInHours =
         new(name: "--runtime", getDefaultValue: () => 24) { IsHidden = true };
 
     public string CustomerName { get; set; }
     public bool RunUnattended { get; private set; }
     public bool SkipVersionCheck { get; private set; }
+    public bool SkipThroughputCollection { get; private set; }
     public int RuntimeInHours { get; private set; }
 
     (string Mask, string Replacement)[] masks;
@@ -53,6 +61,7 @@ class SharedOptions
         command.AddGlobalOption(customerName);
         command.AddGlobalOption(runUnattended);
         command.AddGlobalOption(skipVersionCheck);
+        command.AddGlobalOption(skipThroughputCollection);
         command.AddGlobalOption(runtimeInHours);
     }
 
@@ -61,6 +70,7 @@ class SharedOptions
         CustomerName = parse.GetValueForOption(customerName);
         RunUnattended = parse.GetValueForOption(runUnattended);
         SkipVersionCheck = parse.GetValueForOption(skipVersionCheck);
+        SkipThroughputCollection = parse.GetValueForOption(skipThroughputCollection);
         RuntimeInHours = parse.GetValueForOption(runtimeInHours);
 
         int number = 0;

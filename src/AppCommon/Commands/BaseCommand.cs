@@ -198,34 +198,61 @@ abstract class BaseCommand
         }
         Out.WriteLine();
 
-        var data = await GetData(cancellationToken);
+        Report reportData;
 
-        foreach (var q in data.Queues)
+        if (!shared.SkipThroughputCollection)
         {
-            q.QueueName = shared.Mask(q.QueueName);
-            if (q.Throughput.HasValue)
+            var data = await GetData(cancellationToken);
+
+            foreach (var q in data.Queues)
             {
-                q.Throughput = Math.Abs(q.Throughput.Value);
+                q.QueueName = shared.Mask(q.QueueName);
+                if (q.Throughput.HasValue)
+                {
+                    q.Throughput = Math.Abs(q.Throughput.Value);
+                }
             }
-        }
 
-        var reportData = new Report
+            reportData = new Report
+            {
+                CustomerName = shared.CustomerName,
+                MessageTransport = metadata.MessageTransport,
+                ReportMethod = shared.Mask(metadata.ReportMethod),
+                ToolType = "Throughput Tool",
+                ToolVersion = Versioning.NuGetVersion,
+                Prefix = metadata.Prefix,
+                ScopeType = data.ScopeType,
+                StartTime = data.StartTime,
+                EndTime = data.EndTime,
+                ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,
+                Queues = data.Queues,
+                TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
+                TotalQueues = data.Queues.Length,
+                IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
+            };
+        }
+        else
         {
-            CustomerName = shared.CustomerName,
-            MessageTransport = metadata.MessageTransport,
-            ReportMethod = shared.Mask(metadata.ReportMethod),
-            ToolType = "Throughput Tool",
-            ToolVersion = Versioning.NuGetVersion,
-            Prefix = metadata.Prefix,
-            ScopeType = data.ScopeType,
-            StartTime = data.StartTime,
-            EndTime = data.EndTime,
-            ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,
-            Queues = data.Queues,
-            TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
-            TotalQueues = data.Queues.Length,
-            IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
-        };
+            var mappedQueueNames = metadata.QueueNames
+                .Select(name => new { Name = name, Masked = shared.Mask(name) })
+                .ToArray();
+            reportData = new Report
+            {
+                CustomerName = shared.CustomerName,
+                MessageTransport = metadata.MessageTransport,
+                ReportMethod = shared.Mask(metadata.ReportMethod),
+                ToolType = "Throughput Tool",
+                ToolVersion = Versioning.NuGetVersion,
+                Prefix = metadata.Prefix,
+                StartTime = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero),
+                EndTime = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(1), TimeSpan.Zero),
+                ReportDuration = TimeSpan.FromDays(1),
+                Queues = mappedQueueNames.Select(map => new QueueThroughput { QueueName = map.Masked, Throughput = 0 }).ToArray(),
+                TotalThroughput = 0,
+                TotalQueues = mappedQueueNames.Length,
+                IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
+            };
+        }
 
         var report = new SignedReport
         {
