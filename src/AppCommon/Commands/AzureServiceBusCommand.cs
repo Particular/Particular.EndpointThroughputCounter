@@ -53,6 +53,7 @@ class AzureServiceBusCommand : BaseCommand
 
     readonly AzureClient azure;
 
+    string[] queueNames;
 
     public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain)
     : base(shared)
@@ -65,14 +66,8 @@ class AzureServiceBusCommand : BaseCommand
     {
         try
         {
-            Out.WriteLine($"Getting data from {azure.FullyQualifiedNamespace}...");
             var endTime = DateTime.UtcNow.Date.AddDays(1);
             var startTime = endTime.AddDays(-30);
-
-            var queueNames = await azure.GetQueueNames(cancellationToken);
-
-            Out.WriteLine($"Found {queueNames.Length} queues");
-
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
@@ -116,13 +111,20 @@ class AzureServiceBusCommand : BaseCommand
         }
     }
 
-    protected override Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
+    protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(new EnvironmentDetails
+        Out.WriteLine($"Getting data from {azure.FullyQualifiedNamespace}...");
+
+        queueNames = await azure.GetQueueNames(cancellationToken);
+
+        Out.WriteLine($"Found {queueNames.Length} queues");
+
+        return new EnvironmentDetails
         {
             MessageTransport = "AzureServiceBus",
             ReportMethod = $"AzureServiceBus Metrics: {azure.FullyQualifiedNamespace}",
+            QueueNames = queueNames,
             SkipEndpointListCheck = true
-        });
+        };
     }
 }
