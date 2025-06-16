@@ -6,19 +6,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="AWSSDK.CloudWatch" Version="3.7.402.88" />
-    <PackageVersion Include="AWSSDK.SecurityToken" Version="3.7.401.89" />
-    <PackageVersion Include="AWSSDK.SQS" Version="3.7.400.140" />
-    <PackageVersion Include="Azure.Identity" Version="1.13.2" />
-    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.19.0" />
+    <PackageVersion Include="AWSSDK.CloudWatch" Version="4.0.1.4" />
+    <PackageVersion Include="AWSSDK.SecurityToken" Version="4.0.0.8" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.0.9" />
+    <PackageVersion Include="Azure.Identity" Version="1.14.0" />
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageVersion Include="Azure.Monitor.Query" Version="1.6.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="8.2.0.7535" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="11.2.3" />
     <PackageVersion Include="Npgsql" Version="9.0.3" />
-    <PackageVersion Include="NuGet.Versioning" Version="6.13.2" />
+    <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
     <PackageVersion Include="NUnit" Version="4.3.2" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.7.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />

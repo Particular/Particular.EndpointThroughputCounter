@@ -96,9 +96,9 @@ class SqsCommand : BaseCommand
 
         return new QueueDetails
         {
-            StartTime = new DateTimeOffset(aws.StartTimeUtc, TimeSpan.Zero),
-            EndTime = new DateTimeOffset(aws.EndTimeUtc, TimeSpan.Zero),
-            Queues = data.OrderBy(q => q.QueueName).ToArray(),
+            StartTime = new DateTimeOffset(aws.StartDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+            EndTime = new DateTimeOffset(aws.EndDate.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero),
+            Queues = [.. data.OrderBy(q => q.QueueName)],
             TimeOfObservation = TimeSpan.FromDays(1)
         };
     }
