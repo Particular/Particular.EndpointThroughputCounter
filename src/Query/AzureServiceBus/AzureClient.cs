@@ -53,9 +53,6 @@
             yield return new EnvironmentCredential();
             yield return new SharedTokenCacheCredential();
             yield return new VisualStudioCredential();
-#pragma warning disable CS0618 // Type or member is obsolete
-            yield return new VisualStudioCodeCredential();
-#pragma warning restore CS0618 // Type or member is obsolete
 
             // Don't really need this one to take 100s * 4 tries to finally time out
             var opts = new TokenCredentialOptions();
