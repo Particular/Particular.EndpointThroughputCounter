@@ -17,8 +17,8 @@
         readonly AmazonSQSClient sqs;
         readonly FixedWindowRateLimiter rateLimiter;
 
-        public DateTime EndTimeUtc { get; set; }
-        public DateTime StartTimeUtc { get; set; }
+        public DateOnly EndDate { get; set; }
+        public DateOnly StartDate { get; set; }
 
         public string CloudWatchRegion => cloudWatch.Config.RegionEndpoint.SystemName;
         public string SQSRegion => sqs.Config.RegionEndpoint.SystemName;
@@ -34,8 +34,8 @@
                 // Otherwise AcquireAsync() will return a lease immediately with IsAcquired = false
                 QueueLimit = int.MaxValue
             });
-            EndTimeUtc = DateTime.UtcNow.Date.AddDays(1);
-            StartTimeUtc = EndTimeUtc.AddDays(-30);
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+            StartDate = EndDate.AddDays(-30);
 
             sqs = new AmazonSQSClient();
             cloudWatch = new AmazonCloudWatchClient();
@@ -58,7 +58,10 @@
 
                     var response = await sqs.ListQueuesAsync(request, cancellationToken).ConfigureAwait(false);
 
-                    queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]).ToArray());
+                    if (response.QueueUrls is { Count: > 0 })
+                    {
+                        queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]).ToArray());
+                    }
 
                     onProgress(queueNames.Count);
 
@@ -86,19 +89,19 @@
             {
                 Namespace = "AWS/SQS",
                 MetricName = "NumberOfMessagesDeleted",
-                StartTimeUtc = StartTimeUtc,
-                EndTimeUtc = EndTimeUtc,
-                Period = 86400, // 1 day
+                StartTime = StartDate.ToDateTime(TimeOnly.MinValue),
+                EndTime = EndDate.ToDateTime(TimeOnly.MaxValue),
+                Period = 24 * 60 * 60, // 1 day
                 Statistics = ["Sum"],
-                Dimensions = [new Dimension { Name = "QueueName", Value = queueName }]
+                Dimensions = [
+                    new Dimension { Name = "QueueName", Value = queueName }]
             };
 
             using var lease = await rateLimiter.AcquireAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             var resp = await cloudWatch.GetMetricStatisticsAsync(req, cancellationToken).ConfigureAwait(false);
 
-            var maxThroughput = resp.Datapoints.MaxBy(d => d.Sum)?.Sum ?? 0;
-
-            return (long)maxThroughput;
+            return resp.Datapoints is { Count: > 0 } ?
+                (long)resp.Datapoints.Select(d => d.Sum.GetValueOrDefault(0)).Max() : 0L;
         }
     }
 }
