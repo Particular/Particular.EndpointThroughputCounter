@@ -9,7 +9,7 @@ defaults:
   run:
     shell: bash
 jobs:
-  dependabot:
+  renovate:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependencyupdates[bot]' && contains(github.event.pull_request.title, 'AWSSDK')
     steps:
