@@ -6,9 +6,9 @@ More documentation is [on our website](https://docs.particular.net/nservicebus/t
 
 ## Testing locally
 
-Testing locally requires some configuration that cannot be check in security reasons.
+Testing locally requires some configuration that cannot be checked in for security reasons.
 
-Create a `src/Tool/local.settings.json` file (this is included in .gitignore and will not be checked in) containing the following:
+Create a `src/Tool/local.settings.json` file that is set to copy to the output directory on build (this is included in .gitignore and will not be checked in), and contains the following:
 
 ```json
 {
