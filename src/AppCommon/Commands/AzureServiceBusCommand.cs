@@ -107,7 +107,7 @@ class AzureServiceBusCommand : BaseCommand
                     }
                     else
                     {
-                        Out.WriteLine(" - No throughput detected in 30 days, ignoring");
+                        Out.WriteLine(" - No throughput detected in 90 days, ignoring");
                     }
                 }
             }
