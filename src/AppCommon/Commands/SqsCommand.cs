@@ -74,15 +74,39 @@ class SqsCommand : BaseCommand
 
         var tasks = queueNames.Select(async queueName =>
         {
-            var maxThroughput = await aws.GetMaxThroughput(queueName, cancellationToken).ConfigureAwait(false);
+            var datapoints = await aws.GetMMetricsData(queueName, cancellationToken).ConfigureAwait(false);
 
-            // Since we get 30 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
+            var maxThroughput = datapoints is { Count: > 0 } ?
+                                (long)datapoints.Select(d => d.Sum.GetValueOrDefault(0)).Max() : 0L;
+            // Since we get 365 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
             if (maxThroughput > 0)
             {
+                DateOnly currentDate = aws.StartDate;
+                var dailyData = new Dictionary<DateOnly, DailyThroughput>();
+                while (currentDate <= aws.EndDate)
+                {
+                    dailyData.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
+
+                    currentDate = currentDate.AddDays(1);
+                }
+
+                foreach (var datapoint in datapoints)
+                {
+                    // There is a bug in the AWS SDK. The timestamp is actually UTC time, eventhough the DateTime returned type says Local
+                    // See https://github.com/aws/aws-sdk-net/issues/167
+                    // So do not convert the timestamp to UTC time!
+                    if (datapoint.Timestamp.HasValue)
+                    {
+                        currentDate = DateOnly.FromDateTime(datapoint.Timestamp.Value);
+                        dailyData[currentDate] = new DailyThroughput { MessageCount = (long)datapoint.Sum.GetValueOrDefault(0), DateUTC = currentDate };
+                    }
+                }
+
                 data.Add(new QueueThroughput
                 {
                     QueueName = queueName,
-                    Throughput = maxThroughput
+                    Throughput = maxThroughput,
+                    DailyThroughputFromBroker = [.. dailyData.Values]
                 });
             }
 
