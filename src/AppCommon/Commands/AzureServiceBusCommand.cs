@@ -66,8 +66,8 @@ class AzureServiceBusCommand : BaseCommand
     {
         try
         {
-            var endTime = DateTime.UtcNow.Date.AddDays(1);
-            var startTime = endTime.AddDays(-30);
+            var endTime = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+            var startTime = endTime.AddDays(-90);
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
@@ -85,10 +85,25 @@ class AzureServiceBusCommand : BaseCommand
                 {
                     var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
 
-                    // Since we get 30 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
+                    // Since we get 90 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
                     if (maxThroughput is not null and not 0)
                     {
-                        results.Add(new QueueThroughput { QueueName = queueName, Throughput = (long?)maxThroughput });
+                        DateOnly currentDate = startTime;
+                        var data = new Dictionary<DateOnly, DailyThroughput>();
+                        while (currentDate <= endTime)
+                        {
+                            data.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
+
+                            currentDate = currentDate.AddDays(1);
+                        }
+
+                        foreach (var metricValue in metricValues)
+                        {
+                            currentDate = DateOnly.FromDateTime(metricValue.TimeStamp.UtcDateTime);
+                            data[currentDate] = new DailyThroughput { MessageCount = (long)(metricValue.Total ?? 0), DateUTC = currentDate };
+                        }
+
+                        results.Add(new QueueThroughput { QueueName = queueName, Throughput = (long?)maxThroughput, DailyThroughputFromBroker = [.. data.Values] });
                     }
                     else
                     {
@@ -99,8 +114,8 @@ class AzureServiceBusCommand : BaseCommand
 
             return new QueueDetails
             {
-                StartTime = new DateTimeOffset(startTime, TimeSpan.Zero),
-                EndTime = new DateTimeOffset(endTime, TimeSpan.Zero),
+                StartTime = new DateTimeOffset(startTime, TimeOnly.MinValue, TimeSpan.Zero),
+                EndTime = new DateTimeOffset(endTime, TimeOnly.MaxValue, TimeSpan.Zero),
                 Queues = results.OrderBy(q => q.QueueName).ToArray(),
                 TimeOfObservation = TimeSpan.FromDays(1)
             };
