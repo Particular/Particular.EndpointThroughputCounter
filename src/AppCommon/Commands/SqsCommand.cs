@@ -118,12 +118,14 @@ class SqsCommand : BaseCommand
 
         Out.EndProgress();
 
+        var s = new DateTimeOffset(aws.StartDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var e = new DateTimeOffset(aws.EndDate.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero);
         return new QueueDetails
         {
-            StartTime = new DateTimeOffset(aws.StartDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
-            EndTime = new DateTimeOffset(aws.EndDate.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero),
+            StartTime = s,
+            EndTime = e,
             Queues = [.. data.OrderBy(q => q.QueueName)],
-            TimeOfObservation = TimeSpan.FromDays(1)
+            TimeOfObservation = e - s
         };
     }
 

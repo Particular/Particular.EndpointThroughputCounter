@@ -224,7 +224,7 @@ abstract class BaseCommand
                 ScopeType = data.ScopeType,
                 StartTime = data.StartTime,
                 EndTime = data.EndTime,
-                ReportDuration = data.TimeOfObservation ?? data.EndTime - data.StartTime,
+                ReportDuration = data.TimeOfObservation ?? (data.EndTime - data.StartTime),
                 Queues = data.Queues,
                 TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = data.Queues.Length,

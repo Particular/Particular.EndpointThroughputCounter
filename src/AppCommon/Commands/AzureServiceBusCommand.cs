@@ -112,12 +112,14 @@ class AzureServiceBusCommand : BaseCommand
                 }
             }
 
+            var s = new DateTimeOffset(startTime, TimeOnly.MinValue, TimeSpan.Zero);
+            var e = new DateTimeOffset(endTime, TimeOnly.MaxValue, TimeSpan.Zero);
             return new QueueDetails
             {
-                StartTime = new DateTimeOffset(startTime, TimeOnly.MinValue, TimeSpan.Zero),
-                EndTime = new DateTimeOffset(endTime, TimeOnly.MaxValue, TimeSpan.Zero),
+                StartTime = s,
+                EndTime = e,
                 Queues = results.OrderBy(q => q.QueueName).ToArray(),
-                TimeOfObservation = TimeSpan.FromDays(1)
+                TimeOfObservation = e - s
             };
         }
         catch (QueryException x)
