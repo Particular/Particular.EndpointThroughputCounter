@@ -74,15 +74,41 @@ class SqsCommand : BaseCommand
 
         var tasks = queueNames.Select(async queueName =>
         {
-            var maxThroughput = await aws.GetMaxThroughput(queueName, cancellationToken).ConfigureAwait(false);
+            var datapoints = (await aws.GetMMetricsData(queueName, cancellationToken)).OrderBy(d => d.Timestamp).ToArray();
 
-            // Since we get 30 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
+            var maxThroughput = datapoints is { Length: > 0 } ?
+                                (long)datapoints.Select(d => d.Sum.GetValueOrDefault(0)).Max() : 0L;
+            // Since we get 365 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
             if (maxThroughput > 0)
             {
+                var startTime = DateOnly.FromDateTime(datapoints.First().Timestamp.Value);
+                var endTime = DateOnly.FromDateTime(datapoints.Last().Timestamp.Value);
+                DateOnly currentDate = startTime;
+                var dailyData = new Dictionary<DateOnly, DailyThroughput>();
+                while (currentDate <= endTime)
+                {
+                    dailyData.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
+
+                    currentDate = currentDate.AddDays(1);
+                }
+
+                foreach (var datapoint in datapoints)
+                {
+                    // There is a bug in the AWS SDK. The timestamp is actually UTC time, eventhough the DateTime returned type says Local
+                    // See https://github.com/aws/aws-sdk-net/issues/167
+                    // So do not convert the timestamp to UTC time!
+                    if (datapoint.Timestamp.HasValue)
+                    {
+                        currentDate = DateOnly.FromDateTime(datapoint.Timestamp.Value);
+                        dailyData[currentDate] = new DailyThroughput { MessageCount = (long)datapoint.Sum.GetValueOrDefault(0), DateUTC = currentDate };
+                    }
+                }
+
                 data.Add(new QueueThroughput
                 {
                     QueueName = queueName,
-                    Throughput = maxThroughput
+                    Throughput = maxThroughput,
+                    DailyThroughputFromBroker = [.. dailyData.Values]
                 });
             }
 
@@ -94,12 +120,14 @@ class SqsCommand : BaseCommand
 
         Out.EndProgress();
 
+        var s = new DateTimeOffset(aws.StartDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var e = new DateTimeOffset(aws.EndDate.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero);
         return new QueueDetails
         {
-            StartTime = new DateTimeOffset(aws.StartDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
-            EndTime = new DateTimeOffset(aws.EndDate.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero),
+            StartTime = s,
+            EndTime = e,
             Queues = [.. data.OrderBy(q => q.QueueName)],
-            TimeOfObservation = TimeSpan.FromDays(1)
+            TimeOfObservation = e - s
         };
     }
 
