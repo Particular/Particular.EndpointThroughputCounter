@@ -74,16 +74,18 @@ class SqsCommand : BaseCommand
 
         var tasks = queueNames.Select(async queueName =>
         {
-            var datapoints = await aws.GetMMetricsData(queueName, cancellationToken).ConfigureAwait(false);
+            var datapoints = (await aws.GetMMetricsData(queueName, cancellationToken)).OrderBy(d => d.Timestamp).ToArray();
 
-            var maxThroughput = datapoints is { Count: > 0 } ?
+            var maxThroughput = datapoints is { Length: > 0 } ?
                                 (long)datapoints.Select(d => d.Sum.GetValueOrDefault(0)).Max() : 0L;
             // Since we get 365 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
             if (maxThroughput > 0)
             {
-                DateOnly currentDate = aws.StartDate;
+                var startTime = DateOnly.FromDateTime(datapoints.First().Timestamp.Value);
+                var endTime = DateOnly.FromDateTime(datapoints.Last().Timestamp.Value);
+                DateOnly currentDate = startTime;
                 var dailyData = new Dictionary<DateOnly, DailyThroughput>();
-                while (currentDate <= aws.EndDate)
+                while (currentDate <= endTime)
                 {
                     dailyData.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
 

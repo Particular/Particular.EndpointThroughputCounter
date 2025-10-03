@@ -79,7 +79,7 @@ class AzureServiceBusCommand : BaseCommand
 
                 Out.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
 
-                var metricValues = await azure.GetMetrics(queueName, startTime, endTime, cancellationToken);
+                var metricValues = (await azure.GetMetrics(queueName, startTime, endTime, cancellationToken)).OrderBy(m => m.TimeStamp).ToArray();
 
                 if (metricValues is not null)
                 {
@@ -88,9 +88,11 @@ class AzureServiceBusCommand : BaseCommand
                     // Since we get 90 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
                     if (maxThroughput is not null and not 0)
                     {
-                        DateOnly currentDate = startTime;
+                        var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
+                        var end = DateOnly.FromDateTime(metricValues.Last().TimeStamp.UtcDateTime);
+                        var currentDate = start;
                         var data = new Dictionary<DateOnly, DailyThroughput>();
-                        while (currentDate <= endTime)
+                        while (currentDate <= end)
                         {
                             data.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
 
