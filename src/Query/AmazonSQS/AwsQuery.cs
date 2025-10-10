@@ -35,7 +35,7 @@
                 QueueLimit = int.MaxValue
             });
             EndDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
-            StartDate = EndDate.AddDays(-30);
+            StartDate = EndDate.AddDays(-365);
 
             sqs = new AmazonSQSClient();
             cloudWatch = new AmazonCloudWatchClient();
@@ -83,7 +83,7 @@
             }
         }
 
-        public async Task<long> GetMaxThroughput(string queueName, CancellationToken cancellationToken = default)
+        public async Task<List<Datapoint>> GetMMetricsData(string queueName, CancellationToken cancellationToken = default)
         {
             var req = new GetMetricStatisticsRequest
             {
@@ -100,8 +100,7 @@
             using var lease = await rateLimiter.AcquireAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             var resp = await cloudWatch.GetMetricStatisticsAsync(req, cancellationToken).ConfigureAwait(false);
 
-            return resp.Datapoints is { Count: > 0 } ?
-                (long)resp.Datapoints.Select(d => d.Sum.GetValueOrDefault(0)).Max() : 0L;
+            return resp.Datapoints ?? [];
         }
     }
 }
