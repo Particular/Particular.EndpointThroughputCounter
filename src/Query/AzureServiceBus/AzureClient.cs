@@ -116,18 +116,18 @@
             }
         }
 
-        public Task<IReadOnlyList<MetricValue>> GetMetrics(string queueName, DateTime startTime, DateTime endTime, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<MetricValue>> GetMetrics(string queueName, DateOnly startTime, DateOnly endTime, CancellationToken cancellationToken = default)
         {
             return GetDataWithCurrentCredentials(async token =>
             {
                 try
                 {
                     var response = await currentClients.Metrics.QueryResourceAsync(resourceId,
-                        new[] { "CompleteMessage" },
+                        ["CompleteMessage"],
                         new MetricsQueryOptions
                         {
                             Filter = $"EntityName eq '{queueName}'",
-                            TimeRange = new QueryTimeRange(startTime, endTime),
+                            TimeRange = new QueryTimeRange(startTime.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), endTime.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc)),
                             Granularity = TimeSpan.FromDays(1)
                         },
                         token).ConfigureAwait(false);
