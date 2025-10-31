@@ -23,16 +23,34 @@ class AzureServiceBusCommand : BaseCommand
             IsRequired = false
         };
 
+        var regionArg = new Option<string>(
+            name: "--region",
+            description: "The Azure region where the Service Bus namespace is located, which is listed as the location in the Properties page in the Azure Portal.")
+        {
+            IsRequired = true
+        };
+
+        var metricsDomainArg = new Option<string>("--metricsDomain",
+            description: "The Azure Monitor Metrics domain. Defaults to 'metrics.monitor.azure.com' and only must be specified for Azure customers using non-standard domains like government cloud customers.")
+        {
+            IsRequired = false
+        };
+
         serviceBusDomainArg.SetDefaultValue("servicebus.windows.net");
+        metricsDomainArg.SetDefaultValue("metrics.monitor.azure.com");
 
         command.AddOption(resourceIdArg);
         command.AddOption(serviceBusDomainArg);
+        command.AddOption(regionArg);
+        command.AddOption(metricsDomainArg);
 
         command.SetHandler(async context =>
         {
             var shared = SharedOptions.Parse(context);
             var resourceId = context.ParseResult.GetValueForOption(resourceIdArg);
             var serviceBusDomain = context.ParseResult.GetValueForOption(serviceBusDomainArg);
+            var region = context.ParseResult.GetValueForOption(regionArg);
+            var metricsDomain = context.ParseResult.GetValueForOption(metricsDomainArg);
             var cancellationToken = context.GetCancellationToken();
 
 #if DEBUG
@@ -44,7 +62,7 @@ class AzureServiceBusCommand : BaseCommand
             }
 #endif
 
-            var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain);
+            var runner = new AzureServiceBusCommand(shared, resourceId, serviceBusDomain, region, metricsDomain);
             await runner.Run(cancellationToken);
         });
 
@@ -55,10 +73,10 @@ class AzureServiceBusCommand : BaseCommand
 
     string[] queueNames;
 
-    public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain)
+    public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain, string region, string metricsDomain)
     : base(shared)
     {
-        azure = new AzureClient(resourceId, serviceBusDomain, Out.WriteLine);
+        azure = new AzureClient(resourceId, serviceBusDomain, region, metricsDomain, Out.WriteLine);
         RunInfo.Add("AzureServiceBusNamespace", azure.FullyQualifiedNamespace);
     }
 

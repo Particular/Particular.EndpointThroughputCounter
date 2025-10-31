@@ -1,17 +1,15 @@
 <Project>
-
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageVersion Include="AWSSDK.CloudWatch" Version="4.0.4.6" />
     <PackageVersion Include="AWSSDK.SecurityToken" Version="4.0.2.9" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.1.11" />
-    <PackageVersion Include="Azure.Identity" Version="1.14.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.17.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
-    <PackageVersion Include="Azure.Monitor.Query" Version="1.6.0" />
+    <PackageVersion Include="Azure.Monitor.Query.Metrics" Version="1.0.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.4.1" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="8.2.0.7535" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.3" />
@@ -29,9 +27,7 @@
     <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageVersion Include="System.Threading.RateLimiting" Version="8.0.0" />
   </ItemGroup>
-
   <ItemGroup Label="Pinned transitive dependencies">
     <PackageVersion Include="System.Private.Uri" Version="4.3.2" />
   </ItemGroup>
-
 </Project>
