@@ -12,17 +12,29 @@ class AzureServiceBusCommand : BaseCommand
 
         var resourceIdArg = new Option<string>(
             name: "--resourceId",
-            description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.") { IsRequired = true };
+            description: "The resource id for the Azure Service Bus namespace, which can be found in the Properties page in the Azure Portal.")
+        {
+            IsRequired = true
+        };
 
         var serviceBusDomainArg = new Option<string>("--serviceBusDomain",
-            description: "The Service Bus domain. Defaults to 'servicebus.windows.net' and only must be specified for Azure customers using non-standard domains like government cloud customers.") { IsRequired = false };
+            description: "The Service Bus domain. Defaults to 'servicebus.windows.net' and only must be specified for Azure customers using non-standard domains like government cloud customers.")
+        {
+            IsRequired = false
+        };
 
         var regionArg = new Option<string>(
             name: "--region",
-            description: "The Azure region where the Service Bus namespace is located, which is listed as the location in the Properties page in the Azure Portal.") { IsRequired = true };
+            description: "The Azure region where the Service Bus namespace is located, which is listed as the location in the Properties page in the Azure Portal.")
+        {
+            IsRequired = true
+        };
 
         var metricsDomainArg = new Option<string>("--metricsDomain",
-            description: "The Azure Monitor Metrics domain. Defaults to 'metrics.monitor.azure.com' and only must be specified for Azure customers using non-standard domains like government cloud customers.") { IsRequired = false };
+            description: "The Azure Monitor Metrics domain. Defaults to 'metrics.monitor.azure.com' and only must be specified for Azure customers using non-standard domains like government cloud customers.")
+        {
+            IsRequired = false
+        };
 
         serviceBusDomainArg.SetDefaultValue("servicebus.windows.net");
         metricsDomainArg.SetDefaultValue("metrics.monitor.azure.com");
