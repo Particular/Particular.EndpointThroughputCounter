@@ -20,13 +20,16 @@
 
         Queue<AuthenticatedClientSet> connectionQueue;
         AuthenticatedClientSet currentClients;
+        const string CompleteMessageMetricName = "CompleteMessage";
+        const string MicrosoftServicebusNamespacesMetricsNamespace = "Microsoft.ServiceBus/Namespaces";
 
         public string FullyQualifiedNamespace { get; }
+
         public AzureClient(string resourceId, string serviceBusDomain, string region, string metricsDomain, Action<string> log = null)
         {
             this.resourceId = ResourceIdentifier.Parse(resourceId);
 
-            this.log = log ?? new(msg => { });
+            this.log = log ?? (_ => { });
 
             FullyQualifiedNamespace = $"{this.resourceId.Name}.{serviceBusDomain}";
 
@@ -43,9 +46,14 @@
             yield return new VisualStudioCredential();
 
             // Don't really need this one to take 100s * 4 tries to finally time out
-            var opts = new TokenCredentialOptions();
-            opts.Retry.MaxRetries = 1;
-            opts.Retry.NetworkTimeout = TimeSpan.FromSeconds(10);
+            var opts = new TokenCredentialOptions
+            {
+                Retry =
+                {
+                    MaxRetries = 1,
+                    NetworkTimeout = TimeSpan.FromSeconds(10)
+                }
+            };
             yield return new ManagedIdentityCredential(FullyQualifiedNamespace, opts);
         }
 
@@ -108,8 +116,8 @@
                 {
                     var response = await currentClients.Metrics.QueryResourcesAsync(
                         [resourceId],
-                        ["CompleteMessage"],
-                        "Microsoft.ServiceBus/Namespaces",
+                        [CompleteMessageMetricName],
+                        MicrosoftServicebusNamespacesMetricsNamespace,
                         new MetricsQueryResourcesOptions
                         {
                             Filter = $"EntityName eq '{queueName}'",
@@ -119,8 +127,28 @@
                         },
                         token).ConfigureAwait(false);
 
-                    // Yeah, it's buried deep
-                    return response.Value.Values.FirstOrDefault()?.Metrics.FirstOrDefault()?.TimeSeries.FirstOrDefault()?.Values ?? [];
+                    var metricQueryResult = response.Value.Values.SingleOrDefault(mr => mr.Namespace == MicrosoftServicebusNamespacesMetricsNamespace);
+
+                    if (metricQueryResult is null)
+                    {
+                        throw new Exception("No metrics query results returned for Microsoft.ServiceBus/Namespace");
+                    }
+
+                    var metricResult = metricQueryResult.GetMetricByName(CompleteMessageMetricName);
+
+                    if (metricResult.Error.Message is not null)
+                    {
+                        throw new Exception($"Metrics query result for '{metricResult.Name}' failed: {metricResult.Error.Message}");
+                    }
+
+                    var timeSeries = metricResult.TimeSeries.SingleOrDefault();
+
+                    if (timeSeries is null)
+                    {
+                        throw new Exception($"Metrics query result for '{metricResult.Name}' contained no time series");
+                    }
+
+                    return timeSeries.Values;
                 }
                 catch (Azure.RequestFailedException reqFailed) when (reqFailed.Message.Contains("ResourceGroupNotFound"))
                 {
@@ -136,7 +164,7 @@
             return GetDataWithCurrentCredentials(async token =>
             {
                 var queueList = new List<string>();
-                await foreach (var queue in currentClients.ServiceBus.GetQueuesAsync(cancellationToken).WithCancellation(cancellationToken))
+                await foreach (var queue in currentClients.ServiceBus.GetQueuesAsync(token))
                 {
                     queueList.Add(queue.Name);
                 }
