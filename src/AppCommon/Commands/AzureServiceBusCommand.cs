@@ -135,7 +135,7 @@ class AzureServiceBusCommand : BaseCommand
                         Throughput = (long?)maxThroughput,
                         DailyThroughputFromBroker = [.. data.Values]
                     });
-                    Out.WriteLine($" - MaxThroughput: {maxThroughput}");
+                    Out.WriteLine($" - Max daily throughput: {maxThroughput}");
                 }
                 else
                 {
