@@ -74,7 +74,7 @@ class AzureServiceBusCommand : BaseCommand
     string[] queueNames;
 
     public AzureServiceBusCommand(SharedOptions shared, string resourceId, string serviceBusDomain, string region, string metricsDomain)
-    : base(shared)
+        : base(shared)
     {
         azure = new AzureClient(resourceId, serviceBusDomain, region, metricsDomain, Out.WriteLine);
         RunInfo.Add("AzureServiceBusNamespace", azure.FullyQualifiedNamespace);
@@ -84,8 +84,8 @@ class AzureServiceBusCommand : BaseCommand
     {
         try
         {
-            var endTime = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
-            var startTime = endTime.AddDays(-90);
+            var endTime = DateOnly.FromDateTime(DateTime.UtcNow);
+            var startTime = endTime.AddDays(-90); // Azure Monitor only gives a data for a month back, but we ask for more just in case
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
@@ -95,40 +95,51 @@ class AzureServiceBusCommand : BaseCommand
             {
                 var queueName = queueNames[i];
 
-                Out.WriteLine($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
+                Out.Write($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
 
                 var metricValues = (await azure.GetMetrics(queueName, startTime, endTime, cancellationToken)).OrderBy(m => m.TimeStamp).ToArray();
 
-                if (metricValues is not null)
+                var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
+                var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
+                var end = DateOnly.FromDateTime(metricValues.Last().TimeStamp.UtcDateTime);
+
+                // If there's no throughput in that amount of time, hard to legitimately call it an endpoint
+                if (maxThroughput is not null and not 0)
                 {
-                    var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
-
-                    // Since we get 90 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
-                    if (maxThroughput is not null and not 0)
+                    var currentDate = start;
+                    var data = new Dictionary<DateOnly, DailyThroughput>();
+                    while (currentDate <= end)
                     {
-                        var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
-                        var end = DateOnly.FromDateTime(metricValues.Last().TimeStamp.UtcDateTime);
-                        var currentDate = start;
-                        var data = new Dictionary<DateOnly, DailyThroughput>();
-                        while (currentDate <= end)
+                        data.Add(currentDate, new DailyThroughput
                         {
-                            data.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
+                            MessageCount = 0,
+                            DateUTC = currentDate
+                        });
 
-                            currentDate = currentDate.AddDays(1);
-                        }
-
-                        foreach (var metricValue in metricValues)
-                        {
-                            currentDate = DateOnly.FromDateTime(metricValue.TimeStamp.UtcDateTime);
-                            data[currentDate] = new DailyThroughput { MessageCount = (long)(metricValue.Total ?? 0), DateUTC = currentDate };
-                        }
-
-                        results.Add(new QueueThroughput { QueueName = queueName, Throughput = (long?)maxThroughput, DailyThroughputFromBroker = [.. data.Values] });
+                        currentDate = currentDate.AddDays(1);
                     }
-                    else
+
+                    foreach (var metricValue in metricValues)
                     {
-                        Out.WriteLine(" - No throughput detected in 90 days, ignoring");
+                        currentDate = DateOnly.FromDateTime(metricValue.TimeStamp.UtcDateTime);
+                        data[currentDate] = new DailyThroughput
+                        {
+                            MessageCount = (long)(metricValue.Total ?? 0),
+                            DateUTC = currentDate
+                        };
                     }
+
+                    results.Add(new QueueThroughput
+                    {
+                        QueueName = queueName,
+                        Throughput = (long?)maxThroughput,
+                        DailyThroughputFromBroker = [.. data.Values]
+                    });
+                    Out.WriteLine($" - Max daily throughput: {maxThroughput} ({start.ToShortDateString()} - {end.ToShortDateString()})");
+                }
+                else
+                {
+                    Out.WriteLine($" - No throughput detected for the period {start.ToShortDateString()} - {end.ToShortDateString()}, ignoring");
                 }
             }
 
