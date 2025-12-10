@@ -131,7 +131,7 @@
 
                     if (metricQueryResult is null)
                     {
-                        throw new Exception("No metrics query results returned for Microsoft.ServiceBus/Namespace");
+                        throw new Exception($"No metrics query results returned for {MicrosoftServicebusNamespacesMetricsNamespace}");
                     }
 
                     var metricResult = metricQueryResult.GetMetricByName(CompleteMessageMetricName);
