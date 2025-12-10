@@ -139,7 +139,7 @@ class AzureServiceBusCommand : BaseCommand
                 }
                 else
                 {
-                    Out.WriteLine($" - No throughput detected in during ({start.ToShortDateString()} - {end.ToShortDateString()}), ignoring");
+                    Out.WriteLine($" - No throughput detected for the period {start.ToShortDateString()} - {end.ToShortDateString()}, ignoring");
                 }
             }
 
