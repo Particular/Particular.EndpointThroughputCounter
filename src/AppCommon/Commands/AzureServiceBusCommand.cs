@@ -85,7 +85,7 @@ class AzureServiceBusCommand : BaseCommand
         try
         {
             var endTime = DateOnly.FromDateTime(DateTime.UtcNow);
-            var startTime = endTime.AddDays(-90);
+            var startTime = endTime.AddDays(-90); // Azure Monitor only gives a data for a month back, but we ask for more just in case
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
@@ -100,12 +100,12 @@ class AzureServiceBusCommand : BaseCommand
                 var metricValues = (await azure.GetMetrics(queueName, startTime, endTime, cancellationToken)).OrderBy(m => m.TimeStamp).ToArray();
 
                 var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
+                var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
+                var end = DateOnly.FromDateTime(metricValues.Last().TimeStamp.UtcDateTime);
 
-                // Since we get 90 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
+                // If there's no throughput in that amount of time, hard to legitimately call it an endpoint
                 if (maxThroughput is not null and not 0)
                 {
-                    var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
-                    var end = DateOnly.FromDateTime(metricValues.Last().TimeStamp.UtcDateTime);
                     var currentDate = start;
                     var data = new Dictionary<DateOnly, DailyThroughput>();
                     while (currentDate <= end)
@@ -139,7 +139,7 @@ class AzureServiceBusCommand : BaseCommand
                 }
                 else
                 {
-                    Out.WriteLine(" - No throughput detected in 90 days, ignoring");
+                    Out.WriteLine($" - No throughput detected in during ({start.ToShortDateString()} - {end.ToShortDateString()}), ignoring");
                 }
             }
 
