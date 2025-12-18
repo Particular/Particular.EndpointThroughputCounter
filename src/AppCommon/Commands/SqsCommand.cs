@@ -74,41 +74,37 @@ class SqsCommand : BaseCommand
 
         var tasks = queueNames.Select(async queueName =>
         {
-            var datapoints = (await aws.GetMMetricsData(queueName, cancellationToken)).OrderBy(d => d.Timestamp).ToArray();
+            var response = await aws.GetMMetricsData(queueName, cancellationToken);
+            var datapoints = response.ToDictionary(
+                k => DateOnly.FromDateTime(k.Timestamp.Value),
+                v => (long)v.Sum.GetValueOrDefault(0)
+            );
 
-            var maxThroughput = datapoints is { Length: > 0 } ?
-                                (long)datapoints.Select(d => d.Sum.GetValueOrDefault(0)).Max() : 0L;
+            var maxThroughput = datapoints.Values.Max();
+
             // Since we get 365 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
             if (maxThroughput > 0)
             {
-                var startTime = DateOnly.FromDateTime(datapoints.First().Timestamp.Value);
-                var endTime = DateOnly.FromDateTime(datapoints.Last().Timestamp.Value);
-                DateOnly currentDate = startTime;
-                var dailyData = new Dictionary<DateOnly, DailyThroughput>();
-                while (currentDate <= endTime)
-                {
-                    dailyData.Add(currentDate, new DailyThroughput { MessageCount = 0, DateUTC = currentDate });
+                var startTime = datapoints.Keys.Min();
+                var endTime = datapoints.Keys.Max();
 
-                    currentDate = currentDate.AddDays(1);
-                }
+                var dailyData = new List<DailyThroughput>(endTime.DayNumber - startTime.DayNumber + 1);
 
-                foreach (var datapoint in datapoints)
+                for (var currentDate = startTime; currentDate <= endTime; currentDate = currentDate.AddDays(1))
                 {
-                    // There is a bug in the AWS SDK. The timestamp is actually UTC time, eventhough the DateTime returned type says Local
-                    // See https://github.com/aws/aws-sdk-net/issues/167
-                    // So do not convert the timestamp to UTC time!
-                    if (datapoint.Timestamp.HasValue)
+                    datapoints.TryGetValue(currentDate, out var count);
+                    dailyData.Add(new DailyThroughput
                     {
-                        currentDate = DateOnly.FromDateTime(datapoint.Timestamp.Value);
-                        dailyData[currentDate] = new DailyThroughput { MessageCount = (long)datapoint.Sum.GetValueOrDefault(0), DateUTC = currentDate };
-                    }
+                        MessageCount = count,
+                        DateUTC = currentDate
+                    });
                 }
 
                 data.Add(new QueueThroughput
                 {
                     QueueName = queueName,
                     Throughput = maxThroughput,
-                    DailyThroughputFromBroker = [.. dailyData.Values]
+                    DailyThroughputFromBroker = [.. dailyData]
                 });
             }
 
