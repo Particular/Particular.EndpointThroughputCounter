@@ -89,8 +89,8 @@
             {
                 Namespace = "AWS/SQS",
                 MetricName = "NumberOfMessagesDeleted",
-                StartTime = StartDate.ToDateTime(TimeOnly.MinValue),
-                EndTime = EndDate.ToDateTime(TimeOnly.MaxValue),
+                StartTime = StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                EndTime = EndDate.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), // Exclusive
                 Period = 24 * 60 * 60, // 1 day
                 Statistics = ["Sum"],
                 Dimensions = [
