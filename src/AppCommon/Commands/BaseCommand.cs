@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
 using Particular.LicensingComponent.Report;
+using Particular.LicensingComponent.Report.Utility;
 
 abstract class BaseCommand
 {
@@ -206,6 +207,7 @@ abstract class BaseCommand
 
             foreach (var q in data.Queues)
             {
+                q.NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName);
                 q.QueueName = shared.Mask(q.QueueName);
                 if (q.Throughput.HasValue)
                 {
@@ -247,7 +249,7 @@ abstract class BaseCommand
                 StartTime = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero),
                 EndTime = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(1), TimeSpan.Zero),
                 ReportDuration = TimeSpan.FromDays(1),
-                Queues = mappedQueueNames.Select(map => new QueueThroughput { QueueName = map.Masked, Throughput = 0 }).ToArray(),
+                Queues = mappedQueueNames.Select(map => new QueueThroughput { QueueName = map.Masked, NameHash = OneWayHasher.CalculateOneWayHash(map.Name), Throughput = 0 }).ToArray(),
                 TotalThroughput = 0,
                 TotalQueues = mappedQueueNames.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()

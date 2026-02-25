@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Invocation;
+using Particular.LicensingComponent.Report.Utility;
 
 class SharedOptions
 {
@@ -43,7 +44,7 @@ class SharedOptions
     public bool SkipThroughputCollection { get; private set; }
     public int RuntimeInHours { get; private set; }
 
-    (string Mask, string Replacement)[] masks;
+    Masker masker;
 
     public static void Register(Command command)
     {
@@ -73,14 +74,7 @@ class SharedOptions
         SkipThroughputCollection = parse.GetValueForOption(skipThroughputCollection);
         RuntimeInHours = parse.GetValueForOption(runtimeInHours);
 
-        int number = 0;
-        masks = parse.GetValueForOption(maskNames)
-            .Select(mask =>
-            {
-                number++;
-                return (mask, $"REDACTED{number}");
-            })
-            .ToArray();
+        masker = new(parse.GetValueForOption(maskNames) ?? []);
     }
 
     public static SharedOptions Parse(InvocationContext context)
@@ -89,12 +83,5 @@ class SharedOptions
     }
 
     public string Mask(string stringToMask)
-    {
-        foreach (var (mask, replacement) in masks)
-        {
-            stringToMask = stringToMask.Replace(mask, replacement, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return stringToMask;
-    }
+        => masker.Mask(stringToMask);
 }
