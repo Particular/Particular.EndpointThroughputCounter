@@ -37,7 +37,7 @@ The key pair can be trivially regenerated in case the private key is exposed, be
    openssl rsa -in private-key.pem -RSAPublicKey_out -out public-key.pem
    ```
 3. The public key file is embedded with the tool as an embedded resource.
-4. The new private and public keys should be stored in LastPass.
+4. The new private and public keys should be stored in the company's password manager.
 5. Any app needing to verify report files must be configured with the private key as an environment variable.
 
 ## Releasing
