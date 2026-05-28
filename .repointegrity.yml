@@ -1,0 +1,4 @@
+ignore:
+  # It's okay to use central package management in this repo because the output is a tool package
+  - test: DoNotUseCentralPackageManagement
+    path: src/Directory.Packages.props
