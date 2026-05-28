@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Project Path="AppCommon/AppCommon.csproj" />
+  <Project Path="Exe/Particular.EndpointThroughputCounter.Exe.csproj" />
+  <Project Path="Query/Particular.ThroughputQuery.csproj" />
+  <Project Path="Tests/Tests.csproj" />
+  <Project Path="Tool/Particular.EndpointThroughputCounter.csproj" />
+</Solution>
