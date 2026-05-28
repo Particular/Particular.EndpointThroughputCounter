@@ -135,11 +135,11 @@ class AzureServiceBusCommand : BaseCommand
                         Throughput = (long?)maxThroughput,
                         DailyThroughputFromBroker = [.. data.Values]
                     });
-                    Out.WriteLine($" - Max daily throughput: {maxThroughput} ({start.ToShortDateString()} - {end.ToShortDateString()})");
+                    Out.WriteLine($" - Max daily throughput: {maxThroughput} ({start:d} - {end:d})");
                 }
                 else
                 {
-                    Out.WriteLine($" - No throughput detected for the period {start.ToShortDateString()} - {end.ToShortDateString()}, ignoring");
+                    Out.WriteLine($" - No throughput detected for the period {start:d} - {end:d}, ignoring");
                 }
             }
 
