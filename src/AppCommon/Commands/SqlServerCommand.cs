@@ -31,11 +31,21 @@ class SqlServerCommand : BaseCommand
         command.SetHandler(async context =>
         {
             var shared = SharedOptions.Parse(context);
-            var connectionStrings = GetConnectionStrings(context.ParseResult);
             var cancellationToken = context.GetCancellationToken();
 
-            var runner = new SqlServerCommand(shared, connectionStrings);
-            await runner.Run(cancellationToken);
+            try
+            {
+                var connectionStrings = GetConnectionStrings(context.ParseResult);
+
+                var runner = new SqlServerCommand(shared, connectionStrings);
+                await runner.Run(cancellationToken);
+            }
+            catch (HaltException halt)
+            {
+                Out.WriteLine();
+                Out.WriteError(halt.Message);
+                Environment.ExitCode = halt.ExitCode;
+            }
         });
 
         return command;
@@ -56,9 +66,7 @@ class SqlServerCommand : BaseCommand
                 throw new FileNotFoundException($"Could not find file specified by {ConnectionStringSource.Name} parameter", sourcePath);
             }
 
-            return File.ReadAllLines(sourcePath)
-                .Where(line => !string.IsNullOrWhiteSpace(line))
-                .ToArray();
+            return ParseConnectionStringSource(File.ReadAllLines(sourcePath), sourcePath);
         }
 
         var single = parsed.GetValueForOption(ConnectionString);
@@ -92,6 +100,44 @@ class SqlServerCommand : BaseCommand
         return list.ToArray();
     }
 
+    internal static string[] ParseConnectionStringSource(string[] lines, string sourcePath)
+    {
+        var connectionStrings = new List<string>();
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            if (line.Length >= 2 && ((line[0] == '"' && line[^1] == '"') || (line[0] == '\'' && line[^1] == '\'')))
+            {
+                line = line[1..^1].Trim();
+            }
+
+            try
+            {
+                _ = new SqlConnectionStringBuilder(line);
+            }
+            catch (Exception x) when (x is FormatException or ArgumentException or KeyNotFoundException)
+            {
+                throw new HaltException(HaltReason.InvalidConfig, $"ERROR: Line {i + 1} of '{sourcePath}' could not be parsed as a SQL Server connection string: {x.Message}");
+            }
+
+            connectionStrings.Add(line);
+        }
+
+        if (connectionStrings.Count == 0)
+        {
+            throw new HaltException(HaltReason.InvalidConfig, $"ERROR: The file '{sourcePath}' does not contain any connection strings.");
+        }
+
+        return connectionStrings.ToArray();
+    }
+
     readonly string[] connectionStrings;
     DatabaseDetails[] databases;
     string scopeType;
@@ -111,6 +157,13 @@ class SqlServerCommand : BaseCommand
 
             foreach (var db in databases)
             {
+                Out.WriteLine($"Testing connection to server '{db.DataSource}', database '{db.DatabaseName ?? "(default)"}', Integrated Security={(db.IntegratedSecurity ? "true" : "false")}...");
+                if (db.IntegratedSecurity && OperatingSystem.IsWindows())
+                {
+                    using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                    Out.WriteLine($" - Connecting as Windows identity '{identity.Name}'");
+                }
+
                 await db.TestConnection(cancellationToken);
             }
 

@@ -70,8 +70,14 @@ abstract class BaseCommand
             Out.WriteError(halt.Message);
             if (halt.InnerException != null)
             {
-                Out.WriteLine();
-                Out.WriteLine("Original exception message: " + halt.InnerException.Message);
+                var original = halt.GetBaseException();
+                if (original != halt && !halt.Message.Contains(original.Message))
+                {
+                    Out.WriteLine();
+                    Out.WriteLine("Original exception message: " + original.Message);
+                }
+
+                Exceptions.ReportError(halt);
             }
             Environment.ExitCode = halt.ExitCode;
         }
