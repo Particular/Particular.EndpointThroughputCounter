@@ -38,6 +38,8 @@ public static class Exceptions
 
     public static void ReportError(Exception x)
     {
+        WriteDiagnosticsLog(x);
+
         var settings = new RaygunSettings()
         {
             ApplicationVersion = Versioning.NuGetVersion
@@ -45,7 +47,7 @@ public static class Exceptions
 
         RunInfo.Add("ToolOutput", Out.GetToolOutput());
 
-        if (x is SqlException sqlX)
+        if (FindInChain<SqlException>(x) is SqlException sqlX)
         {
             RunInfo.Add("SqlException.Number", sqlX.Number.ToString());
             if (sqlX.Errors is not null)
@@ -81,5 +83,36 @@ public static class Exceptions
             Console.WriteLine("Unable to report tool failure to Particular Software. This may be because outgoing internet access is not available.");
         }
 
+    }
+
+    /// <summary>
+    /// Writes the full (redacted) exception chain to a local log file so support can diagnose failures
+    /// without a live debugger, including when running with --unattended.
+    /// </summary>
+    static void WriteDiagnosticsLog(Exception x)
+    {
+        try
+        {
+            var path = Path.Join(Environment.CurrentDirectory, $"throughput-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            File.WriteAllText(path, ConnectionStringSanitizer.RedactText(x.ToString()));
+            Console.WriteLine($"Diagnostic details written to {path}");
+        }
+        catch (Exception logX) when (logX is IOException or UnauthorizedAccessException)
+        {
+            Console.WriteLine($"Unable to write diagnostics log: {logX.Message}");
+        }
+    }
+
+    static T FindInChain<T>(Exception x) where T : Exception
+    {
+        while (x is not null)
+        {
+            if (x is T match)
+            {
+                return match;
+            }
+            x = x.InnerException;
+        }
+        return null;
     }
 }

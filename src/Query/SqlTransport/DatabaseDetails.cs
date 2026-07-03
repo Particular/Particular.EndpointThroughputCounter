@@ -3,6 +3,7 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Data.SqlClient;
@@ -12,6 +13,8 @@
         readonly string connectionString;
 
         public string DatabaseName { get; }
+        public string DataSource { get; }
+        public bool IntegratedSecurity { get; }
         public List<QueueTableName> Tables { get; private set; }
         public int ErrorCount { get; private set; }
 
@@ -21,6 +24,8 @@
             {
                 var builder = new SqlConnectionStringBuilder { ConnectionString = connectionString, TrustServerCertificate = true };
                 DatabaseName = builder["Initial Catalog"] as string ?? builder["Database"] as string;
+                DataSource = builder.DataSource;
+                IntegratedSecurity = builder.IntegratedSecurity;
                 this.connectionString = builder.ToString();
             }
             catch (Exception x) when (x is FormatException or ArgumentException)
@@ -39,8 +44,27 @@
             }
             catch (SqlException x) when (IsConnectionOrLoginIssue(x))
             {
-                throw new QueryException(QueryFailureReason.Auth, "Could not access SQL database. Is the connection string correct?", x);
+                throw new QueryException(QueryFailureReason.Auth, BuildConnectionIssueMessage(x), x);
             }
+        }
+
+        string BuildConnectionIssueMessage(SqlException x)
+        {
+            var serverName = string.IsNullOrEmpty(x.Server) ? DataSource : x.Server;
+
+            var message = new StringBuilder()
+                .AppendLine($"SQL error {x.Number} (state {x.State}, class {x.Class}) from {serverName}: {x.Message}");
+
+            if (x.Errors is not null && x.Errors.Count > 1)
+            {
+                for (var i = 0; i < x.Errors.Count; i++)
+                {
+                    var err = x.Errors[i];
+                    _ = message.AppendLine($" - SQL error {err.Number} (state {err.State}, class {err.Class}): {err.Message}");
+                }
+            }
+
+            return message.ToString().TrimEnd();
         }
 
         static bool IsConnectionOrLoginIssue(SqlException x)
