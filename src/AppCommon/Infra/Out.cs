@@ -100,6 +100,21 @@ public static class Out
         }
     }
 
+    public static void WriteAwaitingInput(string message)
+    {
+        lock (writePadlock)
+        {
+            var current = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Cyan;
+
+            var line = $"Waiting for input: {message}";
+            Console.WriteLine(line);
+            output.AppendLine(line);
+
+            Console.ForegroundColor = current;
+        }
+    }
+
     public static void WriteDebugTimestamp()
     {
         var message = $" - Debug timestamp: {DateTime.UtcNow:O}";
@@ -147,6 +162,7 @@ public static class Out
     {
         try
         {
+            WriteAwaitingInput("a response is required to continue.");
             Write(prompt);
             Write(" (Y/N): ");
             while (true)

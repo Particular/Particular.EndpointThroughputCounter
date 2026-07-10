@@ -126,6 +126,7 @@ abstract class BaseCommand
         }
         else
         {
+            Out.WriteAwaitingInput("a customer name is required for the report. Type it and press Enter. To skip this prompt, pass --customerName \"<name>\"; add --unattended for fully non-interactive (CI/automation) runs.");
             while (string.IsNullOrEmpty(shared.CustomerName))
             {
                 cancellationToken.ThrowIfCancellationRequested();

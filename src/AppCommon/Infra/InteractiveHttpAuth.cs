@@ -90,6 +90,7 @@
                         }
                         Out.WriteLine();
 
+                        Out.WriteAwaitingInput("credentials are required to continue.");
                         Out.WriteLine($"Enter authentication for {uriPrefix}:");
                         Out.Write("Username: ");
                         currentUser = Out.ReadLine();
