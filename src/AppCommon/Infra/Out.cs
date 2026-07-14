@@ -147,8 +147,9 @@ public static class Out
     {
         try
         {
-            Write(prompt);
-            Write(" (Y/N): ");
+            // Must end with a newline: a trailing partial line is not rendered by line-oriented
+            // consumers of stdout (PowerShell, CI logs), making the tool look like it has hung.
+            WriteLine($"{prompt} (Y/N): ");
             while (true)
             {
                 var key = Console.ReadKey(true);

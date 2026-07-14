@@ -91,9 +91,9 @@
                         Out.WriteLine();
 
                         Out.WriteLine($"Enter authentication for {uriPrefix}:");
-                        Out.Write("Username: ");
+                        Out.WriteLine("Username:");
                         currentUser = Out.ReadLine();
-                        Out.Write("Password: ");
+                        Out.WriteLine("Password:");
                         var pass = Out.ReadPassword();
 
                         credential = new NetworkCredential(currentUser, pass);

@@ -129,7 +129,7 @@ abstract class BaseCommand
             while (string.IsNullOrEmpty(shared.CustomerName))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                Out.Write("Enter customer name: ");
+                Out.WriteLine("Enter customer name:");
                 shared.CustomerName = Out.ReadLine();
             }
         }
