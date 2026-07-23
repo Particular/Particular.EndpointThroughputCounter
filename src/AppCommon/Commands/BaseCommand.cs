@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.Amqp.Framing;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
 using Particular.LicensingComponent.Report;

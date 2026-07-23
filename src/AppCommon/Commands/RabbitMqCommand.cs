@@ -1,6 +1,5 @@
 ﻿using System.CommandLine;
 using System.Net;
-using Amazon.Runtime.Telemetry.Tracing;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
