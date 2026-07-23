@@ -211,16 +211,6 @@ abstract class BaseCommand
         {
             var data = await GetData(cancellationToken);
 
-            foreach (var q in data.Queues)
-            {
-                q.NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName);
-                q.QueueName = shared.Mask(q.QueueName);
-                if (q.Throughput.HasValue)
-                {
-                    q.Throughput = Math.Abs(q.Throughput.Value);
-                }
-            }
-
             reportData = new Report
             {
                 CustomerName = shared.CustomerName,
@@ -233,7 +223,14 @@ abstract class BaseCommand
                 StartTime = data.StartTime,
                 EndTime = data.EndTime,
                 ReportDuration = data.TimeOfObservation ?? (data.EndTime - data.StartTime),
-                Queues = data.Queues,
+                Queues = [..data.Queues.Select(q => q with
+                {
+                    NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName),
+                    QueueName = shared.Mask(q.QueueName),
+                    Scope = string.IsNullOrEmpty(q.Scope) ? q.Scope : shared.Mask(q.Scope),
+                    ScopeHash = string.IsNullOrEmpty(q.Scope) ? "" : OneWayHasher.CalculateOneWayHash(q.Scope),
+                    Throughput = q.Throughput.HasValue ? Math.Abs(q.Throughput.Value) : null,
+                })],
                 TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = data.Queues.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
