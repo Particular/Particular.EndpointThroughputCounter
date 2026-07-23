@@ -233,7 +233,7 @@ partial class ServiceControlCommand : BaseCommand
         {
             MessageTransport = className,
             ReportMethod = "ServiceControl API",
-            QueueNames = knownEndpoints.OrderBy(q => q.Name).Select(q => q.Name).ToArray(),
+            QueueNames = [.. knownEndpoints.OrderBy(q => q.Name).Select(q => new ScopeAndQueue(null, q.Name))],
             QueuesAreEndpoints = true
         };
     }

@@ -181,7 +181,6 @@ class SqlServerCommand : BaseCommand
 
             var catalogCount = tables.Select(t => t.DatabaseName).Distinct().Count();
             var schemaCount = tables.Select(t => $"{t.DatabaseName}/{t.Schema}").Distinct().Count();
-            var queueNames = tables.Select(t => t.DisplayName).OrderBy(x => x).ToArray();
 
             if (catalogCount > 1)
             {
@@ -205,11 +204,13 @@ class SqlServerCommand : BaseCommand
             {
                 getScope = t => null;
             }
+            var queueNames = tables.Select(t => new ScopeAndQueue(getScope(t), t.DisplayName)).OrderBy(x => x.QueueName).ThenBy(x => x.Scope).ToArray();
 
             return new EnvironmentDetails
             {
                 MessageTransport = "SqlTransport",
                 ReportMethod = "SqlServerQuery",
+                ScopeType = scopeType,
                 QueueNames = queueNames
             };
         }

@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.Amqp.Framing;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.EndpointThroughputCounter.ServiceControl;
 using Particular.LicensingComponent.Report;
@@ -163,7 +164,7 @@ abstract class BaseCommand
             }
 
             var mappedQueueNames = metadata.QueueNames
-                .Select(name => new { Name = name, Masked = shared.Mask(name) })
+                .Select(name => new { Name = name.QueueName, MaskedName = shared.Mask(name.QueueName), name.Scope, MaskedScope = string.IsNullOrEmpty(name.Scope) ? null : shared.Mask(name.Scope) })
                 .ToArray();
 
             Out.WriteLine();
@@ -172,8 +173,8 @@ abstract class BaseCommand
 
             string leftLabel = $"{queueNounUpper} Name";
             const string rightLabel = "Will be reported as";
-            var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.Length).Max());
-            var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.Masked.Length).Max());
+            var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.QueueName.Length).Max());
+            var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.MaskedName.Length).Max());
 
             var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
 
@@ -181,7 +182,7 @@ abstract class BaseCommand
             Out.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
             foreach (var set in mappedQueueNames)
             {
-                Out.WriteLine(lineFormat, set.Name, set.Masked);
+                Out.WriteLine(lineFormat, set.Name, set.MaskedName);
             }
             Out.WriteLine();
 
@@ -238,9 +239,6 @@ abstract class BaseCommand
         }
         else
         {
-            var mappedQueueNames = metadata.QueueNames
-                .Select(name => new { Name = name, Masked = shared.Mask(name) })
-                .ToArray();
             reportData = new Report
             {
                 CustomerName = shared.CustomerName,
@@ -249,12 +247,20 @@ abstract class BaseCommand
                 ToolType = "Throughput Tool",
                 ToolVersion = Versioning.NuGetVersion,
                 Prefix = metadata.Prefix,
+                ScopeType = metadata.ScopeType,
                 StartTime = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero),
                 EndTime = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(1), TimeSpan.Zero),
                 ReportDuration = TimeSpan.FromDays(1),
-                Queues = mappedQueueNames.Select(map => new QueueThroughput { QueueName = map.Masked, NameHash = OneWayHasher.CalculateOneWayHash(map.Name), Throughput = 0 }).ToArray(),
+                Queues = [.. metadata.QueueNames.Select(q => new QueueThroughput
+                {
+                    QueueName = shared.Mask(q.QueueName),
+                    NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName),
+                    Scope = string.IsNullOrEmpty(q.Scope) ? q.Scope : shared.Mask(q.Scope),
+                    ScopeHash = string.IsNullOrEmpty(q.Scope) ? "" : OneWayHasher.CalculateOneWayHash(q.Scope),
+                    Throughput = 0
+                })],
                 TotalThroughput = 0,
-                TotalQueues = mappedQueueNames.Length,
+                TotalQueues = metadata.QueueNames.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
             };
         }
