@@ -77,7 +77,10 @@ abstract class BaseCommand
                     Out.WriteLine("Original exception message: " + original.Message);
                 }
 
-                Exceptions.ReportError(halt);
+                if (halt.HaltReason == HaltReason.RuntimeError)
+                {
+                    Exceptions.ReportError(halt);
+                }
             }
             Environment.ExitCode = halt.ExitCode;
         }

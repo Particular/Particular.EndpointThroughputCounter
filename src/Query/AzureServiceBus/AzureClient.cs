@@ -88,7 +88,7 @@
                         var allExceptionMessages = string.Join(string.Empty, loginExceptions);
                         var msg = "Unable to log in to Azure service using multiple credential types. The exception messages for each credential type (including help links) are provided below:"
                                   + Environment.NewLine + allExceptionMessages;
-                        throw new QueryException(QueryFailureReason.Auth, msg);
+                        throw new QueryException(QueryFailureReason.Auth, msg, x);
                     }
                 }
             }
