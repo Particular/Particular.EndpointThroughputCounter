@@ -2,10 +2,12 @@
 
 class HaltException : ApplicationException
 {
+    public HaltReason HaltReason { get; }
     public int ExitCode { get; set; }
 
     public HaltException(HaltReason reason, string message, Exception innerException = null) : base(message, innerException)
     {
+        HaltReason = reason;
         ExitCode = (int)reason;
     }
 
