@@ -122,6 +122,14 @@ abstract class BaseCommand
             return;
         }
 
+        if (!Environment.UserInteractive || Console.IsOutputRedirected || Console.IsInputRedirected)
+        {
+            if (!shared.RunUnattended || string.IsNullOrWhiteSpace(shared.CustomerName))
+            {
+                throw new HaltException(HaltReason.MissingConfig, "If running in a 'headless' environment or with redirected I/O, the --unattended flag must be used along with the --customerName option");
+            }
+        }
+
         Out.WriteLine();
         if (!string.IsNullOrEmpty(shared.CustomerName))
         {
