@@ -20,8 +20,6 @@ abstract class BaseCommand
 #else
         PollingRunTime = TimeSpan.FromHours(shared.RuntimeInHours);
 #endif
-        var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
-
         if (!bool.TryParse(Environment.GetEnvironmentVariable("IS_DEVELOPMENT"), out isDevelopment))
         {
             isDevelopment = false;
@@ -90,7 +88,7 @@ abstract class BaseCommand
             Out.WriteLine();
             Out.WriteError("There was a problem getting data from ServiceControl. Are all of the ServiceControl instances running correctly?");
             Out.WriteLine();
-            Out.WriteLine("Original exception: " + scX.ToString());
+            Out.WriteLine("Original exception: " + scX);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -247,7 +245,7 @@ abstract class BaseCommand
                 Queues = data.Queues,
                 TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = data.Queues.Length,
-                IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
+                IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray() ?? []
             };
         }
         else
