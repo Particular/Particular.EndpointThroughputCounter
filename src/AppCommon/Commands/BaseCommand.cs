@@ -162,35 +162,51 @@ abstract class BaseCommand
                 throw new HaltException(HaltReason.InvalidEnvironment, $"No {queueNoun}s could be discovered. Please check to make sure your configuration is correct.");
             }
 
+            void OutputMaskMapping(string unmaskedLabel, string contentLabel, string[] unmaskedContents)
+            {
+                Out.WriteLine();
+                Out.WriteLine($"Writing {contentLabel} discovered:");
+                Out.WriteLine();
+
+                (string Unmasked, string Masked)[] contents = [.. unmaskedContents.Select(x => (x, shared.Mask(x)))];
+                const string maskedLabel = "Will be reported as";
+                var unmaskedWidth = Math.Max(unmaskedLabel.Length, contents.Max(content => content.Unmasked.Length));
+                var maskedWidth = Math.Max(maskedLabel.Length, contents.Max(content => content.Masked.Length));
+
+                var lineFormat = $" {{0,-{unmaskedWidth}}} | {{1,-{maskedWidth}}}";
+
+                Out.WriteLine(lineFormat, unmaskedLabel, maskedLabel);
+                Out.WriteLine(lineFormat, new string('-', unmaskedWidth), new string('-', maskedWidth));
+                foreach (var (unmasked, masked) in contents)
+                {
+                    Out.WriteLine(lineFormat, unmasked, masked);
+                }
+
+                Out.WriteLine();
+                Out.WriteLine($"The right column shows how {contentLabel} will be reported. If {contentLabel} contain sensitive");
+                Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
+            }
+
             var mappedQueueNames = metadata.QueueNames
-                .Select(name => new { Name = name.QueueName, MaskedName = shared.Mask(name.QueueName), name.Scope, MaskedScope = string.IsNullOrEmpty(name.Scope) ? null : shared.Mask(name.Scope) })
+                .Select(queue => new { Name = queue.QueueName, MaskedName = shared.Mask(queue.QueueName) })
                 .ToArray();
 
-            Out.WriteLine();
-            Out.WriteLine($"Writing {queueNoun} names discovered:");
-            Out.WriteLine();
+            OutputMaskMapping($"{queueNounUpper} Name", $"{queueNoun} names", [.. metadata.QueueNames.Select(queue => queue.QueueName)]);
 
-            string leftLabel = $"{queueNounUpper} Name";
-            const string rightLabel = "Will be reported as";
-            var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.QueueName.Length).Max());
-            var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.MaskedName.Length).Max());
+            var scopes = metadata.QueueNames
+                .Where(queue => !string.IsNullOrEmpty(queue.Scope))
+                .Select(queue => queue.Scope)
+                .Distinct()
+                .ToArray();
 
-            var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
-
-            Out.WriteLine(lineFormat, leftLabel, rightLabel);
-            Out.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
-            foreach (var set in mappedQueueNames)
+            if (scopes.Any())
             {
-                Out.WriteLine(lineFormat, set.Name, set.MaskedName);
+                OutputMaskMapping("Scope", "scopes", scopes);
             }
-            Out.WriteLine();
-
-            Out.WriteLine($"The right column shows how {queueNoun} names will be reported. If {queueNoun} names contain sensitive");
-            Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
-            Out.WriteLine();
 
             if (!metadata.QueuesAreEndpoints)
             {
+                Out.WriteLine();
                 Out.WriteLine("Not all queues represent logical endpoints. So, although data from all queues will be included");
                 Out.WriteLine("in the report, not all the queues will automatically be included the licensed endpoint count.");
             }
