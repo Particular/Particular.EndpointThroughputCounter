@@ -187,10 +187,6 @@ abstract class BaseCommand
                 Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
             }
 
-            var mappedQueueNames = metadata.QueueNames
-                .Select(queue => new { Name = queue.QueueName, MaskedName = shared.Mask(queue.QueueName) })
-                .ToArray();
-
             OutputMaskMapping($"{queueNounUpper} Name", $"{queueNoun} names", [.. metadata.QueueNames.Select(queue => queue.QueueName)]);
 
             var scopes = metadata.QueueNames
