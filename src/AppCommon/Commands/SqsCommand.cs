@@ -156,7 +156,7 @@ class SqsCommand : BaseCommand
         {
             MessageTransport = "AmazonSQS",
             ReportMethod = "AWS CloudWatch Metrics",
-            QueueNames = queueNames.OrderBy(q => q).ToArray(),
+            QueueNames = [.. queueNames.OrderBy(q => q).Select(q => new ScopeAndQueue(null, q))],
             Prefix = prefix,
             IgnoredQueues = ignoredQueueNames.Any() ? ignoredQueueNames : null,
             SkipEndpointListCheck = true

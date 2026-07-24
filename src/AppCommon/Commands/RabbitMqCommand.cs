@@ -168,17 +168,22 @@ class RabbitMqCommand : BaseCommand
             Out.WriteLine($"  - RabbitMQ Version: {_rabbitMQDetails.RabbitMQVersion}");
             Out.WriteLine($"  - Management Plugin Version: {_rabbitMQDetails.ManagementVersion}");
 
-            var queueNames = (await _rabbitMQ.GetQueueDetails(cancellationToken))
+            var queues = (await _rabbitMQ.GetQueueDetails(cancellationToken))
                 .Where(q => IncludeQueue(q.Name))
-                .Select(q => q.Name)
+                .ToArray();
+            var useScopes = queues.Select(q => q.VHost).Distinct().Count() > 1;
+            var queueNames = queues
+                .Select(q => new ScopeAndQueue(useScopes ? q.VHost : null, q.Name))
                 .Distinct()
-                .OrderBy(name => name)
+                .OrderBy(x => x.QueueName)
+                .ThenBy(x => x.Scope)
                 .ToArray();
 
             return new EnvironmentDetails
             {
                 MessageTransport = "RabbitMQ",
                 ReportMethod = _rabbitMQDetails.ToReportMethodString(),
+                ScopeType = useScopes ? "VirtualHost" : null,
                 QueueNames = queueNames
             };
         }

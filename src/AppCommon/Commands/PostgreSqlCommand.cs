@@ -119,7 +119,6 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
 
             var databaseCount = tables.Select(t => t.DatabaseName).Distinct().Count();
             var schemaCount = tables.Select(t => $"{t.DatabaseName}/{t.Schema}").Distinct().Count();
-            var queueNames = tables.Select(t => t.DisplayName).OrderBy(x => x).ToArray();
 
             if (databaseCount > 1)
             {
@@ -138,11 +137,13 @@ class PostgreSqlCommand(SharedOptions shared, string[] connectionStrings) : Base
             {
                 getScope = t => null;
             }
+            var queueNames = tables.Select(t => new ScopeAndQueue(getScope(t), t.DisplayName)).OrderBy(x => x.QueueName).ThenBy(x => x.Scope).ToArray();
 
             return new EnvironmentDetails
             {
                 MessageTransport = "PostgreSql",
                 ReportMethod = "PostgreSqlQuery",
+                ScopeType = scopeType,
                 QueueNames = queueNames
             };
         }

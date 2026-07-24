@@ -171,7 +171,7 @@ class AzureServiceBusCommand : BaseCommand
         {
             MessageTransport = "AzureServiceBus",
             ReportMethod = $"AzureServiceBus Metrics: {azure.FullyQualifiedNamespace}",
-            QueueNames = queueNames,
+            QueueNames = [.. queueNames.Select(name => new ScopeAndQueue(null, name))],
             SkipEndpointListCheck = true
         };
     }

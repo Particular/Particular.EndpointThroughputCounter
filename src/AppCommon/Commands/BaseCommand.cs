@@ -162,35 +162,47 @@ abstract class BaseCommand
                 throw new HaltException(HaltReason.InvalidEnvironment, $"No {queueNoun}s could be discovered. Please check to make sure your configuration is correct.");
             }
 
-            var mappedQueueNames = metadata.QueueNames
-                .Select(name => new { Name = name, Masked = shared.Mask(name) })
+            void OutputMaskMapping(string unmaskedLabel, string contentLabel, string[] unmaskedContents)
+            {
+                Out.WriteLine();
+                Out.WriteLine($"Writing {contentLabel} discovered:");
+                Out.WriteLine();
+
+                (string Unmasked, string Masked)[] contents = [.. unmaskedContents.Select(x => (x, shared.Mask(x)))];
+                const string maskedLabel = "Will be reported as";
+                var unmaskedWidth = Math.Max(unmaskedLabel.Length, contents.Max(content => content.Unmasked.Length));
+                var maskedWidth = Math.Max(maskedLabel.Length, contents.Max(content => content.Masked.Length));
+
+                var lineFormat = $" {{0,-{unmaskedWidth}}} | {{1,-{maskedWidth}}}";
+
+                Out.WriteLine(lineFormat, unmaskedLabel, maskedLabel);
+                Out.WriteLine(lineFormat, new string('-', unmaskedWidth), new string('-', maskedWidth));
+                foreach (var (unmasked, masked) in contents)
+                {
+                    Out.WriteLine(lineFormat, unmasked, masked);
+                }
+
+                Out.WriteLine();
+                Out.WriteLine($"The right column shows how {contentLabel} will be reported. If {contentLabel} contain sensitive");
+                Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
+            }
+
+            OutputMaskMapping($"{queueNounUpper} Name", $"{queueNoun} names", [.. metadata.QueueNames.Select(queue => queue.QueueName)]);
+
+            var scopes = metadata.QueueNames
+                .Where(queue => !string.IsNullOrEmpty(queue.Scope))
+                .Select(queue => queue.Scope)
+                .Distinct()
                 .ToArray();
 
-            Out.WriteLine();
-            Out.WriteLine($"Writing {queueNoun} names discovered:");
-            Out.WriteLine();
-
-            string leftLabel = $"{queueNounUpper} Name";
-            const string rightLabel = "Will be reported as";
-            var leftWidth = Math.Max(leftLabel.Length, metadata.QueueNames.Select(name => name.Length).Max());
-            var rightWidth = Math.Max(rightLabel.Length, mappedQueueNames.Select(set => set.Masked.Length).Max());
-
-            var lineFormat = $" {{0,-{leftWidth}}} | {{1,-{rightWidth}}}";
-
-            Out.WriteLine(lineFormat, leftLabel, rightLabel);
-            Out.WriteLine(lineFormat, new string('-', leftWidth), new string('-', rightWidth));
-            foreach (var set in mappedQueueNames)
+            if (scopes.Any())
             {
-                Out.WriteLine(lineFormat, set.Name, set.Masked);
+                OutputMaskMapping("Scope", "scopes", scopes);
             }
-            Out.WriteLine();
-
-            Out.WriteLine($"The right column shows how {queueNoun} names will be reported. If {queueNoun} names contain sensitive");
-            Out.WriteLine("or proprietary information, the names can be masked using the --queueNameMasks parameter.");
-            Out.WriteLine();
 
             if (!metadata.QueuesAreEndpoints)
             {
+                Out.WriteLine();
                 Out.WriteLine("Not all queues represent logical endpoints. So, although data from all queues will be included");
                 Out.WriteLine("in the report, not all the queues will automatically be included the licensed endpoint count.");
             }
@@ -211,16 +223,6 @@ abstract class BaseCommand
         {
             var data = await GetData(cancellationToken);
 
-            foreach (var q in data.Queues)
-            {
-                q.NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName);
-                q.QueueName = shared.Mask(q.QueueName);
-                if (q.Throughput.HasValue)
-                {
-                    q.Throughput = Math.Abs(q.Throughput.Value);
-                }
-            }
-
             reportData = new Report
             {
                 CustomerName = shared.CustomerName,
@@ -233,7 +235,14 @@ abstract class BaseCommand
                 StartTime = data.StartTime,
                 EndTime = data.EndTime,
                 ReportDuration = data.TimeOfObservation ?? (data.EndTime - data.StartTime),
-                Queues = data.Queues,
+                Queues = [..data.Queues.Select(q => q with
+                {
+                    NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName),
+                    QueueName = shared.Mask(q.QueueName),
+                    Scope = string.IsNullOrEmpty(q.Scope) ? q.Scope : shared.Mask(q.Scope),
+                    ScopeHash = string.IsNullOrEmpty(q.Scope) ? "" : OneWayHasher.CalculateOneWayHash(q.Scope),
+                    Throughput = q.Throughput.HasValue ? Math.Abs(q.Throughput.Value) : null,
+                })],
                 TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = data.Queues.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
@@ -241,9 +250,6 @@ abstract class BaseCommand
         }
         else
         {
-            var mappedQueueNames = metadata.QueueNames
-                .Select(name => new { Name = name, Masked = shared.Mask(name) })
-                .ToArray();
             reportData = new Report
             {
                 CustomerName = shared.CustomerName,
@@ -252,12 +258,20 @@ abstract class BaseCommand
                 ToolType = "Throughput Tool",
                 ToolVersion = Versioning.NuGetVersion,
                 Prefix = metadata.Prefix,
+                ScopeType = metadata.ScopeType,
                 StartTime = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero),
                 EndTime = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(1), TimeSpan.Zero),
                 ReportDuration = TimeSpan.FromDays(1),
-                Queues = mappedQueueNames.Select(map => new QueueThroughput { QueueName = map.Masked, NameHash = OneWayHasher.CalculateOneWayHash(map.Name), Throughput = 0 }).ToArray(),
+                Queues = [.. metadata.QueueNames.Select(q => new QueueThroughput
+                {
+                    QueueName = shared.Mask(q.QueueName),
+                    NameHash = OneWayHasher.CalculateOneWayHash(q.QueueName),
+                    Scope = string.IsNullOrEmpty(q.Scope) ? q.Scope : shared.Mask(q.Scope),
+                    ScopeHash = string.IsNullOrEmpty(q.Scope) ? "" : OneWayHasher.CalculateOneWayHash(q.Scope),
+                    Throughput = 0
+                })],
                 TotalThroughput = 0,
-                TotalQueues = mappedQueueNames.Length,
+                TotalQueues = metadata.QueueNames.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
             };
         }
