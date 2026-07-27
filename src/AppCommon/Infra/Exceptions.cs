@@ -45,9 +45,10 @@ public static class Exceptions
             ApplicationVersion = Versioning.NuGetVersion
         };
 
+        RunInfo.Add("FullSha", Versioning.FullSha);
         RunInfo.Add("ToolOutput", Out.GetToolOutput());
 
-        if (FindInChain<SqlException>(x) is SqlException sqlX)
+        if (FindInChain<SqlException>(x) is { } sqlX)
         {
             RunInfo.Add("SqlException.Number", sqlX.Number.ToString());
             if (sqlX.Errors is not null)
@@ -66,7 +67,7 @@ public static class Exceptions
             .SetEnvironmentDetails()
             .SetMachineName(Environment.MachineName)
             .AddCurrentRunInfo()
-            .SetVersion($"{Versioning.NuGetVersion} Sha:{Versioning.FullSha}")
+            .SetVersion(Versioning.NuGetVersion)
             .Build();
 
         try

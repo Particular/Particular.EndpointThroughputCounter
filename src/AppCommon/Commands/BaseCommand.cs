@@ -20,8 +20,6 @@ abstract class BaseCommand
 #else
         PollingRunTime = TimeSpan.FromHours(shared.RuntimeInHours);
 #endif
-        var envVars = Environment.GetEnvironmentVariables().Keys.OfType<string>().OrderBy(x => x).ToArray();
-
         if (!bool.TryParse(Environment.GetEnvironmentVariable("IS_DEVELOPMENT"), out isDevelopment))
         {
             isDevelopment = false;
@@ -77,7 +75,10 @@ abstract class BaseCommand
                     Out.WriteLine("Original exception message: " + original.Message);
                 }
 
-                Exceptions.ReportError(halt);
+                if (halt.HaltReason == HaltReason.RuntimeError)
+                {
+                    Exceptions.ReportError(halt);
+                }
             }
             Environment.ExitCode = halt.ExitCode;
         }
@@ -87,7 +88,7 @@ abstract class BaseCommand
             Out.WriteLine();
             Out.WriteError("There was a problem getting data from ServiceControl. Are all of the ServiceControl instances running correctly?");
             Out.WriteLine();
-            Out.WriteLine("Original exception: " + scX.ToString());
+            Out.WriteLine("Original exception: " + scX);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -117,6 +118,14 @@ abstract class BaseCommand
         {
             Environment.ExitCode = -1;
             return;
+        }
+
+        if (!Environment.UserInteractive || Console.IsOutputRedirected || Console.IsInputRedirected)
+        {
+            if (!shared.RunUnattended || string.IsNullOrWhiteSpace(shared.CustomerName))
+            {
+                throw new HaltException(HaltReason.MissingConfig, "If running in a 'headless' environment or with redirected I/O, the --unattended flag must be used along with the --customerName option");
+            }
         }
 
         Out.WriteLine();
@@ -245,7 +254,7 @@ abstract class BaseCommand
                 })],
                 TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = data.Queues.Length,
-                IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
+                IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray() ?? []
             };
         }
         else

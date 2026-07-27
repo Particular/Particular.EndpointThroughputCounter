@@ -25,8 +25,6 @@
                 throw new HaltException(HaltReason.InvalidConfig, $"The URL '{authUri}' is invalid. It must be fully-formed, including http:// or https://.");
             }
 
-            var credentials = new CredentialCache();
-
             NetworkCredential credential = defaultCredential;
             var schemes = Array.Empty<string>();
             string currentUser = null;

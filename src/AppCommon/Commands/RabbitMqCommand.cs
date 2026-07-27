@@ -54,10 +54,17 @@ class RabbitMqCommand : BaseCommand
 
     protected override async Task Initialize(CancellationToken cancellationToken = default)
     {
-        var defaultCredential = new NetworkCredential("guest", "guest");
-        var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", defaultCredential: defaultCredential, cancellationToken: cancellationToken);
+        try
+        {
+            var defaultCredential = new NetworkCredential("guest", "guest");
+            var httpFactory = await InteractiveHttpAuth.CreateHttpClientFactory(managementUrl.TrimEnd('/') + "/api/overview", defaultCredential: defaultCredential, cancellationToken: cancellationToken);
 
-        _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl);
+            _rabbitMQ = new RabbitMQManagementClient(httpFactory, managementUrl);
+        }
+        catch (UriFormatException)
+        {
+            throw new HaltException(HaltReason.InvalidConfig, "The management URL format is not valid.");
+        }
     }
 
     protected override async Task<QueueDetails> GetData(CancellationToken cancellationToken = default)
