@@ -13,7 +13,7 @@
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.5" />
     <PackageVersion Include="ICSharpCode.Decompiler" Version="10.1.1.8388" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.3" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="Mindscape.Raygun4Net.AspNetCore" Version="11.2.6" />
     <PackageVersion Include="Npgsql" Version="9.0.5" />
     <PackageVersion Include="NuGet.Versioning" Version="7.6.0" />
