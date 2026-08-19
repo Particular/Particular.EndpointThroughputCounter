@@ -54,11 +54,16 @@ class AzureServiceBusCommand : BaseCommand
             var cancellationToken = context.GetCancellationToken();
 
 #if DEBUG
+            // So we don't have to keep an Azure Service Bus resource id and region in launchSettings.json
+            // Create a local.settings.json file with the keys below.
             if (resourceId == "LOAD_FROM_CONFIG")
             {
-                // So we don't have to keep an Azure Service Bus resource id in launchSettings.json
-                // Create a local.settings.json file with the key below.
                 resourceId = AppConfig.Get<string>("AZURESERVICEBUS_RESOURCE_ID");
+            }
+
+            if (region == "LOAD_FROM_CONFIG")
+            {
+                region = AppConfig.Get<string>("AZURESERVICEBUS_REGION");
             }
 #endif
 
