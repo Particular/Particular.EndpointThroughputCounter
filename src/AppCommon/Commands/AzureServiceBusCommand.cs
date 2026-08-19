@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using Azure.Monitor.Query.Metrics.Models;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
@@ -6,6 +7,9 @@ using Particular.ThroughputQuery.AzureServiceBus;
 
 class AzureServiceBusCommand : BaseCommand
 {
+    const int MaxDaysToCollect = 90;
+    const int MaxDaysToCollectInOneQuery = 30;
+
     public static Command CreateCommand()
     {
         var command = new Command("azureservicebus", "Measure endpoints and throughput using Azure Service Bus metrics");
@@ -90,7 +94,7 @@ class AzureServiceBusCommand : BaseCommand
         try
         {
             var endTime = DateOnly.FromDateTime(DateTime.UtcNow);
-            var startTime = endTime.AddDays(-90); // Azure Monitor only gives a data for a month back, but we ask for more just in case
+            var startTime = endTime.AddDays(-MaxDaysToCollect); // Azure Monitor only gives a data for a month back, but we ask for more just in case
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
@@ -102,7 +106,7 @@ class AzureServiceBusCommand : BaseCommand
 
                 Out.Write($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
 
-                var metricValues = (await azure.GetMetrics(queueName, startTime, endTime, cancellationToken)).OrderBy(m => m.TimeStamp).ToArray();
+                var metricValues = await GetMetricValues(queueName, startTime, endTime, cancellationToken);
 
                 var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
                 var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
@@ -162,6 +166,18 @@ class AzureServiceBusCommand : BaseCommand
         {
             throw new HaltException(x);
         }
+    }
+
+    async Task<MetricValue[]> GetMetricValues(string queueName, DateOnly start, DateOnly end, CancellationToken cancellationToken)
+    {
+        var metricValues = new List<MetricValue>();
+
+        foreach (var (startTime, endTime) in ReportingWindow.GetReportingWindow(start, end, MaxDaysToCollectInOneQuery))
+        {
+            metricValues.AddRange(await azure.GetMetrics(queueName, startTime, endTime, cancellationToken));
+        }
+
+        return [.. metricValues.OrderBy(x => x.TimeStamp)];
     }
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
