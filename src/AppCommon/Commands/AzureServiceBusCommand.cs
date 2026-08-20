@@ -7,6 +7,7 @@ using Particular.ThroughputQuery.AzureServiceBus;
 
 class AzureServiceBusCommand : BaseCommand
 {
+    // ASB keeps 90 days of data but will only return 30 days in a single query
     const int MaxDaysToCollect = 90;
     const int MaxDaysToCollectInOneQuery = 30;
 
@@ -94,7 +95,7 @@ class AzureServiceBusCommand : BaseCommand
         try
         {
             var endTime = DateOnly.FromDateTime(DateTime.UtcNow);
-            var startTime = endTime.AddDays(-MaxDaysToCollect); // Azure Monitor only gives a data for a month back, but we ask for more just in case
+            var startTime = endTime.AddDays(-MaxDaysToCollect);
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
