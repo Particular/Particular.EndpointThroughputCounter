@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using Azure.Monitor.Query.Metrics.Models;
 using Particular.EndpointThroughputCounter.Infra;
 using Particular.LicensingComponent.Report;
 using Particular.ThroughputQuery;
@@ -6,6 +7,10 @@ using Particular.ThroughputQuery.AzureServiceBus;
 
 class AzureServiceBusCommand : BaseCommand
 {
+    // ASB keeps 90 days of data but will only return 30 days in a single query
+    const int MaxDaysToCollect = 90;
+    const int MaxDaysToCollectInOneQuery = 30;
+
     public static Command CreateCommand()
     {
         var command = new Command("azureservicebus", "Measure endpoints and throughput using Azure Service Bus metrics");
@@ -54,11 +59,16 @@ class AzureServiceBusCommand : BaseCommand
             var cancellationToken = context.GetCancellationToken();
 
 #if DEBUG
+            // So we don't have to keep an Azure Service Bus resource id and region in launchSettings.json
+            // Create a local.settings.json file with the keys below.
             if (resourceId == "LOAD_FROM_CONFIG")
             {
-                // So we don't have to keep an Azure Service Bus resource id in launchSettings.json
-                // Create a local.settings.json file with the key below.
                 resourceId = AppConfig.Get<string>("AZURESERVICEBUS_RESOURCE_ID");
+            }
+
+            if (region == "LOAD_FROM_CONFIG")
+            {
+                region = AppConfig.Get<string>("AZURESERVICEBUS_REGION");
             }
 #endif
 
@@ -85,7 +95,7 @@ class AzureServiceBusCommand : BaseCommand
         try
         {
             var endTime = DateOnly.FromDateTime(DateTime.UtcNow);
-            var startTime = endTime.AddDays(-90); // Azure Monitor only gives a data for a month back, but we ask for more just in case
+            var startTime = endTime.AddDays(-MaxDaysToCollect);
             var results = new List<QueueThroughput>();
 
             azure.ResetConnectionQueue();
@@ -97,7 +107,7 @@ class AzureServiceBusCommand : BaseCommand
 
                 Out.Write($"Gathering metrics for queue {i + 1}/{queueNames.Length}: {queueName}");
 
-                var metricValues = (await azure.GetMetrics(queueName, startTime, endTime, cancellationToken)).OrderBy(m => m.TimeStamp).ToArray();
+                var metricValues = await GetMetricValues(queueName, startTime, endTime, cancellationToken);
 
                 var maxThroughput = metricValues.Select(timeEntry => timeEntry.Total).Max();
                 var start = DateOnly.FromDateTime(metricValues.First().TimeStamp.UtcDateTime);
@@ -157,6 +167,18 @@ class AzureServiceBusCommand : BaseCommand
         {
             throw new HaltException(x);
         }
+    }
+
+    async Task<MetricValue[]> GetMetricValues(string queueName, DateOnly start, DateOnly end, CancellationToken cancellationToken)
+    {
+        var metricValues = new List<MetricValue>();
+
+        foreach (var (startTime, endTime) in ReportingWindow.GetReportingWindow(start, end, MaxDaysToCollectInOneQuery))
+        {
+            metricValues.AddRange(await azure.GetMetrics(queueName, startTime, endTime, cancellationToken));
+        }
+
+        return [.. metricValues.OrderBy(x => x.TimeStamp)];
     }
 
     protected override async Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default)
