@@ -252,7 +252,6 @@ abstract class BaseCommand
                     ScopeHash = string.IsNullOrEmpty(q.Scope) ? "" : OneWayHasher.CalculateOneWayHash(q.Scope),
                     Throughput = q.Throughput.HasValue ? Math.Abs(q.Throughput.Value) : null,
                 })],
-                TotalThroughput = data.Queues.Sum(q => q.Throughput ?? 0),
                 TotalQueues = data.Queues.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray() ?? []
             };
@@ -279,7 +278,6 @@ abstract class BaseCommand
                     ScopeHash = string.IsNullOrEmpty(q.Scope) ? "" : OneWayHasher.CalculateOneWayHash(q.Scope),
                     Throughput = 0
                 })],
-                TotalThroughput = 0,
                 TotalQueues = metadata.QueueNames.Length,
                 IgnoredQueues = metadata.IgnoredQueues?.Select(q => shared.Mask(q)).ToArray()
             };
