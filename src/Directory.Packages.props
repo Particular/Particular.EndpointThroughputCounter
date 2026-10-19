@@ -4,9 +4,9 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AWSSDK.CloudWatch" Version="4.0.105.4" />
-    <PackageVersion Include="AWSSDK.SecurityToken" Version="4.0.101.4" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.18" />
+    <PackageVersion Include="AWSSDK.CloudWatch" Version="4.0.106" />
+    <PackageVersion Include="AWSSDK.SecurityToken" Version="4.0.101.5" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.19" />
     <PackageVersion Include="Azure.Identity" Version="1.17.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageVersion Include="Azure.Monitor.Query.Metrics" Version="1.0.0" />
