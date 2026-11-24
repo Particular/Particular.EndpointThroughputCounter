@@ -28,6 +28,5 @@
     <PackageVersion Include="System.Threading.RateLimiting" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup Label="Pinned transitive dependencies">
-    <PackageVersion Include="System.Private.Uri" Version="4.3.2" />
   </ItemGroup>
 </Project>
