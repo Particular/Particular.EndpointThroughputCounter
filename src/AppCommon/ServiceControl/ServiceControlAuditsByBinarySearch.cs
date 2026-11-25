@@ -157,7 +157,7 @@ namespace Particular.EndpointThroughputCounter.ServiceControl
         [Conditional("DEBUG")]
         static void Debug(string message) => Out.WriteLine(message);
 
-        record struct AuditBatch
+        readonly record struct AuditBatch
         {
             public AuditBatch(DateTime[] timestamps)
             {
@@ -179,20 +179,20 @@ namespace Particular.EndpointThroughputCounter.ServiceControl
                 }
             }
 
-            DateTime[] timestamps;
-            DateTime firstMessageProcessedAt;
-            DateTime lastMessageProcessedAt;
+            readonly DateTime[] timestamps;
+            readonly DateTime firstMessageProcessedAt;
+            readonly DateTime lastMessageProcessedAt;
 
             public double AverageSecondsPerMessage { get; }
             public bool IsValid { get; }
 
-            public bool ContainsTime(DateTime targetTime) => timestamps.Length > 0 && firstMessageProcessedAt <= targetTime && targetTime <= lastMessageProcessedAt;
+            public readonly bool ContainsTime(DateTime targetTime) => timestamps.Length > 0 && firstMessageProcessedAt <= targetTime && targetTime <= lastMessageProcessedAt;
 
-            public bool DataIsBefore(DateTime cutoff) => timestamps.Length == 0 || lastMessageProcessedAt < cutoff;
+            public readonly bool DataIsBefore(DateTime cutoff) => timestamps.Length == 0 || lastMessageProcessedAt < cutoff;
 
-            public bool DataIsAfter(DateTime cutoff) => timestamps.Length > 0 && firstMessageProcessedAt > cutoff;
+            public readonly bool DataIsAfter(DateTime cutoff) => timestamps.Length > 0 && firstMessageProcessedAt > cutoff;
 
-            public int MessagesProcessedAfter(DateTime cutoff) => timestamps.Count(dt => dt >= cutoff);
+            public readonly int MessagesProcessedAfter(DateTime cutoff) => timestamps.Count(dt => dt >= cutoff);
         }
     }
 }
