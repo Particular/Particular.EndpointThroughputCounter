@@ -82,31 +82,27 @@ class SqsCommand : BaseCommand
 
             var maxThroughput = datapoints.Values.Max();
 
-            // Since we get 365 days of data, if there's no throughput in that amount of time, hard to legitimately call it an endpoint
-            if (maxThroughput > 0)
+            var startTime = datapoints.Keys.Min();
+            var endTime = datapoints.Keys.Max();
+
+            var dailyData = new List<DailyThroughput>(endTime.DayNumber - startTime.DayNumber + 1);
+
+            for (var currentDate = startTime; currentDate <= endTime; currentDate = currentDate.AddDays(1))
             {
-                var startTime = datapoints.Keys.Min();
-                var endTime = datapoints.Keys.Max();
-
-                var dailyData = new List<DailyThroughput>(endTime.DayNumber - startTime.DayNumber + 1);
-
-                for (var currentDate = startTime; currentDate <= endTime; currentDate = currentDate.AddDays(1))
+                datapoints.TryGetValue(currentDate, out var count);
+                dailyData.Add(new DailyThroughput
                 {
-                    datapoints.TryGetValue(currentDate, out var count);
-                    dailyData.Add(new DailyThroughput
-                    {
-                        MessageCount = count,
-                        DateUTC = currentDate
-                    });
-                }
-
-                data.Add(new QueueThroughput
-                {
-                    QueueName = queueName,
-                    Throughput = maxThroughput,
-                    DailyThroughputFromBroker = [.. dailyData]
+                    MessageCount = count,
+                    DateUTC = currentDate
                 });
             }
+
+            data.Add(new QueueThroughput
+            {
+                QueueName = queueName,
+                Throughput = maxThroughput,
+                DailyThroughputFromBroker = [.. dailyData]
+            });
 
             var numberOfReceivedMetrics = Interlocked.Increment(ref metricsReceived);
             Out.Progress($"Got data for {numberOfReceivedMetrics}/{numberOfQueues} SQS queues.");
