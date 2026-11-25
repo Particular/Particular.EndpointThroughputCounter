@@ -296,10 +296,7 @@ abstract class BaseCommand
         Out.WriteLine("EndpointThroughputTool complete.");
     }
 
-    protected virtual Task Initialize(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    protected virtual Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);
 
