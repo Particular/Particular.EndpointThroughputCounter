@@ -9,10 +9,8 @@ namespace Particular.EndpointThroughputCounter.ServiceControl
     using System.Threading.Tasks;
     using Particular.LicensingComponent.Report;
 
-    class ServiceControlAuditsByBinarySearch
+    class ServiceControlAuditsByBinarySearch(ServiceControlClient primary, int minutesPerSample)
     {
-        readonly ServiceControlClient primary;
-        readonly int minutesPerSample;
 
 #if DEBUG
         // So that a run can be done in 3 minutes in debug mode
@@ -20,11 +18,6 @@ namespace Particular.EndpointThroughputCounter.ServiceControl
 #else
         const int AuditSamplingPageSize = 500;
 #endif
-        public ServiceControlAuditsByBinarySearch(ServiceControlClient primary, int minutesPerSample)
-        {
-            this.primary = primary;
-            this.minutesPerSample = minutesPerSample;
-        }
 
         public async Task<QueueThroughput?> GetThroughputFromAudits(string endpointName, CancellationToken cancellationToken = default)
         {
