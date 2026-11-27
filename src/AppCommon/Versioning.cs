@@ -2,7 +2,7 @@
 using System.Text.RegularExpressions;
 using NuGet.Versioning;
 
-static class Versioning
+static partial class Versioning
 {
     public static string InformationalVersion { get; }
     public static string FullSha { get; }
@@ -16,9 +16,7 @@ static class Versioning
         var infoVersionAtt = assembly.GetCustomAttributes<AssemblyInformationalVersionAttribute>().FirstOrDefault();
         InformationalVersion = infoVersionAtt?.InformationalVersion ?? "Unknown";
 
-        var versionRegex = new Regex(@"^(?<CoreVersion>\d+\.\d+\.\d+)(-(?<PrereleaseLabel>[a-z0-9-]+)\.(?<PrereleaseNumber>\d+)\.(?<Height>\d+))?\+(?<FullSha>[0-9a-f]{40})$");
-
-        var match = versionRegex.Match(InformationalVersion);
+        var match = VersionRegex().Match(InformationalVersion);
         if (match.Success)
         {
             FullSha = match.Groups["FullSha"].Value;
@@ -102,4 +100,7 @@ static class Versioning
 
         return true;
     }
+
+    [GeneratedRegex(@"^(?<CoreVersion>\d+\.\d+\.\d+)(-(?<PrereleaseLabel>[a-z0-9-]+)\.(?<PrereleaseNumber>\d+)\.(?<Height>\d+))?\+(?<FullSha>[0-9a-f]{40})$")]
+    private static partial Regex VersionRegex();
 }

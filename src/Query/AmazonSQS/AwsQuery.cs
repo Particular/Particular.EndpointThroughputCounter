@@ -60,7 +60,7 @@
 
                     if (response.QueueUrls is { Count: > 0 })
                     {
-                        queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]).ToArray());
+                        queueNames.AddRange(response.QueueUrls.Select(url => url.Split('/')[4]));
                     }
 
                     onProgress(queueNames.Count);

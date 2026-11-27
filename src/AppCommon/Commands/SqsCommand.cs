@@ -130,10 +130,9 @@ class SqsCommand : BaseCommand
         queueNames = await aws.GetQueueNames(found => Out.Progress($"Found {found} SQS queues."), cancellationToken);
         Out.EndProgress();
 
-        ignoredQueueNames = queueNames
+        ignoredQueueNames = [.. queueNames
             .Where(name => prefix is not null && !name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(name => name)
-            .ToArray();
+            .OrderBy(name => name)];
 
         if (ignoredQueueNames.Any())
         {

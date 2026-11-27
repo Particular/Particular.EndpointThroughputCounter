@@ -151,7 +151,7 @@ class AzureServiceBusCommand : BaseCommand
             {
                 StartTime = s,
                 EndTime = e,
-                Queues = results.OrderBy(q => q.QueueName).ToArray(),
+                Queues = [.. results.OrderBy(q => q.QueueName)],
                 TimeOfObservation = e - s
             };
         }

@@ -5,7 +5,7 @@ using Particular.EndpointThroughputCounter.ServiceControl;
 using Particular.LicensingComponent.Report;
 using Particular.LicensingComponent.Report.Utility;
 
-abstract class BaseCommand
+abstract partial class BaseCommand
 {
     readonly SharedOptions shared;
     readonly string reportName = "throughput-report";
@@ -28,7 +28,7 @@ abstract class BaseCommand
 
     string CreateReportOutputPath(string customerName)
     {
-        var customerFileName = Regex.Replace(customerName, @"[^\w\d]+", "-").Trim('-').ToLower();
+        var customerFileName = ExcludedFileNameCharactersRegex().Replace(customerName, "-").Trim('-').ToLower();
         var outputPath = Path.Join(Environment.CurrentDirectory,
             $"{customerFileName}-{reportName}-{DateTime.Now:yyyyMMdd-HHmmss}.json");
 
@@ -296,14 +296,14 @@ abstract class BaseCommand
         Out.WriteLine("EndpointThroughputTool complete.");
     }
 
-    protected virtual Task Initialize(CancellationToken cancellationToken = default)
-    {
-        return Task.CompletedTask;
-    }
+    protected virtual Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     protected abstract Task<QueueDetails> GetData(CancellationToken cancellationToken = default);
 
     protected abstract Task<EnvironmentDetails> GetEnvironment(CancellationToken cancellationToken = default);
 
     protected TimeSpan PollingRunTime;
+
+    [GeneratedRegex(@"[^\w\d]+")]
+    private static partial Regex ExcludedFileNameCharactersRegex();
 }
